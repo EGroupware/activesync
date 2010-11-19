@@ -523,7 +523,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 						" STATUS = 13");
 	    		return true;
 		    } else {
-		    	$filename = BASE_PATH . STATE_DIR . "/". $devid . '/HANDLESYNC_NO_SHORT_REQUEST';
+		    	$filename = STATE_DIR . "/". $devid . '/HANDLESYNC_NO_SHORT_REQUEST';
 		    	if (file_exists($filename) &&
 		    		sizeof($SyncCache['confirmed_synckeys']) > 0) {
 					debugLog("File ". $filename ." exists  and we have unconfirmed sync keys but during short request. Enforce full Sync Request (STATUS = 13)");
@@ -578,7 +578,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 		$SyncCache['timestamp'] = time();
 
 		// Check if time of last sync is too long ago (but only in case we don't expect a full request!)
-/*		$filename = BASE_PATH . STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
+/*		$filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
 		if (isset($SyncCache['lastuntil']) &&
 	    	!file_exists($filename) &&
 	    	$SyncCache['lastuntil']+$maxcacheage < time()) {
@@ -801,7 +801,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 		        }
 
 		        // Get our sync state for this collection
-				$filename = BASE_PATH . STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
+				$filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
 	        	$collection['onlyoptionbodypreference'] = $protocolversion >= 14.0 && (!isset($collection["BodyPreference"][1]) &&
     	    																		   !isset($collection["BodyPreference"][2]) &&
 	        													 		 			   !isset($collection["BodyPreference"][3]) &&
@@ -840,7 +840,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 
 
 				if (isset($collection["optionfoldertype"])) {
-				    $filename = BASE_PATH . STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
+				    $filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
 				    if (isset($collection["synckey"]) &&
 						file_exists($filename)) {
 		        		$collection[$collection["optionfoldertype"]."syncstate"] = $statemachine->getSyncState($collection["optionfoldertype"].$collection["synckey"]);
@@ -1390,7 +1390,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 		if(!$decoder->getElementEndTag()) // end sync
 	        return false;
 
-		$filename = BASE_PATH . STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
+		$filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
 		if (file_exists($filename) && $partial == true) {
 		    if ($foundsynckey == true && 2==1) { // Disabled the cache compare to see if this fights lost emails...
 				$cachecompare1 = -1;
@@ -2312,7 +2312,7 @@ function HandlePing($backend, $devid) {
         $ping = unserialize(file_get_contents($file));
         $collections = $ping["collections"];
         $lifetime = $ping["lifetime"];
-    	file_put_contents(BASE_PATH . "/" . STATE_DIR . "/" . strtolower($devid). "/" . $devid, serialize(array("lifetime" => $lifetime, "timestamp" => time(), "collections" => $collections)));
+    	file_put_contents(STATE_DIR . "/" . strtolower($devid). "/" . $devid, serialize(array("lifetime" => $lifetime, "timestamp" => time(), "collections" => $collections)));
     }
 
     if($decoder->getElementStartTag(SYNC_PING_PING)) {
@@ -4229,7 +4229,7 @@ function shutdownCommunication() {
 		case "sync" :
 		case "ping" :
 		    debugLog("verifyCommunication: Cachestatus is ".$cachestatus);
-		    $filename = BASE_PATH . STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
+		    $filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
 		    // in case our cache changed we request full sync request from client -
 		    // we need to do this since we have no 100% way to find out if connection is really
 		    // alive but need to have a clean synccache to ensure a 100% sync of elements...

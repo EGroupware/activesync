@@ -45,13 +45,20 @@ class ImportHierarchyChangesEGW  {
 };
 
 class ExportChangesEGW  {
+	
+	
+	
+	
 	var $_folderid;
 	var $_store;
 	var $_session;
+	var $_backend;
 
 	function ExportChangesEGW($session, $store, $folderid = false) {
 		// Open a hierarchy or a contents exporter depending on whether a folderid was specified
 		debugLog(__METHOD__ . " " . $session . " " . $store . " " . $folderid);
+		
+		
 		$this->_session = $session;
 		$this->_folderid = $folderid;
 		$this->_store = $store;
@@ -62,7 +69,13 @@ class ExportChangesEGW  {
 			debugLog(__METHOD__ . " no folder ID");
 			$this->exporter = '';
 		}
+		
+		$this->backend = $GLOBALS["backend"];
+	
 	}
+	
+	
+	
 
 
 
@@ -78,7 +91,7 @@ class ExportChangesEGW  {
 			$mail = new bofelamimail ();
 			$mail->openConnection(0,false);
 			error_log("mail_error :" .$mail->getErrorMessage);
-			$folders = $mail->getFolderObjects(false,false);
+			$folders = $mail->getFolderObjects(true,false);
 		  error_log(print_r($folders,true));
 			$mail->closeConnection;
 			debugLog("*******************************");
@@ -121,14 +134,40 @@ class ExportChangesEGW  {
 	}
 
 	function GetFolderList() {
-		debugLog('VCDir::GetFolderList()');
-		$contacts = array();
-		$folder = $this->StatFolder("root");
-		$contacts[] = $folder;
-		$folder = $this->StatFolder("xtest");
-		$contacts[] = $folder;
-
-		return $contacts;
+		
+		$folderlist = array();
+		
+		$mail = new bofelamimail ();
+    	$mail->openConnection(0,false);
+    	$folders = $mail->getFolderObjects(false,false);
+    	foreach ($folders as $key=> $folder) {
+    		// debugLog(array2string($folder));
+    		debugLog ("DisplayName: " . $folder->shortDisplayName);
+    		debugLog ("FolderName : " . $folder->folderName);
+    		debugLog ("Delimiter  : " . $folder->delimiter);
+    		$buf = explode ($folder->delimiter, $folder->folderName);
+    		$folderentry["parent"] = $parent = 0;
+    		if (count ($buf) > 1) {
+    			array_pop ($buf);
+    			$parent = implode ($folder->delimiter, $buf);
+    			if (array_key_exists ($parent,$folders)) {
+    				$folderentry["parent"] =  $this->backend->createID ("mail", $folder->parent, 0);
+    				debugLog ("Parent : " . $parent);
+    			};
+    		};
+    		
+    		
+    		$folderentry["mod"] =  $folder->shortDisplayName;
+    		$folderentry["id"] = $this->backend->createID ("mail", $folder->folderName, 0);
+    		   					
+    		$folderlist[] = $folderentry;			
+    	}
+    	$mail->closeConnection();
+  
+  		// TODO : other apps
+  
+  
+		return folderlist;
 	}
 
 	function GetFolder($id) {
@@ -657,7 +696,7 @@ class BackendEGW
 	{
 		if(!isset($this->folderHashes)) $this->readFolderHashes();
 
-		if (($index = array_search($folder, (array)$this->folderHashes[$type])) !== false)
+		if (($index = array_search($folder, (array)$this->folderHashes[$type])) === false)
 		{
 			// new hash
 			$this->folderHashes[$type][] = $folder;
@@ -722,6 +761,6 @@ class BackendEGW
 		{
 			throw new egw_exception_assertion_failed(__METHOD__."() called without this->_devid set!");
 		}
-		return STATE_DIR.'/hashes.'.$this->_devid;
+		return STATE_DIR.'/'.strtolower($this->_devid).'/'.$this->_devid.'.hashes';
 	}
 };

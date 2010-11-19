@@ -10,6 +10,19 @@
 * This file is distributed under GPL v2.
 * Consult LICENSE file for details
 ************************************************/
+
+	$GLOBALS['egw_info'] = array(
+		'flags' => array(
+			'disable_Template_class'  => true,
+	//		'login'                   => true,
+			'noheader'                => true,
+			'currentapp'              => 'login',
+			'no_exception_handler' => 'errorlog',	// only logs exceptions
+	));
+
+	include('../header.inc.php');
+
+
     // Defines the default time zone
     if (function_exists("date_default_timezone_set")){
         date_default_timezone_set("Europe/Berlin");
@@ -20,14 +33,17 @@
 
     // Define the include paths
     ini_set('include_path',
-                        BASE_PATH. "include/" . PATH_SEPARATOR .
-                        BASE_PATH. PATH_SEPARATOR .
-                        ini_get('include_path') . PATH_SEPARATOR .
-                        "/usr/share/php/" . PATH_SEPARATOR .
-                        "/usr/share/php5/" . PATH_SEPARATOR .
-                        "/usr/share/pear/");
+		BASE_PATH. "include/" . PATH_SEPARATOR .
+		BASE_PATH. PATH_SEPARATOR .
+		ini_get('include_path'));
 
-    define('STATE_DIR', 'state');
+   	// state dir for active sync as "activesync" subdir EGw's files directory
+	define('STATE_DIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync');
+ 	if (!file_exists(STATE_DIR))
+ 	{
+ 		mkdir(STATE_DIR,0700,true);
+ 	}
+
 
     // Try to set unlimited timeout
     define('SCRIPT_TIMEOUT', 3540+600);
@@ -35,14 +51,14 @@
     //Max size of attachments to display inline. Default is 1MB
     define('MAX_EMBEDDED_SIZE', 1048576);
 
-    // Device Provisioning 
-    define('PROVISIONING', true); 
+    // Device Provisioning
+    define('PROVISIONING', true);
 
-    // This option allows the 'loose enforcement' of the provisioning policies for older 
+    // This option allows the 'loose enforcement' of the provisioning policies for older
     // devices which don't support provisioning (like WM 5 and HTC Android Mail) - dw2412 contribution
     // false (default) - Enforce provisioning for all devices
-    // true - allow older devices, but enforce policies on devices which support it  
-    define('LOOSE_PROVISIONING', true); 
+    // true - allow older devices, but enforce policies on devices which support it
+    define('LOOSE_PROVISIONING', true);
 
     // Palm Pre AS2.5 PoomTasks:RTF Fix
     define('ENABLE_PALM_PRE_AS25_CONTACT_FIX',true);
@@ -51,19 +67,20 @@
     define('ICS_IMTOINET_SEGFAULT',true);
 
     // Defines the charset used in Backend. AirSync charset is UTF-8!
-    // Leave as is in case you use default Zarafa Server. 
+    // Leave as is in case you use default Zarafa Server.
     // In case your Backend needs another value just adapt it.
-    define('BACKEND_CHARSET','windows-1252');
+    // EGroupware uses utf-8 only
+    define('BACKEND_CHARSET','utf-8');
 
     // Default conflict preference
-    // Some devices allow to set if the server or PIM (mobile) 
+    // Some devices allow to set if the server or PIM (mobile)
     // should win in case of a synchronization conflict
     //   SYNC_CONFLICT_OVERWRITE_SERVER - Server is overwritten, PIM wins
     //   SYNC_CONFLICT_OVERWRITE_PIM    - PIM is overwritten, Server wins (default)
     define('SYNC_CONFLICT_DEFAULT', SYNC_CONFLICT_OVERWRITE_PIM);
 
     // The data providers that we are using (see configuration below)
-    $BACKEND_PROVIDER = "BackendICS";
+    $BACKEND_PROVIDER = "BackendEGW";
 
     // ************************
     //  BackendICS settings
@@ -119,19 +136,19 @@
     define('VCARDDIR_DIR', '/home/%u/.kde/share/apps/kabc/stdvcf');
 
     // **************************
-    //  BackendiConDir settings  
+    //  BackendiConDir settings
     // **************************
     define('ICONDIR_DIR','C:\xampp\htdocs\as12.1\data\%u\iCon');
     define('ICONDIR_FOLDERNAME','Tobit Kontakte');
 
     // **************************
-    //  BackendiCalDir settings  
+    //  BackendiCalDir settings
     // **************************
     define('ICALDIR_DIR','C:\xampp\htdocs\as12.1\data\%u\iCal');
     define('ICALDIR_FOLDERNAME','Calendar');
 
     // **************************
-    //  BackendCombined settings  
+    //  BackendCombined settings
     // **************************
     define('BACKENDCOMBINED_CONFIG', serialize(array(
         //the order in which the backends are loaded.

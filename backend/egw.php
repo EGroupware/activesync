@@ -415,6 +415,7 @@ class BackendEGW
 			return false;
 		}
    		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
+   		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
    		return true;
 	}

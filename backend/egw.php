@@ -1,8 +1,8 @@
 <?php
 /***********************************************
-* File      :   egw.php
+* File	  :   egw.php
 * Project   :   Z-Push/eGroupware
-* Descr     :
+* Descr	 :
 *
 * Created   :   01.11.2010
 *
@@ -21,160 +21,160 @@ require_once ('../felamimail/inc/class.bofelamimail.inc.php');
 
 
 class ImportHierarchyChangesEGW  {
-    var $_user;
+	var $_user;
 
-    function ImportHierarchyChangesEGW($store) {
+	function ImportHierarchyChangesEGW($store) {
 
-    }
+	}
 
-    function Config($state, $flags = 0) {
-        // Put the state information in a stream that can be used by ICS
+	function Config($state, $flags = 0) {
+		// Put the state information in a stream that can be used by ICS
 
-    }
+	}
 
-    function ImportFolderChange($id, $parent, $displayname, $type) {
-        //create a new folder if $id is not set
-    }
+	function ImportFolderChange($id, $parent, $displayname, $type) {
+		//create a new folder if $id is not set
+	}
 
-    function ImportFolderDeletion($id, $parent) {
+	function ImportFolderDeletion($id, $parent) {
 
-    }
+	}
 
-    function GetState() {
-    }
+	function GetState() {
+	}
 };
 
 class ExportChangesEGW  {
-    var $_folderid;
-    var $_store;
-    var $_session;
+	var $_folderid;
+	var $_store;
+	var $_session;
 
-    function ExportChangesEGW($session, $store, $folderid = false) {
-    	// Open a hierarchy or a contents exporter depending on whether a folderid was specified
-    	debugLog(__METHOD__ . " " . $session . " " . $store . " " . $folderid);
-    	$this->_session = $session;
-    	$this->_folderid = $folderid;
-    	$this->_store = $store;
+	function ExportChangesEGW($session, $store, $folderid = false) {
+		// Open a hierarchy or a contents exporter depending on whether a folderid was specified
+		debugLog(__METHOD__ . " " . $session . " " . $store . " " . $folderid);
+		$this->_session = $session;
+		$this->_folderid = $folderid;
+		$this->_store = $store;
 
-    	if ($folderid) {
-    		debugLog(__METHOD__ . " with folder ID");
-    	} else {
-    		debugLog(__METHOD__ . " no folder ID");
-    		$this->exporter = '';
-    	}
-    }
-
-
+		if ($folderid) {
+			debugLog(__METHOD__ . " with folder ID");
+		} else {
+			debugLog(__METHOD__ . " no folder ID");
+			$this->exporter = '';
+		}
+	}
 
 
 
 
 
-    // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function Config(&$importer, $mclass, $restrict, $syncstate, $flags, $truncation, $bodypreference) {
 
 
-    		// die("XX");
-    		$mail = new bofelamimail ();
-    		$mail->openConnection(0,false);
-    		error_log("mail_error :" .$mail->getErrorMessage);
-    		$folders = $mail->getFolderObjects(false,false);
-    	  error_log(print_r($folders,true));
-    		$mail->closeConnection;
-    		debugLog("*******************************");
-    		debugLog(__METHOD__);
-    		$this->_importer = &$importer;
-        $this->_restrict = $restrict;
-        $this->_syncstate = unserialize($syncstate);
-        $this->_flags = $flags;
-        $this->_truncation = $truncation;
+	// CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
+	function Config(&$importer, $mclass, $restrict, $syncstate, $flags, $truncation, $bodypreference) {
+
+
+			// die("XX");
+			$mail = new bofelamimail ();
+			$mail->openConnection(0,false);
+			error_log("mail_error :" .$mail->getErrorMessage);
+			$folders = $mail->getFolderObjects(false,false);
+		  error_log(print_r($folders,true));
+			$mail->closeConnection;
+			debugLog("*******************************");
+			debugLog(__METHOD__);
+			$this->_importer = &$importer;
+		$this->_restrict = $restrict;
+		$this->_syncstate = unserialize($syncstate);
+		$this->_flags = $flags;
+		$this->_truncation = $truncation;
 				$this->_bodypreference = $bodypreference;
 
-        $this->_changes = array();
-        $this->_step = 0;
+		$this->_changes = array();
+		$this->_step = 0;
 
-        $cutoffdate = $this->_getCutOffDate($restrict);
+		$cutoffdate = $this->_getCutOffDate($restrict);
 
-        error_log(print_r($this->_syncstate,true));
-        error_log("*******************************");
+		error_log(print_r($this->_syncstate,true));
+		error_log("*******************************");
 
-        if($this->_folderid) {
-            // Get the changes since the last sync
-            debugLog("Initializing message diff engine");
-        } else {
-        		debugLog("Getting List of Folders");
-        		$folderlist = $this->GetFolderList();
-            if($folderlist === false)
-                return false;
+		if($this->_folderid) {
+			// Get the changes since the last sync
+			debugLog("Initializing message diff engine");
+		} else {
+				debugLog("Getting List of Folders");
+				$folderlist = $this->GetFolderList();
+			if($folderlist === false)
+				return false;
 
-            if(!isset($this->_syncstate) || !$this->_syncstate)
-                $this->_syncstate = array();
+			if(!isset($this->_syncstate) || !$this->_syncstate)
+				$this->_syncstate = array();
 
    					// $this->_changes = GetDiff($this->_syncstate, $folderlist);
 
 						$this->_changes = $folderlist;
 
-            debugLog("Found " . count($this->_changes) . " folder changes");
+			debugLog("Found " . count($this->_changes) . " folder changes");
 
 
-        }
-    }
+		}
+	}
 
-    function GetFolderList() {
-        debugLog('VCDir::GetFolderList()');
-        $contacts = array();
-        $folder = $this->StatFolder("root");
-        $contacts[] = $folder;
-        $folder = $this->StatFolder("xtest");
-        $contacts[] = $folder;
+	function GetFolderList() {
+		debugLog('VCDir::GetFolderList()');
+		$contacts = array();
+		$folder = $this->StatFolder("root");
+		$contacts[] = $folder;
+		$folder = $this->StatFolder("xtest");
+		$contacts[] = $folder;
 
-        return $contacts;
-    }
+		return $contacts;
+	}
 
-    function GetFolder($id) {
-        debugLog('VCDir::GetFolder('.$id.')');
-        if($id == "root") {
+	function GetFolder($id) {
+		debugLog('VCDir::GetFolder('.$id.')');
+		if($id == "root") {
 
-            $folder = new SyncFolder();
+			$folder = new SyncFolder();
 
-            $folder->serverid = $id;
-            $folder->parentid = "0";
-            $folder->displayname = "Contacts";
-            $folder->type = SYNC_FOLDER_TYPE_CONTACT;
+			$folder->serverid = $id;
+			$folder->parentid = "0";
+			$folder->displayname = "Contacts";
+			$folder->type = SYNC_FOLDER_TYPE_CONTACT;
 
-            return $folder;
-        }
-        elseif ($id == "xtest") {
+			return $folder;
+		}
+		elseif ($id == "xtest") {
 
-        		$folder = new SyncFolder();
+				$folder = new SyncFolder();
 
-            $folder->serverid = $id;
-            $folder->parentid = "0";
-            $folder->displayname = "eGW Kalender";
-            $folder->type = SYNC_FOLDER_TYPE_APPOINTMENT;
+			$folder->serverid = $id;
+			$folder->parentid = "0";
+			$folder->displayname = "eGW Kalender";
+			$folder->type = SYNC_FOLDER_TYPE_APPOINTMENT;
 
-        		return $folder;
+				return $folder;
 
 
-        }
-      	else
-      	{
-      	 return false;
-      	}
-    }
+		}
+	  	else
+	  	{
+	  	 return false;
+	  	}
+	}
 
-    function StatFolder($id) {
-        debugLog('VCDir::StatFolder('.$id.')');
-        $folder = $this->GetFolder($id);
+	function StatFolder($id) {
+		debugLog('VCDir::StatFolder('.$id.')');
+		$folder = $this->GetFolder($id);
 
-        $stat = array();
-        $stat["type"] = "change";
-        $stat["id"] = $id;
-        $stat["parent"] = $folder->parentid;
-        $stat["mod"] = $folder->displayname;
+		$stat = array();
+		$stat["type"] = "change";
+		$stat["id"] = $id;
+		$stat["parent"] = $folder->parentid;
+		$stat["mod"] = $folder->displayname;
 
-        return $stat;
-    }
+		return $stat;
+	}
 
 
 
@@ -184,9 +184,9 @@ class ExportChangesEGW  {
 
 			$folder = new SyncFolder();
 			$folder->serverid = "myfolder";
-      $folder->parentid = "0";
-      $folder->displayname = "Contacts";
-      $folder->type = SYNC_FOLDER_TYPE_CONTACT;
+	  $folder->parentid = "0";
+	  $folder->displayname = "Contacts";
+	  $folder->type = SYNC_FOLDER_TYPE_CONTACT;
 
 			$folderlist[] = $folder;
 
@@ -199,193 +199,193 @@ class ExportChangesEGW  {
 
 
 		function GetFolder($id) {
-        debugLog('VCDir::GetFolder('.$id.')');
-        if($id == "root") {
-            $folder = new SyncFolder();
-            $folder->serverid = $id;
-            $folder->parentid = "0";
-            $folder->displayname = "Contacts";
-            $folder->type = SYNC_FOLDER_TYPE_CONTACT;
+		debugLog('VCDir::GetFolder('.$id.')');
+		if($id == "root") {
+			$folder = new SyncFolder();
+			$folder->serverid = $id;
+			$folder->parentid = "0";
+			$folder->displayname = "Contacts";
+			$folder->type = SYNC_FOLDER_TYPE_CONTACT;
 
-            return $folder;
-        } else return false;
-    }
+			return $folder;
+		} else return false;
+	}
 
 */
 
-    function GetState() {
-    	debugLog(__METHOD__);
-    	return serialize($this->_syncstate);
-    }
+	function GetState() {
+		debugLog(__METHOD__);
+		return serialize($this->_syncstate);
+	}
 
-    function GetChangeCount() {
-     	debugLog(__METHOD__);
-     	return count($this->_changes);
-    }
+	function GetChangeCount() {
+	 	debugLog(__METHOD__);
+	 	return count($this->_changes);
+	}
 
-    function Synchronize() {
-    	debugLog(__METHOD__. " found ". count($this->_changes) . " changes ");
+	function Synchronize() {
+		debugLog(__METHOD__. " found ". count($this->_changes) . " changes ");
 
-    	if($this->_folderid == false) {
-            if($this->_step < count($this->_changes)) {
-                $change = $this->_changes[$this->_step];
+		if($this->_folderid == false) {
+			if($this->_step < count($this->_changes)) {
+				$change = $this->_changes[$this->_step];
 								debugLog ("SYNC NO FOLDERID " . $change["type"]);
-                switch($change["type"]) {
-                    case "change":
-                        $folder = $this->GetFolder($change["id"]);
-                        $stat = $this->StatFolder($change["id"]);
+				switch($change["type"]) {
+					case "change":
+						$folder = $this->GetFolder($change["id"]);
+						$stat = $this->StatFolder($change["id"]);
 
-                        if(!$folder)
-                            return;
+						if(!$folder)
+							return;
 
-                        if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportFolderChange($folder))
-                            // $this->updateState("change", $stat);
-                        break;
-                    case "delete":
-                        if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportFolderDeletion($change["id"]))
-                            // $this->updateState("delete", $change);
-                        break;
-                }
+						if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportFolderChange($folder))
+							// $this->updateState("change", $stat);
+						break;
+					case "delete":
+						if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportFolderDeletion($change["id"]))
+							// $this->updateState("delete", $change);
+						break;
+				}
 
-                $this->_step++;
+				$this->_step++;
 
-                $progress = array();
-                $progress["steps"] = count($this->_changes);
-                $progress["progress"] = $this->_step;
+				$progress = array();
+				$progress["steps"] = count($this->_changes);
+				$progress["progress"] = $this->_step;
 
-                return $progress;
-            } else {
-                return false;
-            }
-        }
-        else {
-            if($this->_step < count($this->_changes)) {
-                $change = $this->_changes[$this->_step];
-           			debugLog ("SYNC FOLDERID " . $change["type"]);
+				return $progress;
+			} else {
+				return false;
+			}
+		}
+		else {
+			if($this->_step < count($this->_changes)) {
+				$change = $this->_changes[$this->_step];
+		   			debugLog ("SYNC FOLDERID " . $change["type"]);
 
-                switch($change["type"]) {
-                    case "flags":
-                    case "olflags":
-                    case "change":
-                        $truncsize = $this->getTruncSize($this->_truncation);
+				switch($change["type"]) {
+					case "flags":
+					case "olflags":
+					case "change":
+						$truncsize = $this->getTruncSize($this->_truncation);
 
-                        // Note: because 'parseMessage' and 'statMessage' are two seperate
-                        // calls, we have a chance that the message has changed between both
-                        // calls. This may cause our algorithm to 'double see' changes.
+						// Note: because 'parseMessage' and 'statMessage' are two seperate
+						// calls, we have a chance that the message has changed between both
+						// calls. This may cause our algorithm to 'double see' changes.
 
-                        $stat = $this->StatMessage($this->_folderid, $change["id"]);
-                        $message = $this->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false));
+						$stat = $this->StatMessage($this->_folderid, $change["id"]);
+						$message = $this->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false));
 
-                        // copy the flag to the message
-                        $message->flags = (isset($change["flags"])) ? $change["flags"] : 0;
+						// copy the flag to the message
+						$message->flags = (isset($change["flags"])) ? $change["flags"] : 0;
 
-                        if($stat && $message) {
-                            if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageChange($change["id"], $message) == true) {
-                                if ($change["type"] == "change") $this->updateState("change", $stat);
-                        	if ($change["type"] == "flags") $this->updateState("flags", $change);
-                        	if ($change["type"] == "olflags") $this->updateState("olflags", $change);
-			    									}
-                        }
-                        break;
-                    case "delete":
-                        if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageDeletion($change["id"]) == true)
-                            $this->updateState("delete", $change);
-                        break;
-/*                    case "flags":
-                        if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageReadFlag($change["id"], $change["flags"]) == true)
-                            $this->updateState("flags", $change);
-                        break;
-                    case "olflags":
-                        $truncsize = $this->getTruncSize($this->_truncation);
+						if($stat && $message) {
+							if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageChange($change["id"], $message) == true) {
+								if ($change["type"] == "change") $this->updateState("change", $stat);
+							if ($change["type"] == "flags") $this->updateState("flags", $change);
+							if ($change["type"] == "olflags") $this->updateState("olflags", $change);
+													}
+						}
+						break;
+					case "delete":
+						if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageDeletion($change["id"]) == true)
+							$this->updateState("delete", $change);
+						break;
+/*					case "flags":
+						if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageReadFlag($change["id"], $change["flags"]) == true)
+							$this->updateState("flags", $change);
+						break;
+					case "olflags":
+						$truncsize = $this->getTruncSize($this->_truncation);
 
-                        // Note: because 'parseMessage' and 'statMessage' are two seperate
-                        // calls, we have a chance that the message has changed between both
-                        // calls. This may cause our algorithm to 'double see' changes.
+						// Note: because 'parseMessage' and 'statMessage' are two seperate
+						// calls, we have a chance that the message has changed between both
+						// calls. This may cause our algorithm to 'double see' changes.
 
-                        $stat = $this->_backend->StatMessage($this->_folderid, $change["id"]);
-                        $message = $this->_backend->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false));
+						$stat = $this->_backend->StatMessage($this->_folderid, $change["id"]);
+						$message = $this->_backend->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false));
 
-                        // copy the flag to the message
-                        $message->flags = (isset($change["flags"])) ? $change["flags"] : 0;
+						// copy the flag to the message
+						$message->flags = (isset($change["flags"])) ? $change["flags"] : 0;
 
-                        if($stat && $message) {
-                    	    if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageChange($change["id"], $message) == true)
-                        	$this->updateState("olflags", $change);
-                        }
-                        break;
-*/                    case "move":
-                        if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageMove($change["id"], $change["parent"]) == true)
-                            $this->updateState("move", $change);
-                        break;
-                }
+						if($stat && $message) {
+							if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageChange($change["id"], $message) == true)
+							$this->updateState("olflags", $change);
+						}
+						break;
+*/					case "move":
+						if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageMove($change["id"], $change["parent"]) == true)
+							$this->updateState("move", $change);
+						break;
+				}
 
-                $this->_step++;
+				$this->_step++;
 
-                $progress = array();
-                $progress["steps"] = count($this->_changes);
-                $progress["progress"] = $this->_step;
+				$progress = array();
+				$progress["steps"] = count($this->_changes);
+				$progress["progress"] = $this->_step;
 
-                return $progress;
-            } else {
-                return false;
-            }
-        }
+				return $progress;
+			} else {
+				return false;
+			}
+		}
 
-    }
+	}
 
-    // ----------------------------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------------------------
 
-    function _getCutOffDate($restrict) {
-        switch($restrict) {
-            case SYNC_FILTERTYPE_1DAY:
-                $back = 60 * 60 * 24;
-                break;
-            case SYNC_FILTERTYPE_3DAYS:
-                $back = 60 * 60 * 24 * 3;
-                break;
-            case SYNC_FILTERTYPE_1WEEK:
-                $back = 60 * 60 * 24 * 7;
-                break;
-            case SYNC_FILTERTYPE_2WEEKS:
-                $back = 60 * 60 * 24 * 14;
-                break;
-            case SYNC_FILTERTYPE_1MONTH:
-                $back = 60 * 60 * 24 * 31;
-                break;
-            case SYNC_FILTERTYPE_3MONTHS:
-                $back = 60 * 60 * 24 * 31 * 3;
-                break;
-            case SYNC_FILTERTYPE_6MONTHS:
-                $back = 60 * 60 * 24 * 31 * 6;
-                break;
-            default:
-                break;
-        }
+	function _getCutOffDate($restrict) {
+		switch($restrict) {
+			case SYNC_FILTERTYPE_1DAY:
+				$back = 60 * 60 * 24;
+				break;
+			case SYNC_FILTERTYPE_3DAYS:
+				$back = 60 * 60 * 24 * 3;
+				break;
+			case SYNC_FILTERTYPE_1WEEK:
+				$back = 60 * 60 * 24 * 7;
+				break;
+			case SYNC_FILTERTYPE_2WEEKS:
+				$back = 60 * 60 * 24 * 14;
+				break;
+			case SYNC_FILTERTYPE_1MONTH:
+				$back = 60 * 60 * 24 * 31;
+				break;
+			case SYNC_FILTERTYPE_3MONTHS:
+				$back = 60 * 60 * 24 * 31 * 3;
+				break;
+			case SYNC_FILTERTYPE_6MONTHS:
+				$back = 60 * 60 * 24 * 31 * 6;
+				break;
+			default:
+				break;
+		}
 
-        if(isset($back)) {
-            $date = time() - $back;
-            return $date;
-        } else
-            return 0; // unlimited
-    }
+		if(isset($back)) {
+			$date = time() - $back;
+			return $date;
+		} else
+			return 0; // unlimited
+	}
 
-    function _getSMSRestriction($timestamp) {
+	function _getSMSRestriction($timestamp) {
 
-    }
+	}
 
-    function _getEmailRestriction($timestamp) {
+	function _getEmailRestriction($timestamp) {
 
-    }
+	}
 
-    function _getPropIDFromString($stringprop) {
-    }
+	function _getPropIDFromString($stringprop) {
+	}
 
-    // Create a MAPI restriction to use in the calendar which will
-    // return all future calendar items, plus those since $timestamp
-    function _getCalendarRestriction($timestamp) {
-        // This is our viewing window
+	// Create a MAPI restriction to use in the calendar which will
+	// return all future calendar items, plus those since $timestamp
+	function _getCalendarRestriction($timestamp) {
+		// This is our viewing window
 
-    }
+	}
 }
 
 class BackendEGW
@@ -393,16 +393,16 @@ class BackendEGW
 	var $egw_sessionID;
 
 	var $_user;
-    var $_devid;
-    var $_protocolversion;
+	var $_devid;
+	var $_protocolversion;
 
-    var $hierarchyimporter;
-    var $contentsimporter;
-    var $exporter;
+	var $hierarchyimporter;
+	var $contentsimporter;
+	var $exporter;
 
-    // Returns TRUE if the logon succeeded, FALSE if not
-    function Logon($username, $domain, $password)
-    {
+	// Returns TRUE if the logon succeeded, FALSE if not
+	function Logon($username, $domain, $password)
+	{
 		// check credentials and create session
 		if (!($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)))	// true = no real session
 		{
@@ -420,13 +420,13 @@ class BackendEGW
    		return true;
 	}
 
-    // called before closing connection
-    function Logoff()
-    {
-    	if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
-    		debugLog ("nothing to destroy");
-    	}
-    	debugLog ("LOGOFF");
+	// called before closing connection
+	function Logoff()
+	{
+		if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
+			debugLog ("nothing to destroy");
+		}
+		debugLog ("LOGOFF");
 	}
 
 	function Setup($user, $devid, $protocolversion)
@@ -442,55 +442,55 @@ class BackendEGW
 		if (isset($request["userinformation"])) {
 			$response["userinformation"]["status"] = 1;
 			$response["userinformation"]["emailaddresses"][] = $GLOBALS['egw_info']['user']['email'];
-	    } else {
+		} else {
 			$response["userinformation"]["status"] = false;
-	    };
+		};
 		if (isset($request["oof"])) {
 			$response["oof"]["status"] 	= 0;
 		};
 		return $response;
 	}
 
-    function GetHierarchyImporter()
-    {
-        return new ImportHierarchyChangesEGW($this->_defaultstore);
-    }
+	function GetHierarchyImporter()
+	{
+		return new ImportHierarchyChangesEGW($this->_defaultstore);
+	}
 
-    function GetContentsImporter($folderid)
-    {
-        return new ImportContentsChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
-    }
+	function GetContentsImporter($folderid)
+	{
+		return new ImportContentsChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
+	}
 
 	function GetExporter($folderid = false)
 	{
 		debugLog ("EGW:GetExporter : folderid : ". $folderid);
 		if($folderid !== false)
 			return new ExportChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
-        else
-            return new ExportChangesEGW($this->_session, $this->_defaultstore);
-    }
+		else
+			return new ExportChangesEGW($this->_session, $this->_defaultstore);
+	}
 
-    // Returns an array of SyncFolder types for the entire folder hierarchy
-    // on the server (the array itself is flat, but refers to parents via the 'parent'
-    // property)
-    function GetHierarchy() {
-    	debugLog ("XXXXXXXXXXXXX");
-    	debugLog (__METHOD__);
-    }
+	// Returns an array of SyncFolder types for the entire folder hierarchy
+	// on the server (the array itself is flat, but refers to parents via the 'parent'
+	// property)
+	function GetHierarchy() {
+		debugLog ("XXXXXXXXXXXXX");
+		debugLog (__METHOD__);
+	}
 
-    // Called when a message has to be sent and the message needs to be saved to the 'sent items'
-    // folder
-    function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {}
+	// Called when a message has to be sent and the message needs to be saved to the 'sent items'
+	// folder
+	function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {}
 
 
 	/**
-     * Checks if the sent policykey matches the latest policykey on the server
-     *
+	 * Checks if the sent policykey matches the latest policykey on the server
+	 *
  	 * @param string $policykey
-     * @param string $devid
-     *
+	 * @param string $devid
+	 *
  	 * @return status flag
-     */
+	 */
 	function CheckPolicy($policykey, $devid)
 	{
 		return true;
@@ -498,23 +498,23 @@ class BackendEGW
 
 
 	/**
-     * Returns array of items which contain searched for information
-     *
-     * @param array $searchquery
-     * @param string $searchname
-     *
-     * @return array
-     */
-    function getSearchResults($searchquery,$searchname)
-    {
-    	// debugLog("EGW:getSearchResults : query: ". $searchquery . " : searchname : ". $searchname);
-    	switch (strtoupper($searchname)) {
-	    	case "GAL":		return $this->getSearchResultsGAL($searchquery);
-	    	case "MAILBOX":	return $this->getSearchResultsMailbox($searchquery);
-    	  	case "DOCUMENTLIBRARY"	: return $this->getSearchResultsDocumentLibrary($searchquery);
-    	  	default: debugLog (__METHOD__." unknown searchname ". $searchname);
+	 * Returns array of items which contain searched for information
+	 *
+	 * @param array $searchquery
+	 * @param string $searchname
+	 *
+	 * @return array
+	 */
+	function getSearchResults($searchquery,$searchname)
+	{
+		// debugLog("EGW:getSearchResults : query: ". $searchquery . " : searchname : ". $searchname);
+		switch (strtoupper($searchname)) {
+			case "GAL":		return $this->getSearchResultsGAL($searchquery);
+			case "MAILBOX":	return $this->getSearchResultsMailbox($searchquery);
+		  	case "DOCUMENTLIBRARY"	: return $this->getSearchResultsDocumentLibrary($searchquery);
+		  	default: debugLog (__METHOD__." unknown searchname ". $searchname);
 		}
-    }
+	}
 
 	function getSearchResultsGAL($searchquery) 							//TODO: search range not verified, limits might be a good idea
 	{
@@ -558,6 +558,170 @@ class BackendEGW
 
 	function getDeviceRWStatus($user, $pass, $devid)
 	{
-    	return false;
-    }
+		return false;
+	}
+
+	const TYPE_ADDRESSBOOK = 1;
+	const TYPE_CALENDAR = 2;
+	const TYPE_MAIL = 10;
+
+	/**
+	 * Create a max. 32 hex letter ID, current 20 chars are used
+	 *
+	 * @param int $type
+	 * @param int|string $folder
+	 * @param int $id
+	 * @return string
+	 * @throws egw_exception_wrong_parameter
+	 */
+	public function createID($type,$folder,$id)
+	{
+		// get a nummeric $type
+		switch($t=$type)
+		{
+			case 'addressbook':
+				$type = self::TYPE_ADDRESSBOOK;
+				break;
+			case 'calendar':
+				$type = self::TYPE_CALENDAR;
+				break;
+			case 'mail': case 'felamimail':
+				$type = self::TYPE_MAIL;
+				break;
+			default:
+				if (!is_nummeric($type))
+				{
+					throw new egw_exception_wrong_parameter("type='$type' is NOT nummeric!");
+				}
+				$type += self::TYPE_MAIL;
+				break;
+		}
+
+		if (!is_numeric($folder))
+		{
+			// convert string $folder in numeric id
+			$folder = $this->folder2hash($type,$f=$folder);
+		}
+
+		$str = sprintf('%04X%08X%08X',$type,$folder,$id);
+
+		debugLog(__METHOD__."('$t','$f',$id) type=$type, folder=$folder --> '$str'");
+
+		return $str;
+	}
+
+	/**
+	 * Split an ID string into $app, $folder and $id
+	 *
+	 * @param string $str
+	 * @param string|int &$type
+	 * @param string|int &$folder
+	 * @param int &$id
+	 * @throws egw_exception_wrong_parameter
+	 */
+	public function splitID($str,&$type,&$folder,&$id)
+	{
+		$type = hexdec(substr($str,0,4));
+		$folder = hexdec(substr($str,4,8));
+		$id = hexdec(substr($str,12,8));
+
+		switch($type)
+		{
+			case self::TYPE_ADDRESSBOOK:
+				$type = 'addressbook';
+				break;
+			case self::TYPE_CALENDAR:
+				$type = 'calendar';
+				break;
+			default:
+				if ($type < self::TYPE_MAIL)
+				{
+					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
+				}
+				$type -= self::TYPE_MAIL;
+				// convert numeric folder-id back to folder name
+				$folder = $this->hash2folder($type,$folder);
+				break;
+		}
+		debugLog(__METHOD__."('$str','$type','$folder',$id)");
+	}
+
+	/**
+	 * Convert folder string to nummeric hash
+	 *
+	 * @param int $type
+	 * @param string $folder
+	 * @return int
+	 */
+	public function folder2hash($type,$folder)
+	{
+		if(!isset($this->folderHashes)) $this->readFolderHashes();
+
+		if (($index = array_search($folder, (array)$this->folderHashes[$type])) !== false)
+		{
+			// new hash
+			$this->folderHashes[$type][] = $folder;
+			$index = array_search($folder, (array)$this->folderHashes[$type]);
+
+			// maybe later storing in on class destruction only
+			$this->storeFolderHashes();
+		}
+		return $index;
+	}
+
+	/**
+	 * Convert numeric hash to folder string
+	 *
+	 * @param int $type
+	 * @param int $index
+	 * @return string NULL if not used so far
+	 */
+	public function hash2folder($type,$index)
+	{
+		if(!isset($this->folderHashes)) $this->readFolderHashes();
+
+		return $this->folderHashes[$type][$index];
+	}
+
+	private $folderHashes;
+
+	/**
+	 * Read hashfile from state dir
+	 */
+	private function readFolderHashes()
+	{
+		if (file_exists($file = $this->hashFile()) &&
+			($hashes = file_get_contents($file)))
+		{
+			$this->folderHashes = unserialize($hashes);
+		}
+		else
+		{
+			$this->folderHashes = array();
+		}
+	}
+
+	/**
+	 * Store hashfile in state dir
+	 *
+	 * return int|boolean false on error
+	 */
+	private function storeFolderHashes()
+	{
+		return file_put_contents($this->hashFile(), serialize($this->folderHashes));
+	}
+
+	/**
+	 * Get name of hashfile in state dir
+	 *
+	 * @throws egw_exception_assertion_failed
+	 */
+	private function hashFile()
+	{
+		if (!isset($this->_devid))
+		{
+			throw new egw_exception_assertion_failed(__METHOD__."() called without this->_devid set!");
+		}
+		return STATE_DIR.'/hashes.'.$this->_devid;
+	}
 };

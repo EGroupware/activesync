@@ -19,6 +19,488 @@ include_once('mimeDecode.php');
 require_once('z_RFC822.php');
 require_once ('../felamimail/inc/class.bofelamimail.inc.php');
 
+class BackendEGW extends BackendDiff
+{
+	var $egw_sessionID;
+
+	var $_user;
+	var $_devid;
+	var $_protocolversion;
+
+	var $hierarchyimporter;
+	var $contentsimporter;
+	var $exporter;
+
+	/**
+	 * Instance of bofelamimail
+	 *
+	 * @var bofelamimail
+	 */
+	var $mail;
+
+	// Returns TRUE if the logon succeeded, FALSE if not
+	function Logon($username, $domain, $password)
+	{
+		// check credentials and create session
+		if (!($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)))	// true = no real session
+		{
+			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
+			return false;
+		}
+		if (!isset($GLOBALS['egw_info']['user']['apps']['activesync']))
+		{
+			debugLog(__METHOD__."() z-push authentication failed: NO run rights for activesync application!");
+			return false;
+		}
+   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
+   		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
+
+		$this->mail = new bofelamimail ();
+    	$this->mail->openConnection(0,false);
+
+    	return true;
+	}
+
+	// called before closing connection
+	function Logoff()
+	{
+		if ($this->mail) $this->mail->closeConnection();
+		unset($this->mail);
+
+		if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
+			debugLog ("nothing to destroy");
+		}
+		debugLog ("LOGOFF");
+	}
+
+	var $folders;
+
+    /**
+     *  This function is analogous to GetMessageList.
+     */
+	function GetFolderList()
+	{
+		$folderlist = array();
+
+    	if (!isset($this->folders)) $this->folders = $this->mail->getFolderObjects(true,false);
+
+    	foreach ($this->folders as $key => $folder) {
+    		// debugLog(array2string($folder));
+    		//debugLog ("DisplayName: " . $folder->shortDisplayName);
+    		//debugLog ("FolderName : " . $folder->folderName);
+    		//debugLog ("Delimiter  : " . $folder->delimiter);
+    		$buf = explode ($folder->delimiter, $folder->folderName);
+
+    		$folderentry = array();
+    		$folderentry["parent"] = $this->getParentID($key);
+    		$folderentry["mod"] =  $folder->shortDisplayName;
+    		$folderentry["id"] = $this->createID ("mail", $folder->folderName, 0);
+
+    		$folderlist[] = $folderentry;
+    	}
+
+  		// TODO : other apps
+
+		//debugLog(__METHOD__."() returning ".array2string($folderlist));
+
+		return $folderlist;
+	}
+
+	/**
+	 * Get ID of parent Folder or '0' for folders in root
+	 *
+	 * @param string $folder
+	 * @return string
+	 */
+	private function getParentID($folder)
+	{
+		if (!isset($this->folders)) $this->folders = $this->mail->getFolderObjects(true,false);
+
+		$fmailFolder = $this->folders[$folder];
+		if (!isset($fmailFolder)) return false;
+
+		$parent = explode($fmailFolder->delimiter,$folder);
+		array_pop($parent);
+		$parent = implode($fmailFolder->delimiter,$parent);
+
+		$id = $parent ? $this->createID("mail", $parent) : '0';
+		//debugLog(__METHOD__."('$folder') --> parent=$parent --> $id");
+		return $id;
+	}
+
+	/**
+	 * Get Information about a folder
+	 *
+	 * @param string $id
+	 * @return SyncFolder|boolean false on error
+	 */
+	function GetFolder($id)
+	{
+		static $last_id;
+		static $folderObj;
+		if (isset($last_id) && $last_id === $id) return $folderObj;
+
+		try {
+			$this->splitID($id, $type, $folder);
+		}
+		catch(Exception $e) {
+			return $folderObj=false;
+		}
+		if (!isset($this->folders)) $this->folders = $this->mail->getFolderObjects(true,false);
+
+		$fmailFolder = $this->folders[$folder];
+		if (!isset($fmailFolder)) return $folderObj=false;
+
+		$folderObj = new SyncFolder();
+		$folderObj->serverid = $id;
+		$folderObj->parentid = $this->getParentID($folder);
+		$folderObj->displayname = $fmailFolder->shortDisplayName;
+
+		// get folder-type
+		foreach($this->folders as $inbox => $fmailFolder) break;
+		if ($folder == $inbox)
+		{
+			$folderObj->type = SYNC_FOLDER_TYPE_INBOX;
+		}
+		elseif($this->mail->isDraftFolder($folder))
+		{
+			$folderObj->type = SYNC_FOLDER_TYPE_DRAFTS;
+		}
+		elseif($this->mail->isTrashFolder($folder))
+		{
+			$folderObj->type = SYNC_FOLDER_TYPE_WASTEBASKET;
+		}
+		elseif($this->mail->isSentFolder($folder))
+		{
+			$folderObj->type = SYNC_FOLDER_TYPE_SENTMAIL;
+		}
+		else
+		{
+			$folderObj->type = SYNC_FOLDER_TYPE_USER_MAIL;
+		}
+		//debugLog(__METHOD__."($id) --> $folder --> type=$folderObj->type, parentID=$folderObj->parentid, displayname=$folderObj->displayname");
+		return $folderObj;
+	}
+
+    /* Return folder stats. This means you must return an associative array with the
+     * following properties:
+     * "id" => The server ID that will be used to identify the folder. It must be unique, and not too long
+     *         How long exactly is not known, but try keeping it under 20 chars or so. It must be a string.
+     * "parent" => The server ID of the parent of the folder. Same restrictions as 'id' apply.
+     * "mod" => This is the modification signature. It is any arbitrary string which is constant as long as
+     *          the folder has not changed. In practice this means that 'mod' can be equal to the folder name
+     *          as this is the only thing that ever changes in folders. (the type is normally constant)
+     */
+    function StatFolder($id) {
+        $folder = $this->GetFolder($id);
+
+        $stat = array();
+        $stat["id"] = $id;
+        $stat["parent"] = $folder->parentid;
+        $stat["mod"] = $folder->displayname;
+
+        return $stat;
+    }
+
+    function getSettings ($request,$devid)
+	{
+		if (isset($request["userinformation"])) {
+			$response["userinformation"]["status"] = 1;
+			$response["userinformation"]["emailaddresses"][] = $GLOBALS['egw_info']['user']['email'];
+		} else {
+			$response["userinformation"]["status"] = false;
+		};
+		if (isset($request["oof"])) {
+			$response["oof"]["status"] 	= 0;
+		};
+		return $response;
+	}
+/*
+	function GetHierarchyImporter()
+	{
+		return new ImportHierarchyChangesEGW($this->_defaultstore);
+	}
+
+	function GetContentsImporter($folderid)
+	{
+		return new ImportContentsChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
+	}
+
+	function GetExporter($folderid = false)
+	{
+		debugLog ("EGW:GetExporter : folderid : ". $folderid);
+		if($folderid !== false)
+			return new ExportChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
+		else
+			return new ExportChangesEGW($this->_session, $this->_defaultstore);
+	}
+*/
+	// Called when a message has to be sent and the message needs to be saved to the 'sent items'
+	// folder
+	function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {}
+
+
+	/**
+	 * Checks if the sent policykey matches the latest policykey on the server
+	 *
+ 	 * @param string $policykey
+	 * @param string $devid
+	 *
+ 	 * @return status flag
+	 */
+	function CheckPolicy($policykey, $devid)
+	{
+		return true;
+	}
+
+
+	/**
+	 * Returns array of items which contain searched for information
+	 *
+	 * @param array $searchquery
+	 * @param string $searchname
+	 *
+	 * @return array
+	 */
+	function getSearchResults($searchquery,$searchname)
+	{
+		// debugLog("EGW:getSearchResults : query: ". $searchquery . " : searchname : ". $searchname);
+		switch (strtoupper($searchname)) {
+			case "GAL":		return $this->getSearchResultsGAL($searchquery);
+			case "MAILBOX":	return $this->getSearchResultsMailbox($searchquery);
+		  	case "DOCUMENTLIBRARY"	: return $this->getSearchResultsDocumentLibrary($searchquery);
+		  	default: debugLog (__METHOD__." unknown searchname ". $searchname);
+		}
+	}
+
+	function getSearchResultsGAL($searchquery) 							//TODO: search range not verified, limits might be a good idea
+	{
+		$boAddressbook = new addressbook_bo();
+		$egw_found = $boAddressbook->link_query($searchquery);  //TODO: any reasonable options ?
+		$items['rows'] = array();
+		foreach($egw_found as $key=>$value)
+		{
+		  	$item = array();
+		  	$contact = $boAddressbook->read ($key);
+		  	$item["username"] = $contact['n_family'];
+			$item["fullname"] = $contact['n_fn'];
+			if (strlen(trim($item["fullname"])) == 0) $item["fullname"] = $item["username"];
+			$item["emailaddress"] = $contact['email'] ? $contact['email'] : '' ;
+			$item["nameid"] = $searchquery;
+			$item["phone"] = $contact['tel_work'] ? $contact['tel_work'] : '' ;
+			$item["homephone"] = $contact['tel_home'] ? $contact['tel_home'] : '';
+			$item["mobilephone"] = $contact['tel_cell'];
+			$item["company"] = $contact['org_name'];
+			$item["office"] = 'Office';
+			$item["title"] = $contact['title'];
+
+		  	//do not return users without email
+			if (strlen(trim($item["emailaddress"])) == 0) continue;
+			  	array_push($items['rows'], $item);
+		}
+		$items['status']=1;
+		$items['global_search_status'] = 1;
+		return $items;
+	}
+
+	function getSearchResultsMailbox($searchquery)
+	{
+		return false;
+	}
+
+	function getSearchResultsDocumentLibrary($searchquery)
+	{
+		return false;
+	}
+
+	function getDeviceRWStatus($user, $pass, $devid)
+	{
+		return false;
+	}
+
+	const TYPE_ADDRESSBOOK = 1;
+	const TYPE_CALENDAR = 2;
+	const TYPE_MAIL = 10;
+
+	/**
+	 * Create a max. 32 hex letter ID, current 20 chars are used
+	 *
+	 * @param int $type
+	 * @param int|string $folder
+	 * @param int $id
+	 * @return string
+	 * @throws egw_exception_wrong_parameter
+	 */
+	public function createID($type,$folder,$id=0)
+	{
+		// get a nummeric $type
+		switch($t=$type)
+		{
+			case 'addressbook':
+				$type = self::TYPE_ADDRESSBOOK;
+				break;
+			case 'calendar':
+				$type = self::TYPE_CALENDAR;
+				break;
+			case 'mail': case 'felamimail':
+				$type = self::TYPE_MAIL;
+				break;
+			default:
+				if (!is_nummeric($type))
+				{
+					throw new egw_exception_wrong_parameter("type='$type' is NOT nummeric!");
+				}
+				$type += self::TYPE_MAIL;
+				break;
+		}
+
+		if (!is_numeric($folder))
+		{
+			// convert string $folder in numeric id
+			$folder = $this->folder2hash($type,$f=$folder);
+		}
+
+		$str = sprintf('%04X%08X%08X',$type,$folder,$id);
+
+		//debugLog(__METHOD__."('$t','$f',$id) type=$type, folder=$folder --> '$str'");
+
+		return $str;
+	}
+
+	/**
+	 * Split an ID string into $app, $folder and $id
+	 *
+	 * @param string $str
+	 * @param string|int &$type
+	 * @param string|int &$folder
+	 * @param int &$id
+	 * @throws egw_exception_wrong_parameter
+	 */
+	public function splitID($str,&$type,&$folder,&$id=null)
+	{
+		$type = hexdec(substr($str,0,4));
+		$folder = hexdec(substr($str,4,8));
+		$id = hexdec(substr($str,12,8));
+
+		switch($type)
+		{
+			case self::TYPE_ADDRESSBOOK:
+				$type = 'addressbook';
+				break;
+			case self::TYPE_CALENDAR:
+				$type = 'calendar';
+				break;
+			default:
+				if ($type < self::TYPE_MAIL)
+				{
+					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
+				}
+				// convert numeric folder-id back to folder name
+				$folder = $this->hash2folder($type,$folder);
+				$type -= self::TYPE_MAIL;
+				break;
+		}
+		//debugLog(__METHOD__."('$str','$type','$folder',$id)");
+	}
+
+	/**
+	 * Convert folder string to nummeric hash
+	 *
+	 * @param int $type
+	 * @param string $folder
+	 * @return int
+	 */
+	public function folder2hash($type,$folder)
+	{
+		if(!isset($this->folderHashes)) $this->readFolderHashes();
+
+		if (($index = array_search($folder, (array)$this->folderHashes[$type])) === false)
+		{
+			// new hash
+			$this->folderHashes[$type][] = $folder;
+			$index = array_search($folder, (array)$this->folderHashes[$type]);
+
+			// maybe later storing in on class destruction only
+			$this->storeFolderHashes();
+		}
+		return $index;
+	}
+
+	/**
+	 * Convert numeric hash to folder string
+	 *
+	 * @param int $type
+	 * @param int $index
+	 * @return string NULL if not used so far
+	 */
+	public function hash2folder($type,$index)
+	{
+		if(!isset($this->folderHashes)) $this->readFolderHashes();
+
+		return $this->folderHashes[$type][$index];
+	}
+
+	public $folderHashes;
+
+	/**
+	 * Read hashfile from state dir
+	 */
+	private function readFolderHashes()
+	{
+		if (file_exists($file = $this->hashFile()) &&
+			($hashes = file_get_contents($file)))
+		{
+			$this->folderHashes = unserialize($hashes);
+		}
+		else
+		{
+			$this->folderHashes = array();
+		}
+	}
+
+	/**
+	 * Store hashfile in state dir
+	 *
+	 * return int|boolean false on error
+	 */
+	private function storeFolderHashes()
+	{
+		return file_put_contents($this->hashFile(), serialize($this->folderHashes));
+	}
+
+	/**
+	 * Get name of hashfile in state dir
+	 *
+	 * @throws egw_exception_assertion_failed
+	 */
+	private function hashFile()
+	{
+		if (!isset($this->_devid))
+		{
+			throw new egw_exception_assertion_failed(__METHOD__."() called without this->_devid set!");
+		}
+		return STATE_DIR.'/'.strtolower($this->_devid).'/'.$this->_devid.'.hashes';
+	}
+}
+
+
+/*
+require_once('../../phpgwapi/inc/class.egw_exception.inc.php');
+
+$GLOBALS['egw_info']['server']['files_dir'] = '/var/lib/egroupware/default/files';
+define('STATE_DIR',$GLOBALS['egw_info']['server']['files_dir'].'/activesync');
+
+$backend = new BackendEGW();
+$backend->_devid = 'test';
+
+foreach(array('INBOX','Sent','Test','Test/Folder') as $folder)
+{
+	$hash = $backend->folder2hash(0, $folder);
+	echo "<p>$folder --> $hash</p>\n";
+}
+echo "<pre>".print_r($backend->folderHashes,true)."</pre>\n";
+*/
+
 
 class ImportHierarchyChangesEGW  {
 	var $_user;
@@ -45,20 +527,27 @@ class ImportHierarchyChangesEGW  {
 };
 
 class ExportChangesEGW  {
-	
-	
-	
-	
+
+
+
+
 	var $_folderid;
 	var $_store;
 	var $_session;
 	var $_backend;
 
+	/**
+	 * Reference to backend class
+	 *
+	 * @var BackendEGW
+	 */
+	var $backend;
+
 	function ExportChangesEGW($session, $store, $folderid = false) {
 		// Open a hierarchy or a contents exporter depending on whether a folderid was specified
 		debugLog(__METHOD__ . " " . $session . " " . $store . " " . $folderid);
-		
-		
+
+
 		$this->_session = $session;
 		$this->_folderid = $folderid;
 		$this->_store = $store;
@@ -69,13 +558,11 @@ class ExportChangesEGW  {
 			debugLog(__METHOD__ . " no folder ID");
 			$this->exporter = '';
 		}
-		
-		$this->backend = $GLOBALS["backend"];
-	
+		$this->backend = $GLOBALS['backend'];
 	}
-	
-	
-	
+
+
+
 
 
 
@@ -134,9 +621,9 @@ class ExportChangesEGW  {
 	}
 
 	function GetFolderList() {
-		
+
 		$folderlist = array();
-		
+
 		$mail = new bofelamimail ();
     	$mail->openConnection(0,false);
     	$folders = $mail->getFolderObjects(false,false);
@@ -155,18 +642,18 @@ class ExportChangesEGW  {
     				debugLog ("Parent : " . $parent);
     			};
     		};
-    		
-    		
+
+
     		$folderentry["mod"] =  $folder->shortDisplayName;
     		$folderentry["id"] = $this->backend->createID ("mail", $folder->folderName, 0);
-    		   					
-    		$folderlist[] = $folderentry;			
+
+    		$folderlist[] = $folderentry;
     	}
     	$mail->closeConnection();
-  
+
   		// TODO : other apps
-  
-  
+
+
 		return folderlist;
 	}
 
@@ -427,340 +914,3 @@ class ExportChangesEGW  {
 	}
 }
 
-class BackendEGW
-{
-	var $egw_sessionID;
-
-	var $_user;
-	var $_devid;
-	var $_protocolversion;
-
-	var $hierarchyimporter;
-	var $contentsimporter;
-	var $exporter;
-
-	// Returns TRUE if the logon succeeded, FALSE if not
-	function Logon($username, $domain, $password)
-	{
-		// check credentials and create session
-		if (!($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)))	// true = no real session
-		{
-			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
-			return false;
-		}
-		if (!isset($GLOBALS['egw_info']['user']['apps']['activesync']))
-		{
-			debugLog(__METHOD__."() z-push authentication failed: NO run rights for activesync application!");
-			return false;
-		}
-   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-   		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
-
-   		return true;
-	}
-
-	// called before closing connection
-	function Logoff()
-	{
-		if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
-			debugLog ("nothing to destroy");
-		}
-		debugLog ("LOGOFF");
-	}
-
-	function Setup($user, $devid, $protocolversion)
-	{
-		$this->_protocolversion = protocolversion;
-		$this->_user = $user;
-		$this->_devid = $devid;
-		return true;
-	}
-
-	function getSettings ($request,$devid)
-	{
-		if (isset($request["userinformation"])) {
-			$response["userinformation"]["status"] = 1;
-			$response["userinformation"]["emailaddresses"][] = $GLOBALS['egw_info']['user']['email'];
-		} else {
-			$response["userinformation"]["status"] = false;
-		};
-		if (isset($request["oof"])) {
-			$response["oof"]["status"] 	= 0;
-		};
-		return $response;
-	}
-
-	function GetHierarchyImporter()
-	{
-		return new ImportHierarchyChangesEGW($this->_defaultstore);
-	}
-
-	function GetContentsImporter($folderid)
-	{
-		return new ImportContentsChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
-	}
-
-	function GetExporter($folderid = false)
-	{
-		debugLog ("EGW:GetExporter : folderid : ". $folderid);
-		if($folderid !== false)
-			return new ExportChangesEGW($this->_session, $this->_defaultstore, hex2bin($folderid));
-		else
-			return new ExportChangesEGW($this->_session, $this->_defaultstore);
-	}
-
-	// Returns an array of SyncFolder types for the entire folder hierarchy
-	// on the server (the array itself is flat, but refers to parents via the 'parent'
-	// property)
-	function GetHierarchy() {
-		debugLog ("XXXXXXXXXXXXX");
-		debugLog (__METHOD__);
-	}
-
-	// Called when a message has to be sent and the message needs to be saved to the 'sent items'
-	// folder
-	function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {}
-
-
-	/**
-	 * Checks if the sent policykey matches the latest policykey on the server
-	 *
- 	 * @param string $policykey
-	 * @param string $devid
-	 *
- 	 * @return status flag
-	 */
-	function CheckPolicy($policykey, $devid)
-	{
-		return true;
-	}
-
-
-	/**
-	 * Returns array of items which contain searched for information
-	 *
-	 * @param array $searchquery
-	 * @param string $searchname
-	 *
-	 * @return array
-	 */
-	function getSearchResults($searchquery,$searchname)
-	{
-		// debugLog("EGW:getSearchResults : query: ". $searchquery . " : searchname : ". $searchname);
-		switch (strtoupper($searchname)) {
-			case "GAL":		return $this->getSearchResultsGAL($searchquery);
-			case "MAILBOX":	return $this->getSearchResultsMailbox($searchquery);
-		  	case "DOCUMENTLIBRARY"	: return $this->getSearchResultsDocumentLibrary($searchquery);
-		  	default: debugLog (__METHOD__." unknown searchname ". $searchname);
-		}
-	}
-
-	function getSearchResultsGAL($searchquery) 							//TODO: search range not verified, limits might be a good idea
-	{
-		$boAddressbook = new addressbook_bo();
-		$egw_found = $boAddressbook->link_query($searchquery);  //TODO: any reasonable options ?
-		$items['rows'] = array();
-		foreach($egw_found as $key=>$value)
-		{
-		  	$item = array();
-		  	$contact = $boAddressbook->read ($key);
-		  	$item["username"] = $contact['n_family'];
-			$item["fullname"] = $contact['n_fn'];
-			if (strlen(trim($item["fullname"])) == 0) $item["fullname"] = $item["username"];
-			$item["emailaddress"] = $contact['email'] ? $contact['email'] : '' ;
-			$item["nameid"] = $searchquery;
-			$item["phone"] = $contact['tel_work'] ? $contact['tel_work'] : '' ;
-			$item["homephone"] = $contact['tel_home'] ? $contact['tel_home'] : '';
-			$item["mobilephone"] = $contact['tel_cell'];
-			$item["company"] = $contact['org_name'];
-			$item["office"] = 'Office';
-			$item["title"] = $contact['title'];
-
-		  	//do not return users without email
-			if (strlen(trim($item["emailaddress"])) == 0) continue;
-			  	array_push($items['rows'], $item);
-		}
-		$items['status']=1;
-		$items['global_search_status'] = 1;
-		return $items;
-	}
-
-	function getSearchResultsMailbox($searchquery)
-	{
-		return false;
-	}
-
-	function getSearchResultsDocumentLibrary($searchquery)
-	{
-		return false;
-	}
-
-	function getDeviceRWStatus($user, $pass, $devid)
-	{
-		return false;
-	}
-
-	const TYPE_ADDRESSBOOK = 1;
-	const TYPE_CALENDAR = 2;
-	const TYPE_MAIL = 10;
-
-	/**
-	 * Create a max. 32 hex letter ID, current 20 chars are used
-	 *
-	 * @param int $type
-	 * @param int|string $folder
-	 * @param int $id
-	 * @return string
-	 * @throws egw_exception_wrong_parameter
-	 */
-	public function createID($type,$folder,$id)
-	{
-		// get a nummeric $type
-		switch($t=$type)
-		{
-			case 'addressbook':
-				$type = self::TYPE_ADDRESSBOOK;
-				break;
-			case 'calendar':
-				$type = self::TYPE_CALENDAR;
-				break;
-			case 'mail': case 'felamimail':
-				$type = self::TYPE_MAIL;
-				break;
-			default:
-				if (!is_nummeric($type))
-				{
-					throw new egw_exception_wrong_parameter("type='$type' is NOT nummeric!");
-				}
-				$type += self::TYPE_MAIL;
-				break;
-		}
-
-		if (!is_numeric($folder))
-		{
-			// convert string $folder in numeric id
-			$folder = $this->folder2hash($type,$f=$folder);
-		}
-
-		$str = sprintf('%04X%08X%08X',$type,$folder,$id);
-
-		debugLog(__METHOD__."('$t','$f',$id) type=$type, folder=$folder --> '$str'");
-
-		return $str;
-	}
-
-	/**
-	 * Split an ID string into $app, $folder and $id
-	 *
-	 * @param string $str
-	 * @param string|int &$type
-	 * @param string|int &$folder
-	 * @param int &$id
-	 * @throws egw_exception_wrong_parameter
-	 */
-	public function splitID($str,&$type,&$folder,&$id)
-	{
-		$type = hexdec(substr($str,0,4));
-		$folder = hexdec(substr($str,4,8));
-		$id = hexdec(substr($str,12,8));
-
-		switch($type)
-		{
-			case self::TYPE_ADDRESSBOOK:
-				$type = 'addressbook';
-				break;
-			case self::TYPE_CALENDAR:
-				$type = 'calendar';
-				break;
-			default:
-				if ($type < self::TYPE_MAIL)
-				{
-					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
-				}
-				$type -= self::TYPE_MAIL;
-				// convert numeric folder-id back to folder name
-				$folder = $this->hash2folder($type,$folder);
-				break;
-		}
-		debugLog(__METHOD__."('$str','$type','$folder',$id)");
-	}
-
-	/**
-	 * Convert folder string to nummeric hash
-	 *
-	 * @param int $type
-	 * @param string $folder
-	 * @return int
-	 */
-	public function folder2hash($type,$folder)
-	{
-		if(!isset($this->folderHashes)) $this->readFolderHashes();
-
-		if (($index = array_search($folder, (array)$this->folderHashes[$type])) === false)
-		{
-			// new hash
-			$this->folderHashes[$type][] = $folder;
-			$index = array_search($folder, (array)$this->folderHashes[$type]);
-
-			// maybe later storing in on class destruction only
-			$this->storeFolderHashes();
-		}
-		return $index;
-	}
-
-	/**
-	 * Convert numeric hash to folder string
-	 *
-	 * @param int $type
-	 * @param int $index
-	 * @return string NULL if not used so far
-	 */
-	public function hash2folder($type,$index)
-	{
-		if(!isset($this->folderHashes)) $this->readFolderHashes();
-
-		return $this->folderHashes[$type][$index];
-	}
-
-	private $folderHashes;
-
-	/**
-	 * Read hashfile from state dir
-	 */
-	private function readFolderHashes()
-	{
-		if (file_exists($file = $this->hashFile()) &&
-			($hashes = file_get_contents($file)))
-		{
-			$this->folderHashes = unserialize($hashes);
-		}
-		else
-		{
-			$this->folderHashes = array();
-		}
-	}
-
-	/**
-	 * Store hashfile in state dir
-	 *
-	 * return int|boolean false on error
-	 */
-	private function storeFolderHashes()
-	{
-		return file_put_contents($this->hashFile(), serialize($this->folderHashes));
-	}
-
-	/**
-	 * Get name of hashfile in state dir
-	 *
-	 * @throws egw_exception_assertion_failed
-	 */
-	private function hashFile()
-	{
-		if (!isset($this->_devid))
-		{
-			throw new egw_exception_assertion_failed(__METHOD__."() called without this->_devid set!");
-		}
-		return STATE_DIR.'/'.strtolower($this->_devid).'/'.$this->_devid.'.hashes';
-	}
-};

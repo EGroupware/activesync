@@ -202,6 +202,32 @@ class BackendEGW extends BackendDiff
         return $stat;
     }
 
+    // START ADDED dw2412 Settings Support
+    function setSettings($request,$devid) {
+		if (isset($request["oof"])) {
+		    if ($request["oof"]["oofstate"] == 1) {
+				// in case oof should be switched on do it here
+				// store somehow your oofmessage in case your system supports.
+				// response["oof"]["status"] = true per default and should be false in case
+				// the oof message could not be set
+				$response["oof"]["status"] = true;
+		    } else {
+				// in case oof should be switched off do it here
+				$response["oof"]["status"] = true;
+		    }
+		}
+		if (isset($request["deviceinformation"])) {
+		    // in case you'd like to store device informations do it here.
+    	    $response["deviceinformation"]["status"] = true;
+		}
+		if (isset($request["devicepassword"])) {
+		    // in case you'd like to store device informations do it here.
+    	    $response["devicepassword"]["status"] = true;
+		}
+
+		return $response;
+    }
+
     function getSettings ($request,$devid)
 	{
 		if (isset($request["userinformation"])) {

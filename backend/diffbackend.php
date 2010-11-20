@@ -782,8 +782,8 @@ class BackendDiff {
      * @return unknown
      */
 	function generatePolicyKey() {
-//		AS14 transmit Policy Key in URI on MS Phones. 
-//		In the base64 encoded binary string only 4 Bytes being reserved for 
+//		AS14 transmit Policy Key in URI on MS Phones.
+//		In the base64 encoded binary string only 4 Bytes being reserved for
 //		policy key and works in signed mode... Thats why we need here the max...
 //		return mt_rand(1000000000, 9999999999);
 		return mt_rand(1000000000, 2147483647);
@@ -798,9 +798,14 @@ class BackendDiff {
      */
     function setPolicyKey($policykey, $devid) {
 		$this->_device_filename = STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
+		// create device directory, if not yet existing
+		if (!file_exists(dirname($this->_device_filename)))
+		{
+			mkdir(dirname($this->_device_filename),0700,true);
+		}
 
     	if($this->_loggedin !== false) {
-    		if (!$policykey) 
+    		if (!$policykey)
     			$policykey = $this->generatePolicyKey();
     		$this->_device_info['policy_key'] = $policykey;
     		file_put_contents($this->_device_filename,serialize($this->_device_info));

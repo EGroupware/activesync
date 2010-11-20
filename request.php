@@ -3238,7 +3238,7 @@ function HandleProvision($backend, $devid, $protocolversion) {
 				    $encoder->startTag('Provision:EASProvisionDoc');
 				    $devicepasswordenable = 0;
 				    $encoder->startTag('Provision:DevicePasswordEnabled');$encoder->content($devicepasswordenable);$encoder->endTag();
-				    if ($devicepasswordenable == 1 || (defined('NOKIA_DETECTED') && NOKIA_DETECTED == true)) {
+//				    if ($devicepasswordenable == 1 || (defined('NOKIA_DETECTED') && NOKIA_DETECTED == true)) {
 						$encoder->startTag('Provision:AlphanumericDevicePasswordRequired');$encoder->content('0');$encoder->endTag();
 						$encoder->startTag('Provision:PasswordRecoveryEnabled');$encoder->content('1');$encoder->endTag();
 						$encoder->startTag('Provision:MinDevicePasswordLength');$encoder->content('1');$encoder->endTag();
@@ -3246,7 +3246,7 @@ function HandleProvision($backend, $devid, $protocolversion) {
 						$encoder->startTag('Provision:AllowSimpleDevicePassword');$encoder->content('1');$encoder->endTag();
 						$encoder->startTag('Provision:DevicePasswordExpiration',false,true); // was 0
 						$encoder->startTag('Provision:DevicePasswordHistory');$encoder->content('0');$encoder->endTag();
-				    }
+//				    }
 				    $encoder->startTag('Provision:DeviceEncryptionEnabled');$encoder->content('0');$encoder->endTag();
 				    $encoder->startTag('Provision:AttachmentsEnabled');$encoder->content('1');$encoder->endTag();
 				    $encoder->startTag('Provision:MaxInactivityTimeDeviceLock');$encoder->content('9999');$encoder->endTag();

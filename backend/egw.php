@@ -56,7 +56,7 @@ class BackendEGW extends BackendDiff
    		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
-		$this->mail = new bofelamimail ();
+		$this->mail = new bofelamimail ("UTF-8",false);
     	$this->mail->openConnection(0,false);
 
     	return true;
@@ -267,20 +267,7 @@ class BackendEGW extends BackendDiff
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {}
 
 
-	/**
-	 * Checks if the sent policykey matches the latest policykey on the server
-	 *
- 	 * @param string $policykey
-	 * @param string $devid
-	 *
- 	 * @return status flag
-	 */
-	function CheckPolicy($policykey, $devid)
-	{
-		return true;
-	}
-
-
+	
 	/**
 	 * Returns array of items which contain searched for information
 	 *

@@ -761,7 +761,7 @@ class BackendDiff {
 			debugLog("logon failed for user $user");
 			return false;
         }
-		$this->_device_filename = BASE_PATH . STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
+		$this->_device_filename = STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 
 		if (file_exists($this->_device_filename)) {
 			$this->_device_info = unserialize(file_get_contents($this->_device_filename));
@@ -797,7 +797,7 @@ class BackendDiff {
      * @return unknown
      */
     function setPolicyKey($policykey, $devid) {
-		$this->_device_filename = BASE_PATH . STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
+		$this->_device_filename = STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 
     	if($this->_loggedin !== false) {
     		if (!$policykey) 

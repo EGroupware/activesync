@@ -11,6 +11,7 @@
 *
 ************************************************/
 
+include_once('diffbackend.php');
 
 // The is an improved version of mimeDecode from PEAR that correctly
 // handles charsets and charset conversion

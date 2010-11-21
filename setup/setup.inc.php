@@ -1,11 +1,11 @@
 <?php
 /**
- * eGroupWare - ActiveSync
+ * EGroupware - ActiveSync
  *
  * @link http://www.egroupware.org
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
  * @package activesync
- * @subpackage activesync
+ * @subpackage setup
  * @version $Id$
  */
 
@@ -20,29 +20,18 @@ $setup_info['activesync']['author'] = array(
 		'name' => 'z-push Project',
 		'url'  => 'http://z-push.sourceforge.net/soswp/'
 	);
-$setup_info['activesync']['note']   = 'ActiveSync interface for eGroupWare based on z-push';
-$setup_info['activesync']['license']  = 'GPL v2';
+$setup_info['activesync']['note']   = 'ActiveSync interface for EGroupware based on z-push';
+$setup_info['activesync']['license']  = 'GPL';	// GPL2 as in class.about.inc.php
 $setup_info['activesync']['description'] =
 	'This module allows you to syncronize your ActiveSync enabled device.';
 
 $setup_info['activesync']['maintainer'] = array(
-		'name' => 'for eGroupware Backend',
-		'email' => ''
+		'name'  => 'EGroupware core developers',
+		'email' => 'egroupware-developer@lists.sf.net',
 	);
 
 /* Dependencies for this app to work */
 $setup_info['activesync']['depends'][] = array(
 	 'appname'  => 'phpgwapi',
 	 'versions' => Array('1.7','1.8','1.9')
-);
-// installation checks for SyncML
-$setup_info['activesync']['check_install'] = array(
-	'' => array(
-		'func' => 'pear_check',
-		'from' => 'ActiveSync',
-	),
-	'Log' => array(
-		'func' => 'pear_check',
-		'from' => 'ActiveSync',
-	),
 );

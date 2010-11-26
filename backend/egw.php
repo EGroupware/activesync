@@ -109,6 +109,21 @@ class BackendEGW extends BackendDiff
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
 	}
+	
+	/* Should return a list (array) of messages, each entry being an associative array
+     * with the same entries as StatMessage(). This function should return stable information; ie
+     * if nothing has changed, the items in the array must be exactly the same. The order of
+     * the items within the array is not important though.
+     *
+     * The cutoffdate is a date in the past, representing the date since which items should be shown.
+     * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
+     * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
+     * will work OK apart from that.
+  */
+	function GetMessageList($id, $cutoffdate=NULL)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate);
+	}
 
 	/**
 	 * START ADDED dw2412 Settings Support

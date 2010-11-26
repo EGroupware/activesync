@@ -444,7 +444,7 @@ interface activesync_plugin_read
      * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
      * will work OK apart from that.
      */
-	public function GetMessageList($folderID);
+	public function GetMessageList($folderID, $cutoffdate=NULL);
 	
 	/* StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
      * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)

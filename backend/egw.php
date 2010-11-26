@@ -13,12 +13,6 @@
 
 include_once('diffbackend.php');
 
-// The is an improved version of mimeDecode from PEAR that correctly
-// handles charsets and charset conversion
-include_once('mime.php');
-include_once('mimeDecode.php');
-require_once('z_RFC822.php');
-
 /**
  * Z-Push backend for EGroupware
  *
@@ -76,8 +70,6 @@ class BackendEGW extends BackendDiff
 		}
 		debugLog ("LOGOFF");
 	}
-
-	var $folders;
 
 	/**
 	 *  This function is analogous to GetMessageList.
@@ -418,7 +410,7 @@ interface activesync_plugin_read
 	 */
 	public function GetFolderList();
 
-
+	
 	/**
 	 * Get Information about a folder
 	 *
@@ -441,6 +433,39 @@ interface activesync_plugin_read
 	 * @return array with values for keys 'id', 'parent' and 'mod'
 	 */
 	function StatFolder($id);
+	
+	/* Should return a list (array) of messages, each entry being an associative array
+     * with the same entries as StatMessage(). This function should return stable information; ie
+     * if nothing has changed, the items in the array must be exactly the same. The order of
+     * the items within the array is not important though.
+     *
+     * The cutoffdate is a date in the past, representing the date since which items should be shown.
+     * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
+     * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
+     * will work OK apart from that.
+     */
+	public function GetMessageList($folderID);
+	
+	/* StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
+     * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
+     * 'flags'     => simply '0' for unread, '1' for read
+     * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
+     *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
+     *             time for this field, which will change as soon as the contents have changed.
+     */
+	public function StatMessage($folderid, $id);
+
+	/**
+	 * Get specified item from specified folder.
+	 * @param string $folderid
+	 * @param string $id 
+	 * @param int $truncsize
+	 * @param int $bodypreference
+	 * @param bool $mimesupport
+	 * @return $messageobject|boolean false on error
+	 */
+	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0);
+	
 }
 
 /**

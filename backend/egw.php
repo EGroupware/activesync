@@ -85,6 +85,12 @@ class BackendEGW extends BackendDiff
 		return $folderlist;
 	}
 
+	function AlterPing()
+	{
+		debugLog (__METHOD__);
+		return true;
+	}
+
 	/**
 	 * Get Information about a folder
 	 *
@@ -128,13 +134,18 @@ class BackendEGW extends BackendDiff
 
 	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $mimesupport);
 	}
 	
 	
 	function StatMessage($folderid, $id)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+	}
+	
+	function AlterPingChanges($folderid, &$syncstate)
+	{
+		return $this->run_ping_on_plugin_by_id(__FUNCTION__, $folderid, $syncstate);
 	}
 	
 
@@ -365,7 +376,25 @@ class BackendEGW extends BackendDiff
 		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
+	
+	private function run_ping_on_plugin_by_id($method,$id, &$syncstate)
+	{
+		$this->setup_plugins();
 
+		$this->splitID($id, $type, $folder);
+
+		if (is_numeric($type)) $type = 'felamimail';
+	
+		$ret = false;
+		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
+		{
+			$ret = call_user_func_array(array($this->plugins[$type], $method), array($id,&$syncstate));
+		}
+		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
+		return $ret;
+	}
+	
+		
 	/**
 	 * Run a certain method on all plugins
 	 *
@@ -438,6 +467,14 @@ interface activesync_plugin_read
 	 */
 	public function GetFolderList();
 
+	/**
+	 * Ping a folder for changes.
+	 *
+	 * @param string $id
+	 * @param string &$synckey
+	 * @return array with faked chages | boolean false on error
+	 */
+	public function AlterPingChanges($id, &$synckey);
 	
 	/**
 	 * Get Information about a folder

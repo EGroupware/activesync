@@ -125,6 +125,19 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate);
 	}
 
+
+	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0);
+	}
+	
+	
+	function StatMessage($folderid, $id)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+	}
+	
+
 	/**
 	 * START ADDED dw2412 Settings Support
 	 */

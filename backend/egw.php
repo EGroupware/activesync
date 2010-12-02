@@ -54,6 +54,7 @@ class BackendEGW extends BackendDiff
    		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
+   		$this->_loggedin == TRUE;
 		return true;
 	}
 
@@ -68,6 +69,7 @@ class BackendEGW extends BackendDiff
 		if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
 			debugLog ("nothing to destroy");
 		}
+		$this->_loggedin == FALSE;
 		debugLog ("LOGOFF");
 	}
 
@@ -85,12 +87,12 @@ class BackendEGW extends BackendDiff
 		return $folderlist;
 	}
 
-	function AlterPing()
+/*	function AlterPing()
 	{
 		debugLog (__METHOD__);
 		return true;
 	}
-
+*/
 	/**
 	 * Get Information about a folder
 	 *
@@ -102,30 +104,12 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
 	}
 
-	/* Return folder stats. This means you must return an associative array with the
-	 * following properties:
-	 * "id" => The server ID that will be used to identify the folder. It must be unique, and not too long
-	 *		 How long exactly is not known, but try keeping it under 20 chars or so. It must be a string.
-	 * "parent" => The server ID of the parent of the folder. Same restrictions as 'id' apply.
-	 * "mod" => This is the modification signature. It is any arbitrary string which is constant as long as
-	 *		  the folder has not changed. In practice this means that 'mod' can be equal to the folder name
-	 *		  as this is the only thing that ever changes in folders. (the type is normally constant)
-	 */
 	function StatFolder($id)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
 	}
-	
-	/* Should return a list (array) of messages, each entry being an associative array
-     * with the same entries as StatMessage(). This function should return stable information; ie
-     * if nothing has changed, the items in the array must be exactly the same. The order of
-     * the items within the array is not important though.
-     *
-     * The cutoffdate is a date in the past, representing the date since which items should be shown.
-     * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
-     * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
-     * will work OK apart from that.
-  */
+
+
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate);
@@ -136,18 +120,33 @@ class BackendEGW extends BackendDiff
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $mimesupport);
 	}
-	
-	
+
+
 	function StatMessage($folderid, $id)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
 	}
-	
+
 	function AlterPingChanges($folderid, &$syncstate)
 	{
 		return $this->run_ping_on_plugin_by_id(__FUNCTION__, $folderid, $syncstate);
 	}
-	
+
+	function ChangeMessage($folderid, $id, $message)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $message);
+	}
+
+	function MoveMessage($folderid, $id, $newfolderid)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $newfolderid);
+	}
+
+	function DeleteMessage($folderid, $id)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+	}
+
 
 	/**
 	 * START ADDED dw2412 Settings Support
@@ -167,6 +166,7 @@ class BackendEGW extends BackendDiff
 			}
 		}
 		if (isset($request["deviceinformation"])) {
+			//error_log(print_r($request["deviceinformation"]));
 			// in case you'd like to store device informations do it here.
 			$response["deviceinformation"]["status"] = true;
 		}
@@ -339,7 +339,7 @@ class BackendEGW extends BackendDiff
 				$type -= self::TYPE_MAIL;
 				break;
 		}
-		//debugLog(__METHOD__."('$str','$type','$folder',$id)");
+		// debugLog(__METHOD__."('$str','$type','$folder',$id)");
 	}
 
 	/**
@@ -376,7 +376,7 @@ class BackendEGW extends BackendDiff
 		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
-	
+
 	private function run_ping_on_plugin_by_id($method,$id, &$syncstate)
 	{
 		$this->setup_plugins();
@@ -384,7 +384,7 @@ class BackendEGW extends BackendDiff
 		$this->splitID($id, $type, $folder);
 
 		if (is_numeric($type)) $type = 'felamimail';
-	
+
 		$ret = false;
 		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
 		{
@@ -393,8 +393,8 @@ class BackendEGW extends BackendDiff
 		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
-	
-		
+
+
 	/**
 	 * Run a certain method on all plugins
 	 *
@@ -448,6 +448,94 @@ class BackendEGW extends BackendDiff
 	}
 }
 
+
+/**
+ * Plugin interface for EGroupware application backends
+ *
+ * Apps can implement it in a class called appname_activesync, to participate in active sync.
+ */
+interface activesync_plugin_write extends activesync_plugin_read
+{
+
+	/**
+	 *  Creates or modifies a folder
+     *
+     * @param $id of the parent folder
+     * @param $oldid => if empty -> new folder created, else folder is to be renamed
+     * @param $displayname => new folder name (to be created, or to be renamed to)
+     * @param type => folder type, ignored in IMAP
+     *
+     * @return stat | boolean false on error
+     *
+     */
+    public function ChangeFolder($id, $oldid, $displayname, $type);
+
+    /**
+     * Deletes (really delete) a Folder
+     *
+     * @param $parentid of the folder to delete
+     * @param $id of the folder to delete
+     *
+     * @return
+     * @TODO check what is to be returned
+     *
+     */
+    public function DeleteFolder($parentid, $id);
+
+
+    /**
+     * Changes or adds a message on the server
+     *
+     * @param $folderid
+     * @param $id for change | empty for create new
+     * @param $message object to SyncObject to create
+     *
+     * @return $stat whatever would be returned from StatMessage
+     *
+     * This function is called when a message has been changed on the PDA. You should parse the new
+     * message here and save the changes to disk. The return value must be whatever would be returned
+     * from StatMessage() after the message has been saved. This means that both the 'flags' and the 'mod'
+     * properties of the StatMessage() item may change via ChangeMessage().
+     * Note that this function will never be called on E-mail items as you can't change e-mail items, you
+     * can only set them as 'read'.
+     */
+    public function ChangeMessage($folderid, $id, $message);
+
+    /**
+     * Moves a message from one folder to another
+     *
+     * @param $folderid of the current folder
+     * @param $id of the message
+     * @param $newfolderid
+     *
+     * @return $newid as a string | boolean false on error
+     *
+     * After this call, StatMessage() and GetMessageList() should show the items
+     * to have a new parent. This means that it will disappear from GetMessageList() will not return the item
+     * at all on the source folder, and the destination folder will show the new message
+     *
+     */
+    public function MoveMessage($folderid, $id, $newfolderid);
+
+
+    /**
+     * Delete (really delete) a message in a folder
+     *
+     * @param $folderid
+     * @param $id
+     *
+     * @TODO check what is to be returned
+     *
+     * @DESC After this call has succeeded, a call to
+     * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the PDA
+     * as it will be seen as a 'new' item. This means that if you don't implement this function, you will
+     * be able to delete messages on the PDA, but as soon as you sync, you'll get the item back
+     */
+    public function DeleteMessage($folderid, $id);
+
+}
+
+
 /**
  * Plugin interface for EGroupware application backends
  *
@@ -475,7 +563,7 @@ interface activesync_plugin_read
 	 * @return array with faked chages | boolean false on error
 	 */
 	public function AlterPingChanges($id, &$synckey);
-	
+
 	/**
 	 * Get Information about a folder
 	 *
@@ -498,9 +586,18 @@ interface activesync_plugin_read
 	 * @return array with values for keys 'id', 'parent' and 'mod'
 	 */
 	function StatFolder($id);
-	
-	/* Should return a list (array) of messages, each entry being an associative array
-     * with the same entries as StatMessage(). This function should return stable information; ie
+
+	/**
+	 * Return an list (array) of all messages in a folder
+	 *
+	 * @param $folderid
+	 * @param $cutoffdate=NULL
+	 *
+	 * @return $array
+	 *
+	 * @DESC
+	 * each entry being an associative array with the same entries as StatMessage().
+	 * This function should return stable information; ie
      * if nothing has changed, the items in the array must be exactly the same. The order of
      * the items within the array is not important though.
      *
@@ -509,9 +606,17 @@ interface activesync_plugin_read
      * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
      * will work OK apart from that.
      */
-	public function GetMessageList($folderID, $cutoffdate=NULL);
-	
-	/* StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
+	public function GetMessageList($folderid, $cutoffdate=NULL);
+
+	/**
+	 * Get Message stats
+	 *
+	 * @param $folderid
+	 * @param $id
+	 *
+	 * @return $array
+	 *
+	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
      * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
      * 'flags'     => simply '0' for unread, '1' for read
      * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
@@ -523,14 +628,14 @@ interface activesync_plugin_read
 	/**
 	 * Get specified item from specified folder.
 	 * @param string $folderid
-	 * @param string $id 
+	 * @param string $id
 	 * @param int $truncsize
 	 * @param int $bodypreference
 	 * @param bool $mimesupport
 	 * @return $messageobject|boolean false on error
 	 */
 	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0);
-	
+
 }
 
 /**

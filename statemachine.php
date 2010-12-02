@@ -242,11 +242,11 @@ class StateMachine {
         if (isset($displayname)) $cache['folders'][$serverid]['displayname'] = $displayname;
 		switch ($type) {
 		    case 7	: // These are Task classes
-		    case 13	: $cache['folders'][$serverid]['class'] = "Tasks"; break;
+		    case 15	: $cache['folders'][$serverid]['class'] = "Tasks"; break;
 		    case 8	: // These are calendar classes
-		    case 14	: $cache['folders'][$serverid]['class'] = "Calendar"; break;
+		    case 13	: $cache['folders'][$serverid]['class'] = "Calendar"; break;
 		    case 9	: // These are contact classes
-		    case 15	: $cache['folders'][$serverid]['class'] = "Contacts"; break;
+		    case 14	: $cache['folders'][$serverid]['class'] = "Contacts"; break;
 		    case 1	: // All other types map to Email
 		    case 2	:
 		    case 3	:

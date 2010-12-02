@@ -448,6 +448,7 @@ class ExportChangesDiff extends DiffState {
                     case "change":
                         $folder = $this->_backend->GetFolder($change["id"]);
                         $stat = $this->_backend->StatFolder($change["id"]);
+                        if (!$folder || !$stat) error_log(__METHOD__."() FATAL !folder || !stat");
 
                         if(!$folder)
                             return;
@@ -490,6 +491,7 @@ class ExportChangesDiff extends DiffState {
                         $message = $this->_backend->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false));
 
                         // copy the flag to the message
+                        if (!$message || !$stat) error_log(__METHOD__."() FATAL !message || !stat");
                         $message->flags = (isset($change["flags"])) ? $change["flags"] : 0;
 
                         if($stat && $message) {

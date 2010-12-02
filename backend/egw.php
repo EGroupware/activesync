@@ -267,6 +267,8 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Create a max. 32 hex letter ID, current 20 chars are used
 	 *
+	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
+	 *
 	 * @param int|string $type appname or integer mail account id
 	 * @param int $folder integer folder ID
 	 * @param int $id integer item ID
@@ -301,7 +303,10 @@ class BackendEGW extends BackendDiff
 			throw new egw_exception_wrong_parameter("folder='$folder' is NOT nummeric!");
 		}
 
-		$str = sprintf('%04X%08X%08X',$type,$folder,$id);
+		$folder_hex = sprintf('%08X',$folder);
+		// truncate negative number on a 64bit system to 8 hex digits = 32bit
+		if (strlen($folder_hex) > 8) $folder_hex = substr($folder_hex,-8);
+		$str = sprintf('%04X%s%08X',$type,$folder_hex,$id);
 
 		//debugLog(__METHOD__."('$t','$f',$id) type=$type --> '$str'");
 
@@ -310,6 +315,8 @@ class BackendEGW extends BackendDiff
 
 	/**
 	 * Split an ID string into $app, $folder and $id
+	 *
+	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
 	 *
 	 * @param string $str
 	 * @param string|int &$type on return appname or integer mail account ID
@@ -321,6 +328,8 @@ class BackendEGW extends BackendDiff
 	{
 		$type = hexdec(substr($str,0,4));
 		$folder = hexdec(substr($str,4,8));
+		// convert 32bit negative numbers on a 64bit system to a 64bit negative number
+		if ($folder > 0x7fffffff) $folder -= 0x100000000;
 		$id = hexdec(substr($str,12,8));
 
 		switch($type)

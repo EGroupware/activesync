@@ -54,7 +54,8 @@ class BackendEGW extends BackendDiff
    		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
-   		$this->_loggedin == TRUE;
+   		$this->_loggedin = TRUE;
+
 		return true;
 	}
 
@@ -69,7 +70,8 @@ class BackendEGW extends BackendDiff
 		if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
 			debugLog ("nothing to destroy");
 		}
-		$this->_loggedin == FALSE;
+		$this->_loggedin = FALSE;
+
 		debugLog ("LOGOFF");
 	}
 
@@ -87,12 +89,18 @@ class BackendEGW extends BackendDiff
 		return $folderlist;
 	}
 
-/*	function AlterPing()
+	/**
+	 * Switches alter ping handling on or off
+	 *
+	 * @see BackendDiff::AlterPing()
+	 * @return boolean
+	 */
+	function AlterPing()
 	{
 		debugLog (__METHOD__);
 		return true;
 	}
-*/
+
 	/**
 	 * Get Information about a folder
 	 *
@@ -104,32 +112,102 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
 	}
 
+	/**
+	 * Return folder stats. This means you must return an associative array with the
+	 * following properties:
+	 *
+	 * "id" => The server ID that will be used to identify the folder. It must be unique, and not too long
+	 *		 How long exactly is not known, but try keeping it under 20 chars or so. It must be a string.
+	 * "parent" => The server ID of the parent of the folder. Same restrictions as 'id' apply.
+	 * "mod" => This is the modification signature. It is any arbitrary string which is constant as long as
+	 *		  the folder has not changed. In practice this means that 'mod' can be equal to the folder name
+	 *		  as this is the only thing that ever changes in folders. (the type is normally constant)
+	 *
+	 * @return array with values for keys 'id', 'mod' and 'parent'
+	 */
 	function StatFolder($id)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
 	}
 
-
+	/**
+	 * Should return a list (array) of messages, each entry being an associative array
+     * with the same entries as StatMessage(). This function should return stable information; ie
+     * if nothing has changed, the items in the array must be exactly the same. The order of
+     * the items within the array is not important though.
+     *
+     * The cutoffdate is a date in the past, representing the date since which items should be shown.
+     * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
+     * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
+     * will work OK apart from that.
+     *
+     * @param string $id folder id
+     * @param int $cutoffdate=null
+     * @return array
+  	 */
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate);
 	}
 
-
+	/**
+	 * Get specified item from specified folder.
+	 *
+	 * @param string $folderid
+	 * @param string $id
+	 * @param int $truncsize
+	 * @param int $bodypreference
+	 * @param bool $mimesupport
+	 * @return $messageobject|boolean false on error
+	 */
 	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $mimesupport);
 	}
 
-
+	/**
+	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
+     * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
+     * 'flags'     => simply '0' for unread, '1' for read
+     * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
+     *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
+     *             time for this field, which will change as soon as the contents have changed.
+     *
+     * @param string $folderid
+     * @param int|array $contact contact id or array
+     * @return array
+     */
 	function StatMessage($folderid, $id)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
 	}
 
+	/**
+	 * Return a changes array
+	 *
+	 * if changes occurr default diff engine computes the actual changes
+	 *
+     * We can NOT use run_on_plugin_by_id, because $syncstate is passed by reference!
+	 *
+	 * @param string $folderid
+	 * @param string &$syncstate on call old syncstate, on return new syncstate
+	 * @return array|boolean false if $folderid not found, array() if no changes or array(array("type" => "fakeChange"))
+	 */
 	function AlterPingChanges($folderid, &$syncstate)
 	{
-		return $this->run_ping_on_plugin_by_id(__FUNCTION__, $folderid, $syncstate);
+		$this->setup_plugins();
+
+		$this->splitID($folderid, $type, $folder);
+
+		if (is_numeric($type)) $type = 'felamimail';
+
+		$ret = false;
+		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], __FUNCTION__))
+		{
+			$ret = call_user_func_array(array($this->plugins[$type], __FUNCTION__), array($folderid, &$syncstate));
+		}
+		error_log(__METHOD__."('$folderid','$syncstate') type=$type, folder=$folder returning ".array2string($ret));
+		return $ret;
 	}
 
 	function ChangeMessage($folderid, $id, $message)
@@ -386,24 +464,6 @@ class BackendEGW extends BackendDiff
 		return $ret;
 	}
 
-	private function run_ping_on_plugin_by_id($method,$id, &$syncstate)
-	{
-		$this->setup_plugins();
-
-		$this->splitID($id, $type, $folder);
-
-		if (is_numeric($type)) $type = 'felamimail';
-
-		$ret = false;
-		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
-		{
-			$ret = call_user_func_array(array($this->plugins[$type], $method), array($id,&$syncstate));
-		}
-		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
-		return $ret;
-	}
-
-
 	/**
 	 * Run a certain method on all plugins
 	 *
@@ -565,11 +625,13 @@ interface activesync_plugin_read
 	public function GetFolderList();
 
 	/**
-	 * Ping a folder for changes.
+	 * Return a changes array
 	 *
-	 * @param string $id
-	 * @param string &$synckey
-	 * @return array with faked chages | boolean false on error
+     * if changes occurr default diff engine computes the actual changes
+	 *
+	 * @param string $folderid
+	 * @param string &$syncstate on call old syncstate, on return new syncstate
+	 * @return array|boolean false if $folderid not found, array() if no changes or array(array("type" => "fakeChange"))
 	 */
 	public function AlterPingChanges($id, &$synckey);
 

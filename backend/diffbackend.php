@@ -106,7 +106,7 @@ function GetDiff($old, $new) {
 }
 
 function RowCmp($a, $b) {
-    return $a["id"] < $b["id"] ? 1 : -1;
+    return strcmp($a["id"],$b["id"]);
 }
 
 class DiffState {

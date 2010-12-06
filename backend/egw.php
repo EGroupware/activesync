@@ -277,7 +277,7 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Returns array of items which contain searched for information
 	 *
-	 * @param array $searchquery
+	 * @param string $searchquery
 	 * @param string $searchname
 	 *
 	 * @return array
@@ -286,53 +286,35 @@ class BackendEGW extends BackendDiff
 	{
 		// debugLog("EGW:getSearchResults : query: ". $searchquery . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
-			case "GAL":	return $this->getSearchResultsGAL($searchquery);
-			case "MAILBOX":	return $this->getSearchResultsMailbox($searchquery);
-		  	case "DOCUMENTLIBRARY"	: return $this->getSearchResultsDocumentLibrary($searchquery);
-		  	default: debugLog (__METHOD__." unknown searchname ". $searchname);
+			case 'GAL':
+				$rows = self::run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
+				break;
+			case 'MAILBOX':
+				$rows = self::run_on_all_plugins('getSearchResultsMailbox',array(),$searchquery);
+				break;
+		  	case 'DOCUMENTLIBRARY':
+				$rows = self::run_on_all_plugins('getSearchDocumentLibrary',array(),$searchquery);
+		  		break;
+		  	default:
+		  		debugLog (__METHOD__." unknown searchname ". $searchname);
+		  		return NULL;
 		}
-	}
-
-	function getSearchResultsGAL($searchquery) 							//TODO: search range not verified, limits might be a good idea
-	{
-		$boAddressbook = new addressbook_bo();
-		$egw_found = $boAddressbook->link_query($searchquery);  //TODO: any reasonable options ?
-		$items['rows'] = array();
-		foreach($egw_found as $key=>$value)
+		if (is_array($rows))
 		{
-		  	$item = array();
-		  	$contact = $boAddressbook->read ($key);
-		  	$item["username"] = $contact['n_family'];
-			$item["fullname"] = $contact['n_fn'];
-			if (strlen(trim($item["fullname"])) == 0) $item["fullname"] = $item["username"];
-			$item["emailaddress"] = $contact['email'] ? $contact['email'] : '' ;
-			$item["nameid"] = $searchquery;
-			$item["phone"] = $contact['tel_work'] ? $contact['tel_work'] : '' ;
-			$item["homephone"] = $contact['tel_home'] ? $contact['tel_home'] : '';
-			$item["mobilephone"] = $contact['tel_cell'];
-			$item["company"] = $contact['org_name'];
-			$item["office"] = 'Office';
-			$item["title"] = $contact['title'];
-
-		  	//do not return users without email
-			if (strlen(trim($item["emailaddress"])) == 0) continue;
-			  	array_push($items['rows'], $item);
+			$result = array(
+				'rows' => &$rows,
+				'status' => 1,
+				'global_search_status' => 1,
+			);
 		}
-		$items['status']=1;
-		$items['global_search_status'] = 1;
-		return $items;
+		error_log(__METHOD__."('$searchquery', '$searchname') returning ".count($result['rows']).' rows = '.array2string($result));
+		return $result;
 	}
 
-	function getSearchResultsMailbox($searchquery)
-	{
-		return false;
-	}
-
-	function getSearchResultsDocumentLibrary($searchquery)
-	{
-		return false;
-	}
-
+	/**
+	 *
+	 * @see BackendDiff::getDeviceRWStatus()
+	 */
 	function getDeviceRWStatus($user, $pass, $devid)
 	{
 		return false;
@@ -710,26 +692,49 @@ interface activesync_plugin_read
 }
 
 /**
- * Plugin interface for EGroupware application backends to implement a global search
+ * Plugin interface for EGroupware application backends to implement a global addresslist search
  *
  * Apps can implement it in a class called appname_activesync, to participate in active sync.
  */
-interface activesync_plugin_search
+interface activesync_plugin_search_gal
 {
 	/**
-	 * Constructor
+	 * Search global address list for a given pattern
 	 *
-	 * @param BackendEGW $backend
+	 * @param string $searchquery
+	 * @return array with just rows (no values for keys rows, status or global_search_status!)
 	 */
-	public function __construct(BackendEGW $backend);
+	public function getSearchResultsGAL($searchquery);
+}
 
+/**
+ * Plugin interface for EGroupware application backends to implement a mailbox search
+ *
+ * Apps can implement it in a class called appname_activesync, to participate in active sync.
+ */
+interface activesync_plugin_search_mailbox
+{
 	/**
-	 * Returns array of items which contain searched for information
+	 * Search mailbox for a given pattern
 	 *
-	 * @param array $searchquery
-	 * @param string $searchname
-	 *
-	 * @return array
+	 * @param string $searchquery
+	 * @return array with just rows (no values for keys rows, status or global_search_status!)
 	 */
-	public function getSearchResults($searchquery,$searchname);
+	public function getSearchResultsMailbox($searchquery);
+}
+
+/**
+ * Plugin interface for EGroupware application backends to implement a document library search
+ *
+ * Apps can implement it in a class called appname_activesync, to participate in active sync.
+ */
+interface activesync_plugin_search_documentlibrary
+{
+	/**
+	 * Search document library for a given pattern
+	 *
+	 * @param string $searchquery
+	 * @return array with just rows (no values for keys rows, status or global_search_status!)
+	 */
+	public function getSearchResultsDocumentLibrary($searchquery);
 }

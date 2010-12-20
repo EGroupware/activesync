@@ -270,9 +270,32 @@ class BackendEGW extends BackendDiff
 		return $response;
 	}
 
-	// Called when a message has to be sent and the message needs to be saved to the 'sent items'
-	// folder
-	function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {}
+    /**
+     * Sends a message which is passed as rfc822. You basically can do two things
+     * 1) Send the message to an SMTP server as-is
+     * 2) Parse the message yourself, and send it some other way
+     * It is up to you whether you want to put the message in the sent items folder. If you
+     * want it in 'sent items', then the next sync on the 'sent items' folder should return
+     * the new message as any other new message in a folder.
+     *
+     * @param string $rfc822 mail
+     * @param array $smartdata=array() values for keys:
+     * 	'task': 'forward', 'new', 'reply'
+     *  'itemid': id of message if it's an reply or forward
+     *  'folderid': folder
+     *  'replacemime': false = send as is, false = decode and recode for whatever reason
+     * @param boolean|double $protocolversion=false
+     * @return boolean true on success, false on error
+     *
+     * @see eg. BackendIMAP::SendMail()
+     * @todo implement either here or in fmail backend
+     * 	(maybe sending here and storing to sent folder in plugin, as sending is suppost to always work in EGroupware)
+     */
+	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
+	{
+		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) NOT yet implemented");
+		return true;	// fake sending mail worked
+	}
 
 	/**
 	 * Returns array of items which contain searched for information

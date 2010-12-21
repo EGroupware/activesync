@@ -147,6 +147,7 @@ class BackendEGW extends BackendDiff
   	 */
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
+		//debugLog(__METHOD__.__LINE__.' ID:'.$id.' Cutoffdate:'.$cutoffdate. function_backtrace());
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate);
 	}
 
@@ -206,7 +207,7 @@ class BackendEGW extends BackendDiff
 		{
 			$ret = call_user_func_array(array($this->plugins[$type], __FUNCTION__), array($folderid, &$syncstate));
 		}
-		error_log(__METHOD__."('$folderid','$syncstate') type=$type, folder=$folder returning ".array2string($ret));
+		error_log(__METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
 

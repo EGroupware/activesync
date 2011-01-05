@@ -734,6 +734,8 @@ class rtf {
 
 		if (is_null($func_overload)) $func_overload = extension_loaded('mbstring') ? ini_get('mbstring.func_overload') : 0;
 
+		if (is_null($len)) $len = $this->bytes($data) - $offset;
+
 		return $func_overload & 2 ? mb_substr($data,$offset,$len,'ascii') : substr($data,$offset,$len);
 	}
 }

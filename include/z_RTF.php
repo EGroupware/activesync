@@ -31,16 +31,17 @@
 
     It was modified by me (Andreas Brodowski) to allow compressed RTF being uncompressed by code I ported from
     Java to PHP and adapted according the needs of Z-Push.
-
+    
     Currently it is being used to detect empty RTF Streams from Nokia Phones in MfE Clients
-
-    It needs to be used by other backend writers that needs to have notes in calendar, appointment or tasks
+    
+    It needs to be used by other backend writers that needs to have notes in calendar, appointment or tasks 
     objects to be written to their databases since devices send them usually in RTF Format... With Zarafa
     you can write them directly to DB and Zarafa is doing the conversion job. Other Groupware systems usually
     don't have this possibility...
-
+     
 */
 
+require_once "utils.php";
 
 class rtf {
     var $LZRTF_HDR_DATA = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\n\r\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
@@ -78,7 +79,7 @@ class rtf {
                                   0xBDBDF21C,0xCABAC28A,0x53B39330,0x24B4A3A6,0xBAD03605,0xCDD70693,0x54DE5729,0x23D967BF,
                                   0xB3667A2E,0xC4614AB8,0x5D681B02,0x2A6F2B94,0xB40BBE37,0xC30C8EA1,0x5A05DF1B,0x2D02EF8D,
                                );
-
+    
     var $rtf;			// rtf core stream
     var $rtf_len;		// length in characters of the stream (get performace due avoiding calling strlen everytime)
     var $err = array();		// array of error message, no entities on no error
@@ -109,59 +110,59 @@ class rtf {
     var $control_exception = array(
     	"clFitText",
     	"clftsWidth(-?[0-9]+)?",
-	"clNoWrap(-?[0-9]+)?",
-	"clwWidth(-?[0-9]+)?",
-	"tdfrmtxtBottom(-?[0-9]+)?",
-	"tdfrmtxtLeft(-?[0-9]+)?",
-	"tdfrmtxtRight(-?[0-9]+)?",
-	"tdfrmtxtTop(-?[0-9]+)?",
-	"trftsWidthA(-?[0-9]+)?",
-	"trftsWidthB(-?[0-9]+)?",
-	"trftsWidth(-?[0-9]+)?",
-	"trwWithA(-?[0-9]+)?",
-	"trwWithB(-?[0-9]+)?",
-	"trwWith(-?[0-9]+)?",
-	"spectspecifygen(-?[0-9]+)?",
+		"clNoWrap(-?[0-9]+)?",
+		"clwWidth(-?[0-9]+)?",
+		"tdfrmtxtBottom(-?[0-9]+)?",
+		"tdfrmtxtLeft(-?[0-9]+)?",
+		"tdfrmtxtRight(-?[0-9]+)?",
+		"tdfrmtxtTop(-?[0-9]+)?",
+		"trftsWidthA(-?[0-9]+)?",
+		"trftsWidthB(-?[0-9]+)?",
+		"trftsWidth(-?[0-9]+)?",
+		"trwWithA(-?[0-9]+)?",
+		"trwWithB(-?[0-9]+)?",
+		"trwWith(-?[0-9]+)?",
+		"spectspecifygen(-?[0-9]+)?",
     );
 
     var $charset_table = array(
-    	"0"	=>	"ANSI",
-	"1"	=>	"Default",
-	"2"	=>	"Symbol",
-	"77" 	=>	"Mac",
-	"128" 	=>	"Shift Jis",
-	"129" 	=>	"Hangul",
-	"130" 	=>	"Johab",
-	"134" 	=>	"GB2312",
-	"136" 	=>	"Big5",
-	"161" 	=>	"Greek",
-	"162" 	=>	"Turkish",
-	"163" 	=>	"Vietnamese",
-	"177" 	=>	"Hebrew",
-	"178" 	=>	"Arabic",
-	"179" 	=>	"Arabic Traditional",
-	"180" 	=>	"Arabic user",
-	"181" 	=>	"Hebrew user",
-	"186" 	=>	"Baltic",
-	"204" 	=>	"Russian",
-	"222" 	=>	"Thai",
-	"238" 	=>	"Eastern European",
-	"255" 	=>	"PC 437",
-	"255" 	=>	"OEM",
+    	"0"		=>	"ANSI",
+		"1"		=>	"Default",
+		"2"		=>	"Symbol",
+		"77" 	=>	"Mac",
+		"128" 	=>	"Shift Jis",
+		"129" 	=>	"Hangul",
+		"130" 	=>	"Johab",
+		"134" 	=>	"GB2312",
+		"136" 	=>	"Big5",
+		"161" 	=>	"Greek",
+		"162" 	=>	"Turkish",
+		"163" 	=>	"Vietnamese",
+		"177" 	=>	"Hebrew",
+		"178" 	=>	"Arabic",
+		"179" 	=>	"Arabic Traditional",
+		"180" 	=>	"Arabic user",
+		"181" 	=>	"Hebrew user",
+		"186" 	=>	"Baltic",
+		"204" 	=>	"Russian",
+		"222" 	=>	"Thai",
+		"238" 	=>	"Eastern European",
+		"255" 	=>	"PC 437",
+		"255" 	=>	"OEM",
     );
 
     /* note: the only conversion table used */
     var $fontmodifier_table = array(
-	"bold"		=> "b",
-	"italic"	=> "i",
-	"underlined"	=> "u",
-	"strikethru"	=> "strike",
+		"bold"			=> "b",
+		"italic"		=> "i",
+		"underlined"	=> "u",
+		"strikethru"	=> "strike",
     );
 
-
+	
     function rtf() {
-	$this->rtf_len = 0;
-	$this->rtf = '';
+		$this->rtf_len = 0;
+		$this->rtf = '';
 
         $this->out = '';
     }
@@ -169,196 +170,194 @@ class rtf {
     // loadrtf - load the raw rtf data to be converted by this class
     // data = the raw rtf
     function loadrtf($data) {
-	if (($this->rtf = $this->uncompress($data))) {
-	    $this->rtf_len = $this->bytes($this->rtf);
-	};
-	if($this->rtf_len == 0) {
-	    debugLog("No data in stream found");
-	    return false;
-	};
-	return true;
+		if (($this->rtf = $this->uncompress($data))) {
+		    $this->rtf_len = byte_strlen($this->rtf);
+		};
+		if($this->rtf_len == 0) {
+		    debugLog("No data in stream found");
+	    	return false;
+		};
+		return true;
     }
 
     function output($typ) {
     	switch($typ) {
     	    case "ascii": $this->wantASCII = true; break;
-	    case "xml": $this->wantXML = true; break;
-	    case "html": $this->wantHTML = true; break;
-	    default: break;
-	}
+		    case "xml": $this->wantXML = true; break;
+		    case "html": $this->wantHTML = true; break;
+	    	default: break;
+		}
     }
 
     // uncompress - uncompress compressed rtf data
     // src = the compressed raw rtf in LZRTF format
     function uncompress($src) {
-        $header = unpack("LcSize/LuSize/Lmagic/Lcrc32",$this->cut_bytes($src,0,16));
-	$in = 16;
-        if ($header['cSize'] != $this->bytes($src)-4) {
+        $header = unpack("LcSize/LuSize/Lmagic/Lcrc32",byte_substr($src,0,16));
+		$in = 16;
+        if ($header['cSize'] != byte_strlen($src)-4) {
     	    debugLog("Stream too short");
-	    return false;
-	}
-
-	if ($header['crc32'] != $this->LZRTFCalcCRC32($src,16,(($header['cSize']+4))-16)) {
-	    debugLog("CRC MISMATCH");
-	    return false;
-	}
-
-	if ($header['magic'] == 0x414c454d) {			// uncompressed RTF - return as is.
-	    $dest = $this->cut_bytes($src,$in,$header['uSize']);
-	} else if ($header['magic'] == 0x75465a4c) {		// compressed RTF - uncompress.
-	    $dst = $this->LZRTF_HDR_DATA;
-	    $out = $this->LZRTF_HDR_LEN;
-	    $oblen = $this->LZRTF_HDR_LEN + $header['uSize'];
-	    $flagCount = 0;
-	    $flags = 0;
-	    while ($out<$oblen) {
-	        $flags = ($flagCount++ % 8 == 0) ? ord($src[$in++]) : $flags >> 1;
-	        if (($flags & 1) == 1) {
-		    $offset = ord($src[$in++]);
-		    $length = ord($src[$in++]);
-		    $offset = ($offset << 4) | ($length >> 4);
-		    $length = ($length & 0xF) + 2;
-		    $offset = (int)($out / 4096) * 4096 + $offset;
-		    if ($offset >= $out) $offset -= 4096;
-		    $end = $offset + $length;
-		    while ($offset < $end) {
-		        $dst .= $dst[$offset++];
-			$out++;
-		    };
-	        } else {
-		    $dst .= $src[$in++];
-		    $out++;
+	    	return false; 
 		}
-	    }
-	    $src = $dst;
-	    $dest = $this->cut_bytes($src,$this->LZRTF_HDR_LEN,$header['uSize']);
-        } else {						// unknown magic - returfn false (please report if this ever happens)
-	    debugLog("Unknown Magic");
-	    return false;
-        }
 
-        return $dest;
+		if ($header['crc32'] != $this->LZRTFCalcCRC32($src,16,(($header['cSize']+4))-16)) {
+		    debugLog("CRC MISMATCH");
+	    	return false;
+		}
+
+		if ($header['magic'] == 0x414c454d) {			// uncompressed RTF - return as is.
+	    	$dest = byte_substr($src,$in,$header['uSize']); 
+		} else if ($header['magic'] == 0x75465a4c) {		// compressed RTF - uncompress.
+		    $dst = $this->LZRTF_HDR_DATA;
+		    $out = $this->LZRTF_HDR_LEN;
+		    $oblen = $this->LZRTF_HDR_LEN + $header['uSize'];
+		    $flagCount = 0;
+		    $flags = 0;
+		    while ($out<$oblen) {
+		        $flags = ($flagCount++ % 8 == 0) ? ord($src[$in++]) : $flags >> 1;
+		        if (($flags & 1) == 1) {
+				    $offset = ord($src[$in++]);
+				    $length = ord($src[$in++]);
+				    $offset = ($offset << 4) | ($length >> 4);
+				    $length = ($length & 0xF) + 2;
+				    $offset = (int)($out / 4096) * 4096 + $offset;
+				    if ($offset >= $out) $offset -= 4096;
+				    $end = $offset + $length;
+				    while ($offset < $end) {
+				        $dst .= $dst[$offset++];
+						$out++;
+				    };
+	    	    } else {
+				    $dst .= $src[$in++];
+				    $out++;
+				}
+	    	}
+		    $src = $dst;
+		    $dest = byte_substr($src,$this->LZRTF_HDR_LEN,$header['uSize']);
+	    } else {						// unknown magic - returfn false (please report if this ever happens)
+		    debugLog("Unknown Magic");
+		    return false;
+    	}
+
+    	return $dest;
     }
 
     // LZRTFCalcCRC32 - calculates the CRC32 of the LZRTF data part
     // buf = the whole rtf data part
     // off = start point of crc calculation
     // len = length of data to calculate CRC for
-    // function is necessary since in RTF there is no XOR 0xffffffff being done (said to be 0x00 unsafe CRC32 calculation
+    // function is necessary since in RTF there is no XOR 0xffffffff being done (said to be 0x00 unsafe CRC32 calculation 
     function LZRTFCalcCRC32($buf, $off, $len) {
-	$c=0;
-	$end = $off + $len;
-	for($i=$off;$i < $end;$i++) {
+		$c=0;
+		$end = $off + $len;
+		for($i=$off;$i < $end;$i++) {
     	    $c=$this->CRC32_TABLE[($c ^ ord($buf{$i})) & 0xFF] ^ (($c >> 8) & 0x00ffffff);
-	}
-	return $c;
+		}
+		return $c;
     }
 
     function parserInit() { /* Default values according to the specs */
-	$this->flags = array(
-	    "fontsize"		=> 24,
-	    "beginparagraph"	=> true,
-	);
+		$this->flags = array(
+		    "fontsize"		=> 24,
+	    	"beginparagraph"	=> true,
+		);
     }
 
     function parseControl($control, $parameter) {
-	switch ($control) {
-	    case "fonttbl": 		// font table definition start
-		$this->flags["fonttbl"] = true;	// signal fonttable control words they are allowed to behave as expected
-		break;
-	    case "f": 			// define or set font
-		if($this->flags["fonttbl"]) {	// if its set, the fonttable definition is written to; else its read from
-		    $this->flags["fonttbl_current_write"] = $parameter;
-		} else {
-		    $this->flags["fonttbl_current_read"] = $parameter;
-		}
-		break;
-	    case "fcharset": 		// this is for preparing flushQueue; it then moves the Queue to $this->fonttable .. instead to formatted output
-		$this->flags["fonttbl_want_fcharset"] = $parameter;
-		break;
+		switch ($control) { 	
+		    case "fonttbl": 		// font table definition start
+				$this->flags["fonttbl"] = true;	// signal fonttable control words they are allowed to behave as expected
+				break;
+		    case "f": 			// define or set font
+				if($this->flags["fonttbl"]) {	// if its set, the fonttable definition is written to; else its read from
+				    $this->flags["fonttbl_current_write"] = $parameter;
+				} else {
+				    $this->flags["fonttbl_current_read"] = $parameter;
+				}
+				break;
+		    case "fcharset": 		// this is for preparing flushQueue; it then moves the Queue to $this->fonttable .. instead to formatted output
+				$this->flags["fonttbl_want_fcharset"] = $parameter;
+				break;
     	    case "fs": 			// sets the current fontsize; is used by stylesheets (which are therefore generated on the fly
-		$this->flags["fontsize"] = $parameter;
-		break;
+				$this->flags["fontsize"] = $parameter;
+				break;
+		    case "qc":			// handle center alignment
+				$this->flags["alignment"] = "center";
+				break;
+		    case "qr":			// handle right alignment
+				$this->flags["alignment"] = "right";
+				break;
+		    case "pard":		// reset paragraph settings (only alignment)
+				$this->flags["alignment"] = "";
+				break;
+		    case "par":			// define new paragraph (for now, thats a simple break in html) begin new line
+				$this->flags["beginparagraph"] = true;
+				if($this->wantHTML) {
+				    $this->out .= "</div>";
+				}
+				if($this->wantASCII) {
+				    $this->out .= "\n";
+				}
+				break;
+		    case "bnone":		// bold
+				$parameter = "0";
+		    case "b":
+				// haven'y yet figured out WHY I need a (string)-cast here ... hm
+				if((string)$parameter == "0")
+				    $this->flags["bold"] = false;
+				else
+				    $this->flags["bold"] = true;
+				break;
+		    case "ulnone":		// underlined
+		        $parameter = "0";
+		    case "ul":
+				if((string)$parameter == "0")
+				    $this->flags["underlined"] = false;
+				else
+				    $this->flags["underlined"] = true;
+				break;
+			case "inone":		// italic
+				$parameter = "0";
+		    case "i":
+				if((string)$parameter == "0")
+				    $this->flags["italic"] = false;
+				else
+				    $this->flags["italic"] = true;
+				break;
+		    case "strikenone":		// strikethru
+				$parameter = "0";
+		    case "strike":
+				if((string)$parameter == "0")
+				    $this->flags["strikethru"] = false;
+				else
+				    $this->flags["strikethru"] = true;
+				break;
+		    case "plain":		// reset all font modifiers and fontsize to 12
+		    	$this->flags["bold"] = false;
+				$this->flags["italic"] = false;
+				$this->flags["underlined"] = false;
+				$this->flags["strikethru"] = false;
+				$this->flags["fontsize"] = 12;
 
-	    case "qc":			// handle center alignment
-		$this->flags["alignment"] = "center";
-		break;
-	    case "qr":			// handle right alignment
-		$this->flags["alignment"] = "right";
-		break;
-
-	    case "pard":		// reset paragraph settings (only alignment)
-		$this->flags["alignment"] = "";
-		break;
-	    case "par":			// define new paragraph (for now, thats a simple break in html) begin new line
-		$this->flags["beginparagraph"] = true;
-		if($this->wantHTML) {
-		    $this->out .= "</div>";
+				$this->flags["subscription"] = false;
+				$this->flags["superscription"] = false;
+				break;
+		    case "subnone":		// subscription
+				$parameter = "0";
+		    case "sub":
+				if((string)$parameter == "0")
+				    $this->flags["subscription"] = false;
+				else
+				    $this->flags["subscription"] = true;
+				break;
+		    case "supernone":		// superscription
+				$parameter = "0";
+		    case "super":
+				if((string)$parameter == "0")
+				    $this->flags["superscription"] = false;
+				else
+				    $this->flags["superscription"] = true;
+				break;
 		}
-		if($this->wantASCII) {
-		    $this->out .= "\n";
-		}
-		break;
-	    case "bnone":		// bold
-		$parameter = "0";
-	    case "b":
-		// haven'y yet figured out WHY I need a (string)-cast here ... hm
-		if((string)$parameter == "0")
-		    $this->flags["bold"] = false;
-		else
-		    $this->flags["bold"] = true;
-		break;
-	    case "ulnone":		// underlined
-	        $parameter = "0";
-	    case "ul":
-		if((string)$parameter == "0")
-		    $this->flags["underlined"] = false;
-		else
-		    $this->flags["underlined"] = true;
-		break;
-	    case "inone":		// italic
-		$parameter = "0";
-	    case "i":
-		if((string)$parameter == "0")
-		    $this->flags["italic"] = false;
-		else
-		    $this->flags["italic"] = true;
-		break;
-	    case "strikenone":		// strikethru
-		$parameter = "0";
-	    case "strike":
-		if((string)$parameter == "0")
-		    $this->flags["strikethru"] = false;
-		else
-		    $this->flags["strikethru"] = true;
-		break;
-	    case "plain":		// reset all font modifiers and fontsize to 12
-	    	$this->flags["bold"] = false;
-		$this->flags["italic"] = false;
-		$this->flags["underlined"] = false;
-		$this->flags["strikethru"] = false;
-		$this->flags["fontsize"] = 12;
-
-		$this->flags["subscription"] = false;
-		$this->flags["superscription"] = false;
-		break;
-	    case "subnone":		// subscription
-		$parameter = "0";
-	    case "sub":
-		if((string)$parameter == "0")
-		    $this->flags["subscription"] = false;
-		else
-		    $this->flags["subscription"] = true;
-		break;
-	    case "supernone":		// superscription
-		$parameter = "0";
-	    case "super":
-		if((string)$parameter == "0")
-		    $this->flags["superscription"] = false;
-		else
-		    $this->flags["superscription"] = true;
-		break;
-	}
     }
 
     /*
@@ -366,25 +365,25 @@ class rtf {
     */
 
     function flushControl() {
-	if(ereg("^([A-Za-z]+)(-?[0-9]*) ?$", $this->cword, $match)) {
-	    $this->parseControl($match[1], $match[2]);
+		if(ereg("^([A-Za-z]+)(-?[0-9]*) ?$", $this->cword, $match)) {
+		    $this->parseControl($match[1], $match[2]);
     	    if($this->wantXML) {
-		$this->out.="<control word=\"".$match[1]."\"";
-		if($this->bytes($match[2]) > 0)
-		    $this->out.=" param=\"".$match[2]."\"";
-		$this->out.="/>";
-	    }
-	}
+				$this->out.="<control word=\"".$match[1]."\"";
+				if(byte_strlen($match[2]) > 0)
+				    $this->out.=" param=\"".$match[2]."\"";
+				$this->out.="/>";
+		    }
+		}
     }
 
     /*
 	If output stream supports comments, dispatch it
     */
-
+	
     function flushComment($comment) {
     	if($this->wantXML || $this->wantHTML) {
-	    $this->out.="<!-- ".$comment." -->";
-	}
+		    $this->out.="<!-- ".$comment." -->";
+		}
     }
 
     /*
@@ -392,124 +391,123 @@ class rtf {
     */
 
     function flushGroup($state) {
-	if($state == "open") { /* push onto the stack */
-	    array_push($this->stack, $this->flags);
+		if($state == "open") { /* push onto the stack */
+	    	array_push($this->stack, $this->flags);
+		    if($this->wantXML)
+				$this->out.="<group>";
+		}
+		if($state == "close") { /* pop from the stack */
+		    $this->last_flags = $this->flags;
+		    $this->flags = array_pop($this->stack);
 
-	    if($this->wantXML)
-		$this->out.="<group>";
-	}
-	if($state == "close") { /* pop from the stack */
-	    $this->last_flags = $this->flags;
-	    $this->flags = array_pop($this->stack);
-
-	    $this->flags["fonttbl_current_write"] = ""; // on group close, no more fontdefinition will be written to this id
+		    $this->flags["fonttbl_current_write"] = ""; // on group close, no more fontdefinition will be written to this id
 							// this is not really the right way to do it !
 							// of course a '}' not necessarily donates a fonttable end; a fonttable
 							// group at least *can* contain sub-groups
 							// therefore an stacked approach is heavily needed
-	    $this->flags["fonttbl"] = false; 		// no matter what you do, if a group closes, its fonttbl definition is closed too
+		    $this->flags["fonttbl"] = false; 		// no matter what you do, if a group closes, its fonttbl definition is closed too
 
     	    if($this->wantXML)
-		$this->out.="</group>";
-	}
+				$this->out.="</group>";
+		}
     }
 
     function flushHead() {
-	if($this->wantXML)
-	    $this->out.="<rtf>";
+		if($this->wantXML)
+		    $this->out.="<rtf>";
     }
 
     function flushBottom() {
-	if($this->wantXML)
-	    $this->out.="</rtf>";
+		if($this->wantXML)
+		    $this->out.="</rtf>";
     }
 
     function checkHtmlSpanContent($command) {
-	reset($this->fontmodifier_table);
-	while(list($rtf, $html) = each($this->fontmodifier_table)) {
-	    if($this->flags[$rtf] == true) {
-		if($command == "start")
-		    $this->out .= "<".$html.">";
-		else
-		    $this->out .= "</".$html.">";
-	    }
-	}
+		reset($this->fontmodifier_table);
+		while(list($rtf, $html) = each($this->fontmodifier_table)) {
+	    	if($this->flags[$rtf] == true) {
+				if($command == "start")
+				    $this->out .= "<".$html.">";
+				else
+				    $this->out .= "</".$html.">";
+		    }
+		}
     }
 
     /*
     	flush text in queue
     */
     function flushQueue() {
-	if($this->bytes($this->queue)) {
+		if(byte_strlen($this->queue)) {
     	    // processing logic
-	    if (isset($this->flags["fonttbl_want_fcharset"]) &&
-		ereg("^[0-9]+$", $this->flags["fonttbl_want_fcharset"])) {
-		$this->fonttable[$this->flags["fonttbl_want_fcharset"]]["charset"] = $this->queue;
-		$this->flags["fonttbl_want_fcharset"] = "";
-		$this->queue = "";
-	    }
+		    if (isset($this->flags["fonttbl_want_fcharset"]) &&
+				ereg("^[0-9]+$", $this->flags["fonttbl_want_fcharset"])) {
+				$this->fonttable[$this->flags["fonttbl_want_fcharset"]]["charset"] = $this->queue;
+				$this->flags["fonttbl_want_fcharset"] = "";
+				$this->queue = "";
+		    }
 
 	    // output logic
-	    if ($this->bytes($this->queue)) {
-		/*
-	    	    Everything which passes this is (or, at leat, *should*) be only outputted plaintext
-		    Thats why we can safely add the css-stylesheet when using wantHTML
-		*/
-		if($this->wantXML)
-		    $this->out.= "<plain>".$this->queue."</plain>";
-    		else if($this->wantHTML) {
-		    // only output html if a valid (for now, just numeric;) fonttable is given
-		    if(ereg("^[0-9]+$", $this->flags["fonttbl_current_read"])) {
-			if($this->flags["beginparagraph"] == true) {
-		    	    $this->flags["beginparagraph"] = false;
-			    $this->out .= "<div align=\"";
-			    switch($this->flags["alignment"]) {
-				case "right":
-			    	    $this->out .= "right";
-				    break;
-				case "center":
-				    $this->out .= "center";
-				    break;
-				case "left":
-				default:
-				    $this->out .= "left";
-			    }
-			    $this->out .= "\">";
-			}
+		    if (byte_strlen($this->queue)) {
+			/*
+		    	    Everything which passes this is (or, at leat, *should*) be only outputted plaintext
+			    Thats why we can safely add the css-stylesheet when using wantHTML
+			*/
+				if($this->wantXML)
+		    		$this->out.= "<plain>".$this->queue."</plain>";
+	    		else if($this->wantHTML) {
+			    // only output html if a valid (for now, just numeric;) fonttable is given
+				    if(ereg("^[0-9]+$", $this->flags["fonttbl_current_read"])) {
+						if($this->flags["beginparagraph"] == true) {
+			    		    $this->flags["beginparagraph"] = false;
+						    $this->out .= "<div align=\"";
+						    switch($this->flags["alignment"]) {
+								case "right":
+						    	    $this->out .= "right";
+								    break;
+								case "center":
+							    	$this->out .= "center";
+								    break;
+								case "left":
+								default:
+								    $this->out .= "left";
+							}
+						    $this->out .= "\">";
+						}
 
-			/* define new style for that span */
-			$this->styles["f".$this->flags["fonttbl_current_read"]."s".$this->flags["fontsize"]] = "font-family:".$this->fonttable[$this->flags["fonttbl_current_read"]]["charset"]." font-size:".$this->flags["fontsize"].";";
-			/* write span start */
-			$this->out .= "<span class=\"f".$this->flags["fonttbl_current_read"]."s".$this->flags["fontsize"]."\">";
+						/* define new style for that span */
+						$this->styles["f".$this->flags["fonttbl_current_read"]."s".$this->flags["fontsize"]] = "font-family:".$this->fonttable[$this->flags["fonttbl_current_read"]]["charset"]." font-size:".$this->flags["fontsize"].";";
+						/* write span start */
+						$this->out .= "<span class=\"f".$this->flags["fonttbl_current_read"]."s".$this->flags["fontsize"]."\">";
 
-			/* check if the span content has a modifier */
-			$this->checkHtmlSpanContent("start");
-			/* write span content */
-			$this->out .= $this->queue;
-			/* close modifiers */
-			$this->checkHtmlSpanContent("stop");
-			/* close span */
-			"</span>";
-		    }
+						/* check if the span content has a modifier */
+						$this->checkHtmlSpanContent("start");
+						/* write span content */
+						$this->out .= $this->queue;
+						/* close modifiers */
+						$this->checkHtmlSpanContent("stop");
+						/* close span */
+						"</span>";
+				    }
+				}
+				$this->queue = "";
+	    	}
 		}
-		$this->queue = "";
-	    }
-	}
     }
 
     /*
 	handle special charactes like \'ef
     */
-
+    
     function flushSpecial($special) {
-	if($this->bytes($special) == 2) {
-    	    if($this->wantASCII)
-    		$this->out .= chr(hexdec('0x'.$special));
-	    else if($this->wantXML)
-		$this->out .= "<special value=\"".$special."\"/>";
-	    else if($this->wantHTML){
-		$this->out .= "<special value=\"".$special."\"/>";
-		switch($special) {
+		if(byte_strlen($special) == 2) {
+    	    if($this->wantASCII) 
+    			$this->out .= chr(hexdec('0x'.$special));
+	    	else if($this->wantXML)
+				$this->out .= "<special value=\"".$special."\"/>";
+	    	else if($this->wantHTML){
+				$this->out .= "<special value=\"".$special."\"/>";
+				switch($special) {
                     case "c1": $this->out .= "&Aacute;"; break;
                     case "e1": $this->out .= "&aacute;"; break;
                     case "c0": $this->out .= "&Agrave;"; break;
@@ -546,200 +544,163 @@ class rtf {
                     case "aa": $this->out .= "&ordf;"; break;
                     case "b2": $this->out .= "&sup2;"; break;
                     case "b3": $this->out .= "&sup3;"; break;
+				}
+	    	}
 		}
-	    }
-	}
     }
 
     /*
 	Output errors at end
     */
     function flushErrors() {
-	if(count($this->err) > 0) {
-	    if($this->wantXML) {
-		$this->out .= "<errors>";
-		while(list($num,$value) = each($this->err)) {
-	    	    $this->out .= "<message>".$value."</message>";
+		if(count($this->err) > 0) {
+	    	if($this->wantXML) {
+				$this->out .= "<errors>";
+				while(list($num,$value) = each($this->err)) {
+	    	    	$this->out .= "<message>".$value."</message>";
+				}
+				$this->out .= "</errors>";
+		    }
 		}
-		$this->out .= "</errors>";
-	    }
-	}
     }
 
     function makeStyles() {
     	$this->outstyles = "<style type=\"text/css\"><!--\n";
-	reset($this->styles);
-	while(list($stylename, $styleattrib) = each($this->styles)) {
-	    $this->outstyles .= ".".$stylename." { ".$styleattrib." }\n";
-	}
-	$this->outstyles .= "--></style>\n";
+		reset($this->styles);
+		while(list($stylename, $styleattrib) = each($this->styles)) {
+		    $this->outstyles .= ".".$stylename." { ".$styleattrib." }\n";
+		}
+		$this->outstyles .= "--></style>\n";
     }
 
     function parse() {
 
-	$this->parserInit();
+		$this->parserInit();
 
-	$i = 0;
-	$this->cw= false;	// flag if control word is currently parsed
-	$this->cfirst = false;	// first control character ?
-	$this->cword = "";	// last or current control word (depends on $this->cw
+		$i = 0;
+		$this->cw= false;	// flag if control word is currently parsed
+		$this->cfirst = false;	// first control character ?
+		$this->cword = "";	// last or current control word (depends on $this->cw
 
-	$this->queue = "";	// plain text data found during parsing
+		$this->queue = "";	// plain text data found during parsing
 
-	$this->flushHead();
+		$this->flushHead();
 
-	while($i < $this->rtf_len) {
-	    switch($this->rtf[$i]) {
-		case "{":
-		    if($this->cw) {
-			$this->flushControl();
-			$this->cw = false;
-			$this->cfirst = false;
-		    } else
-			$this->flushQueue();
+		while($i < $this->rtf_len) {
+		    switch($this->rtf[$i]) {
+			case "{":
+		    	if($this->cw) {
+					$this->flushControl();
+					$this->cw = false; 
+					$this->cfirst = false;
+			    } else
+					$this->flushQueue();
 
-		    $this->flushGroup("open");
-		    break;
-		case "}":
-		    if($this->cw) {
-			$this->flushControl();
-			$this->cw = false;
-			$this->cfirst = false;
-		    } else
-			$this->flushQueue();
+			    $this->flushGroup("open");
+			    break;
+			case "}":
+		    	if($this->cw) {
+					$this->flushControl();
+					$this->cw = false; 
+					$this->cfirst = false;
+			    } else
+					$this->flushQueue();
 
-		    $this->flushGroup("close");
-		    break;
-		case "\\":
-		    if($this->cfirst) {	// catches '\\'
-			$this->queue .= "\\"; // replaced single quotes
-			$this->cfirst = false;
-			$this->cw = false;
-			break;
-		    }
-		    if($this->cw) {
-			$this->flushControl();
-		    } else
-			$this->flushQueue();
-		    $this->cw = true;
-		    $this->cfirst = true;
-		    $this->cword = "";
-		    break;
-		default:
-		    if((ord($this->rtf[$i]) == 10) || (ord($this->rtf[$i]) == 13)) break; // eat line breaks
-		    if($this->cw) {	// active control word ?
-			/*
-		    	    Watch the RE: there's an optional space at the end which IS part of
-			    the control word (but actually its ignored by flushControl)
-			*/
-			if(ereg("^[a-zA-Z0-9-]?$", $this->rtf[$i])) { // continue parsing
-			    $this->cword .= $this->rtf[$i];
-			    $this->cfirst = false;
-			} else {
-			    /*
-				Control word could be a 'control symbol', like \~ or \* etc.
-			    */
-			    $specialmatch = false;
-			    if($this->cfirst) {
-				if($this->rtf[$i] == '\'') { // expect to get some special chars
-				    $this->flushQueue();
-				    $this->flushSpecial($this->rtf[$i+1].$this->rtf[$i+2]);
-				    $i+=2;
-				    $specialmatch = true;
-				    $this->cw = false;
-				    $this->cfirst = false;
-				    $this->cword = "";
-				} else
-				    if(ereg("^[{}\*]$", $this->rtf[$i])) {
-					$this->flushComment("control symbols not yet handled");
-					$specialmatch = true;
+			    $this->flushGroup("close");
+			    break;
+
+			case "\\":
+			    if($this->cfirst) {	// catches '\\' 
+					$this->queue .= "\\"; // replaced single quotes
+					$this->cfirst = false;
+					$this->cw = false;
+					break;
+			    }
+			    if($this->cw) {
+					$this->flushControl();
+			    } else
+					$this->flushQueue();
+			    $this->cw = true;
+			    $this->cfirst = true;
+			    $this->cword = "";
+			    break;
+			default:
+			    if((ord($this->rtf[$i]) == 10) || (ord($this->rtf[$i]) == 13)) break; // eat line breaks
+			    if($this->cw) {	// active control word ?
+					/*
+				    	    Watch the RE: there's an optional space at the end which IS part of
+			    		the control word (but actually its ignored by flushControl)
+					*/
+					if(ereg("^[a-zA-Z0-9-]?$", $this->rtf[$i])) { // continue parsing
+			    		$this->cword .= $this->rtf[$i];
+					    $this->cfirst = false;
+					} else {
+				    /*
+						Control word could be a 'control symbol', like \~ or \* etc.
+				    */
+					    $specialmatch = false;
+					    if($this->cfirst) {
+							if($this->rtf[$i] == '\'') { // expect to get some special chars
+							    $this->flushQueue();
+							    $this->flushSpecial($this->rtf[$i+1].$this->rtf[$i+2]);
+							    $i+=2;
+							    $specialmatch = true;
+							    $this->cw = false; 
+							    $this->cfirst = false; 
+							    $this->cword = "";
+							} else 
+							    if(ereg("^[{}\*]$", $this->rtf[$i])) {
+									$this->flushComment("control symbols not yet handled");
+									$specialmatch = true;
+							    }
+							$this->cfirst = false;
+				    	} else {
+							if($this->rtf[$i] == ' ') {	// space delimtes control words, so just discard it and flush the controlword
+							    $this->cw = false;
+							    $this->flushControl();
+							    break;
+							}
+					    }
+					    if(!$specialmatch) {
+							$this->flushControl();
+							$this->cw = false;
+							$this->cfirst = false;
+							/*
+							    The current character is a delimeter, but is NOT
+							    part of the control word so we hop one step back
+							    in the stream and process it again
+							*/
+							$i--;
+					    }
+					}
+		    	} else {
+					// < and > need translation before putting into queue when XML or HTML is wanted
+					if(($this->wantHTML) || ($this->wantXML)) {
+					    switch($this->rtf[$i]) {
+							case "<":
+							    $this->queue .= "&lt;";
+							    break;
+							case ">":
+							    $this->queue .= "&gt;";
+							    break;
+							default:
+							    $this->queue .= $this->rtf[$i];
+							    break;
+					    }
+					} else 
+					    $this->queue .= $this->rtf[$i];
 				    }
-				$this->cfirst = false;
-			    } else {
-				if($this->rtf[$i] == ' ') {	// space delimtes control words, so just discard it and flush the controlword
-				    $this->cw = false;
-				    $this->flushControl();
-				    break;
-				}
 			    }
-			    if(!$specialmatch) {
-				$this->flushControl();
-				$this->cw = false;
-				$this->cfirst = false;
-				/*
-				    The current character is a delimeter, but is NOT
-				    part of the control word so we hop one step back
-				    in the stream and process it again
-				*/
-				$i--;
-			    }
-			}
-		    } else {
-			// < and > need translation before putting into queue when XML or HTML is wanted
-			if(($this->wantHTML) || ($this->wantXML)) {
-			    switch($this->rtf[$i]) {
-				case "<":
-				    $this->queue .= "&lt;";
-				    break;
-				case ">":
-				    $this->queue .= "&gt;";
-				    break;
-				default:
-				    $this->queue .= $this->rtf[$i];
-				    break;
-			    }
-			} else
-			    $this->queue .= $this->rtf[$i];
-		    }
-
-	    }
-	    $i++;
-	}
-	$this->flushQueue();
-	$this->flushErrors();
-	$this->flushBottom();
-
-	if($this->wantHTML) {
-	    $this->makeStyles();
-	}
-    }
-
-	/**
-	 * Return the number of bytes of a string, independent of mbstring.func_overload
-	 * AND the availability of mbstring
-	 *
-	 * @param string $str
-	 * @return int
-	 */
-	function bytes($str)
-	{
-		static $func_overload;
-
-		if (is_null($func_overload)) $func_overload = extension_loaded('mbstring') ? ini_get('mbstring.func_overload') : 0;
-
-		return $func_overload & 2 ? mb_strlen($str,'ascii') : strlen($str);
-	}
-
-	/**
-	 * mbstring.func_overload safe substr
-	 *
-	 * @param string $data
-	 * @param int $offset
-	 * @param int $len
-	 * @return string
-	 */
-	function cut_bytes(&$data,$offset,$len=null)
-	{
-		static $func_overload;
-
-		if (is_null($func_overload)) $func_overload = extension_loaded('mbstring') ? ini_get('mbstring.func_overload') : 0;
-
-		if (is_null($len))
-		{
-			return $func_overload & 2 ? mb_substr($data,$offset,$this->bytes($data),'ascii') : substr($data,$offset);
+	    		$i++;
 		}
-		return $func_overload & 2 ? mb_substr($data,$offset,$len,'ascii') : substr($data,$offset,$len);
-	}
+		$this->flushQueue();
+		$this->flushErrors();
+		$this->flushBottom();
+
+		if($this->wantHTML) {
+	    	$this->makeStyles();
+		}
+    }
 }
 
 

@@ -425,7 +425,7 @@ class WBXMLDecoder {
         $pos = strpos($attr,chr(61)); // equals sign
 
         if($pos)
-            $attributes[substr($attr, 0, $pos)] = substr($attr, $pos+1);
+            $attributes[byte_substr($attr, 0, $pos)] = byte_substr($attr, $pos+1);
         else
             $attributes[$attr] = null;
 
@@ -448,8 +448,8 @@ class WBXMLDecoder {
 
     function getOpaque($len) {
 	$result = "";
-        while (strlen($result) < $len) {
-           if (($ch = fread($this->in, $len-strlen($result))) == false) return false;
+        while (byte_strlen($result) < $len) {
+           if (($ch = fread($this->in, $len-byte_strlen($result))) == false) return false;
            $result .= $ch;
         };
         return $result;
@@ -457,7 +457,7 @@ class WBXMLDecoder {
 
     function getByte() {
         $ch = fread($this->in, 1);
-        if(strlen($ch) > 0)
+        if(byte_strlen($ch) > 0)
             return ord($ch);
         else
             return;
@@ -583,7 +583,7 @@ class WBXMLEncoder {
         // Only output end tags for items that have had a start tag sent
         if($stackelem['sent']) {
             $this->_endTag();
-	    // START ADDED dw2412 multipart output handling
+		    // START ADDED dw2412 multipart output handling
     	    if(sizeof($this->_stack)==0 && $this->_multipart==true) {
 				// NOT THE NICE WAY IMHO but this keeps existing logic of data output in index.php file...
 				// first we grab the existing wbxml output, manipulate it and write it buffered way back.
@@ -597,7 +597,7 @@ class WBXMLEncoder {
 				debugLog(sprintf("Datapart BlockStart: %d Len: %d Content: %s",$blockstart,$len,bin2hex($data)));
 				foreach($this->_bodyparts as $bp) {
 				    $blockstart = $blockstart + $len;
-				    $len = strlen(bin2hex($bp))/ 2;
+				    $len = byte_strlen(bin2hex($bp))/ 2;
 				    $sizeinfo .= pack("ii",$blockstart,$len);
 				    debugLog(sprintf("Bodypart BlockStart: %d Len: %d Content: %s",$blockstart,$len,bin2hex($bp)));
 				}
@@ -607,7 +607,7 @@ class WBXMLEncoder {
 	    		    fwrite($this->_out,$bp);
 				}
     	    }
-	    // END ADDED dw2412 multipart output handling
+			// END ADDED dw2412 multipart output handling
         }
     }
 
@@ -678,7 +678,7 @@ class WBXMLEncoder {
     function _contentopaque($content) {
         $this->logContent("OPAQUE: ".bin2hex($content));
         $this->outByte(WBXML_OPAQUE);
-		$this->outByte(strlen($content));
+		$this->outByte(byte_strlen($content));
         $this->outOpaque($content);
     }
 
@@ -753,8 +753,8 @@ class WBXMLEncoder {
         $pos = strpos($fulltag, chr(58)); // chr(58) == ':'
 
         if($pos) {
-            $ns = substr($fulltag, 0, $pos);
-            $tag = substr($fulltag, $pos+1);
+            $ns = byte_substr($fulltag, 0, $pos);
+            $tag = byte_substr($fulltag, $pos+1);
         } else {
             $tag = $fulltag;
         }

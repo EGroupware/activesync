@@ -79,6 +79,10 @@
     //   SYNC_CONFLICT_OVERWRITE_PIM    - PIM is overwritten, Server wins (default)
     define('SYNC_CONFLICT_DEFAULT', SYNC_CONFLICT_OVERWRITE_PIM);
 
+    // In case Function Overload is being detect for mbstring functions we set the define
+    // to the overload level so that we can handle binary data propper...
+    define('MBSTRING_OVERLOAD', (extension_loaded('mbstring') ? ini_get('mbstring.func_overload') : 0));
+
     // The data providers that we are using (see configuration below)
     $BACKEND_PROVIDER = "BackendEGW";
 

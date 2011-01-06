@@ -167,6 +167,36 @@ class BackendEGW extends BackendDiff
 	}
 
 	/**
+	 * GetAttachmentData - may be MailSpecific
+	 * Should return attachment data for the specified attachment. The passed attachment identifier is
+	 * the exact string that is returned in the 'AttName' property of an SyncAttachment. So, you should
+	 * encode any information you need to find the attachment in that 'attname' property.
+	 *
+     * @param string $attname - should contain (folder)id
+	 * @return true, prints the content of the attachment
+	 */
+	function GetAttachmentData($attname)
+	{
+		list($id, $uid, $part) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
+		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
+	}
+
+	/**
+	 * ItemOperationsGetAttachmentData - may be MailSpecific
+	 * Should return attachment data for the specified attachment. The passed attachment identifier is
+	 * the exact string that is returned in the 'AttName' property of an SyncAttachment. So, you should
+	 * encode any information you need to find the attachment in that 'attname' property.
+	 *
+     * @param string $attname - should contain (folder)id
+	 * @return SyncAirSyncBaseFileAttachment-object
+	 */
+	function ItemOperationsGetAttachmentData($attname)
+	{
+		list($id, $uid, $part) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
+		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
+	}
+
+	/**
 	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
      * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
      * 'flags'     => simply '0' for unread, '1' for read
@@ -290,7 +320,7 @@ class BackendEGW extends BackendDiff
      *
      * @see eg. BackendIMAP::SendMail()
      * @todo implement either here or in fmail backend
-     * 	(maybe sending here and storing to sent folder in plugin, as sending is suppost to always work in EGroupware)
+     * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
      */
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
@@ -464,6 +494,7 @@ class BackendEGW extends BackendDiff
 		$ret = false;
 		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
 		{
+			//error_log($method.' called with Params:'.array2string($params));
 			$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
 		}
 		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));

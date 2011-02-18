@@ -314,7 +314,8 @@ class BackendEGW extends BackendDiff
      * 	'task': 'forward', 'new', 'reply'
      *  'itemid': id of message if it's an reply or forward
      *  'folderid': folder
-     *  'replacemime': false = send as is, false = decode and recode for whatever reason
+     *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
+	 *	'saveinsentitems': 1 or absent? 
      * @param boolean|double $protocolversion=false
      * @return boolean true on success, false on error
      *
@@ -324,8 +325,19 @@ class BackendEGW extends BackendDiff
      */
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
-		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) NOT yet implemented");
-		return true;	// fake sending mail worked
+		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion)");
+		$this->setup_plugins();
+		$type = 'felamimail';
+		$method = 'SendMail';
+		$ret = false;
+		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
+		{
+			//debugLog(__METHOD__." Plugin is set ");
+			$params = array($rfc822, $smartdata, $protocolversion);
+			//error_log($method.' called with Params:'.array2string($params));
+			$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
+		}
+		return $ret;	// fake sending mail worked
 	}
 
 	/**

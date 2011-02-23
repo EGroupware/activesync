@@ -315,7 +315,7 @@ class BackendEGW extends BackendDiff
      *  'itemid': id of message if it's an reply or forward
      *  'folderid': folder
      *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
-	 *	'saveinsentitems': 1 or absent? 
+	 *	'saveinsentitems': 1 or absent?
      * @param boolean|double $protocolversion=false
      * @return boolean true on success, false on error
      *
@@ -389,9 +389,15 @@ class BackendEGW extends BackendDiff
 	const TYPE_ADDRESSBOOK = 1;
 	const TYPE_CALENDAR = 2;
 	const TYPE_MAIL = 10;
+	/**
+	 * Length of id used, shorter ID's get padded with leading 0
+	 *
+	 * @var int
+	 */
+	const ID_LEN = 20;
 
 	/**
-	 * Create a max. 32 hex letter ID, current 20 chars are used
+	 * Create a max. 32 hex letter ID, current ID_LEN=20 chars are used
 	 *
 	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
 	 *
@@ -442,6 +448,8 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Split an ID string into $app, $folder and $id
 	 *
+	 * ID's shorter then ID_LEN are padded with leading "0", as Android seems to strip leading "0"!
+	 *
 	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
 	 *
 	 * @param string $str
@@ -452,6 +460,11 @@ class BackendEGW extends BackendDiff
 	 */
 	public function splitID($str,&$type,&$folder,&$id=null)
 	{
+		// Android seems to strip leading "0" --> pad shorter id's with leading "0"
+		if (($len=strlen($str)) < self::ID_LEN)
+		{
+			$str = str_repeat("0", ID_LEN-$len).$str;
+		}
 		$type = hexdec(substr($str,0,4));
 		$folder = hexdec(substr($str,4,8));
 		// convert 32bit negative numbers on a 64bit system to a 64bit negative number

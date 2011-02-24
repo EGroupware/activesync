@@ -394,7 +394,7 @@ class BackendEGW extends BackendDiff
 	 * @var int
 	 */
 	const TYPE_ADDRESSBOOK = 0x1000;
-	const TYPE_CALENDAR = 0x1000;
+	const TYPE_CALENDAR = 0x1001;
 	const TYPE_MAIL = 0x1010;
 
 	/**

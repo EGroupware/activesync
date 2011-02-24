@@ -404,11 +404,10 @@ class BackendEGW extends BackendDiff
 	 *
 	 * @param int|string $type appname or integer mail account id
 	 * @param int $folder integer folder ID
-	 * @param int $id integer item ID
 	 * @return string
 	 * @throws egw_exception_wrong_parameter
 	 */
-	public function createID($type,$folder,$id=0)
+	public function createID($type,$folder)
 	{
 		// get a nummeric $type
 		switch((string)($t=$type))	// we have to cast to string, as (0 == 'addressbook')===TRUE!
@@ -439,31 +438,29 @@ class BackendEGW extends BackendDiff
 		$folder_hex = sprintf('%08X',$folder);
 		// truncate negative number on a 64bit system to 8 hex digits = 32bit
 		if (strlen($folder_hex) > 8) $folder_hex = substr($folder_hex,-8);
-		$str = sprintf('%04X%s%08X',$type,$folder_hex,$id);
+		$str = sprintf('%04X',$type).$folder_hex;
 
-		//debugLog(__METHOD__."('$t','$f',$id) type=$type --> '$str'");
+		//debugLog(__METHOD__."('$t','$f') type=$type --> '$str'");
 
 		return $str;
 	}
 
 	/**
-	 * Split an ID string into $app, $folder and $id
+	 * Split an ID string into $app and $folder
 	 *
 	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
 	 *
 	 * @param string $str
 	 * @param string|int &$type on return appname or integer mail account ID
 	 * @param int &$folder on return integer folder ID
-	 * @param int &$id=null on return integer item ID
 	 * @throws egw_exception_wrong_parameter
 	 */
-	public function splitID($str,&$type,&$folder,&$id=null)
+	public function splitID($str,&$type,&$folder)
 	{
 		$type = hexdec(substr($str,0,4));
 		$folder = hexdec(substr($str,4,8));
 		// convert 32bit negative numbers on a 64bit system to a 64bit negative number
 		if ($folder > 0x7fffffff) $folder -= 0x100000000;
-		$id = hexdec(substr($str,12,8));
 
 		switch($type)
 		{
@@ -481,7 +478,7 @@ class BackendEGW extends BackendDiff
 				$type -= self::TYPE_MAIL;
 				break;
 		}
-		// debugLog(__METHOD__."('$str','$type','$folder',$id)");
+		// debugLog(__METHOD__."('$str','$type','$folder')");
 	}
 
 	/**

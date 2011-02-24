@@ -20,9 +20,84 @@
 include_once('proto.php');
 include_once('backend.php');
 
+function GetDiff(array $old_in, array $new_in)
+{
+    $start = microtime(true);
 
+    $changes = $old = array();
 
-function GetDiff($old, $new) {
+    // create associative array of old items with id as key
+    foreach($old_in as &$item)
+    {
+        $old[$item['id']] =& $item;
+    }
+
+    // iterate through new items to identify new or changed items
+    foreach($new_in as &$item)
+    {
+        $id = $item['id'];
+        $change = array(
+            'id' => $id,
+        );
+
+        if (!isset($old[$id]))
+        {
+            // Message in new seems to be new (add)
+            $change['type'] = 'change';
+            $change['flags'] = SYNC_NEWMESSAGE;
+            $changes[] = $change;
+
+            // unset in $old, so $old contains only the deleted items
+            unset($old[$id]);
+        }
+        else
+        {
+            $old_item =& $old[$id];
+
+            // Both messages are still available, compare flags and mod
+            if(isset($old_item["flags"]) && isset($item["flags"]) && $old_item["flags"] != $item["flags"]) {
+                // Flags changed
+                $change['type'] = 'flags';
+                $change['flags'] = $item['flags'];
+                $changes[] = $change;
+            }
+
+            if(isset($old_item['olflags']) && isset($item['olflags']) && $old_item['olflags'] != $item['olflags']) {
+                // Outlook Flags changed
+                $change['type'] = 'olflags';
+                $change['olflags'] = 0;
+                $changes[] = $change;
+            }
+
+            if($old_item['mod'] != $item['mod']) {
+                $change['type'] = 'change';
+                $changes[] = $change;
+            }
+        }
+    }
+
+    // now $old contains only deleted items
+    foreach($old as $id => &$item)
+    {
+        // Message in state seems to have disappeared (delete)
+        $changes[] = array(
+            'type' => 'delete',
+            'id'   => $id,
+        );
+    }
+/*
+    // report performance
+    $new_time = microtime(true)-$start;
+    $start = microtime(true);
+    $old_changes = GetDiffOld($old_in,$new_in);
+    $old_time = microtime(true)-$start;
+    error_log(__METHOD__."() count(old)=".count($old_in).', count(new)='.count($new_in).', count(changes)='.count($changes).', count(old_changes)='.count($old_changes).", old_time=$old_time, new_time=$new_time");
+    debugLog(__METHOD__."() count(old)=".count($old_in).', count(new)='.count($new_in).', count(changes)='.count($changes).', count(old_changes)='.count($old_changes).", old_time=$old_time, new_time=$new_time");
+*/
+    return $changes;
+}
+
+function GetDiffOld($old, $new) {
     $changes = array();
 
     // Sort both arrays in the same way by ID

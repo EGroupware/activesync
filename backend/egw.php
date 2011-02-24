@@ -386,18 +386,19 @@ class BackendEGW extends BackendDiff
 		return false;
 	}
 
-	const TYPE_ADDRESSBOOK = 1;
-	const TYPE_CALENDAR = 2;
-	const TYPE_MAIL = 10;
 	/**
-	 * Length of id used, shorter ID's get padded with leading 0
+	 * Type ID for addressbook
+	 *
+	 * To work around a bug in Android / HTC the ID must not have leading "0" (as they get removed)
 	 *
 	 * @var int
 	 */
-	const ID_LEN = 20;
+	const TYPE_ADDRESSBOOK = 0x1000;
+	const TYPE_CALENDAR = 0x1000;
+	const TYPE_MAIL = 0x1010;
 
 	/**
-	 * Create a max. 32 hex letter ID, current ID_LEN=20 chars are used
+	 * Create a max. 32 hex letter ID, current 20 chars are used
 	 *
 	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
 	 *
@@ -448,8 +449,6 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Split an ID string into $app, $folder and $id
 	 *
-	 * ID's shorter then ID_LEN are padded with leading "0", as Android seems to strip leading "0"!
-	 *
 	 * Currently only $folder supports negative numbers correctly on 64bit PHP systems
 	 *
 	 * @param string $str
@@ -460,11 +459,6 @@ class BackendEGW extends BackendDiff
 	 */
 	public function splitID($str,&$type,&$folder,&$id=null)
 	{
-		// Android seems to strip leading "0" --> pad shorter id's with leading "0"
-		if (($len=strlen($str)) < self::ID_LEN)
-		{
-			$str = str_repeat("0", ID_LEN-$len).$str;
-		}
 		$type = hexdec(substr($str,0,4));
 		$folder = hexdec(substr($str,4,8));
 		// convert 32bit negative numbers on a 64bit system to a 64bit negative number

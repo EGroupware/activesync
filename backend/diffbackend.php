@@ -46,9 +46,6 @@ function GetDiff(array $old_in, array $new_in)
             $change['type'] = 'change';
             $change['flags'] = SYNC_NEWMESSAGE;
             $changes[] = $change;
-
-            // unset in $old, so $old contains only the deleted items
-            unset($old[$id]);
         }
         else
         {
@@ -73,6 +70,9 @@ function GetDiff(array $old_in, array $new_in)
                 $change['type'] = 'change';
                 $changes[] = $change;
             }
+
+            // unset in $old, so $old contains only the deleted items
+            unset($old[$id]);
         }
     }
 

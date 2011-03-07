@@ -486,28 +486,104 @@ class BackendEGW extends BackendDiff
 	}
 
 	/**
-	 * Convert note to requested bodypreference and truncate if requested
+	 * Convert note to requested bodypreference format and truncate if requested
 	 *
-	 * @param string $note
-	 * @param int requested bodypreference
-	 * @param int truncation size
-	 * @return body
+	 * @param $note string containing the plaintext message
+	 * @param $bodypreference object
+	 * @param &$airsyncbasebody the airsyncbasebody object to send to the client
+	 *
+	 * @return string plain textbody for message or false
 	 */
-	public function note2bodypreference($note, $bodypreference, $truncationsize)
+	public function note2messagenote($note, $bodypreference, &$airsyncbasebody)
 	{
 		error_log (__METHOD__);
-
+		if ($bodypreference == false)
+		{
+			return ($note);
+		}
+		else
+		{
+			if (isset($bodypreference[2]))
+			{
+				debugLog("HTML Body");
+				$airsyncbasebody->type = 2;
+				$html = '<html>'.
+						'<head>'.
+						'<meta name="Generator" content="eGroupware/Z-Push">'.
+						'<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
+						'</head>'.
+						'<body>'.
+						str_replace(array("\n","\r","\r\n"),"<br />",$note).
+						'</body>'.
+						'</html>';
+				if (isset($bodypreference[2]["TruncationSize"]) && strlen($html) > $bodypreference[2]["TruncationSize"])
+				{
+					$html = utf8_truncate($html,$bodypreference[2]["TruncationSize"]);
+					$airsyncbasebody->truncated = 1;
+				}
+				$airsyncbasebody->estimateddatasize = strlen($html);
+				$airsyncbasebody->data = $html;
+			}
+			else
+			{
+				debugLog("Plaintext Body");
+				$plainnote = str_replace("\n","\r\n",str_replace("\r","",$note));
+				if(isset($bodypreference[1]["TruncationSize"]) && strlen($plainnote) > $bodypreference[1]["TruncationSize"])
+				{
+					$plainnote = utf8_truncate($plainnote, $bodypreference[1]["TruncationSize"]);
+					$airsyncbasebody->truncated = 1;
+				}
+				$airsyncbasebody->estimateddatasize = strlen($plainnote);
+				$airsyncbasebody->data = $plainnote;
+			}
+			if ($airsyncbasebody->type != 3 && (!isset($airsyncbasebody->data) || strlen($airsyncbasebody->data) == 0))
+			{
+				$airsyncbasebody->data = " ";
+			}
+		}
 	}
 
-
+	/**
+	 * Convert received messagenote to egroupware plaintext note
+	 *
+	 * @param $body the plain body received
+	 * @param $body the rtf body data
+	 * @param $airsyncbasebody  object received from client
+	 *
+	 * @return string plaintext for eGroupware
+	 */
 	public function messagenote2note($body, $rtf, $airsyncbasebody)
 	{
-		error_log (__METHOD__);
-
-
+		if (isset($airsyncbasebody))
+		{
+			switch($airsyncbasebody->type)
+			{
+				case '3' :	$rtf = $airsyncbasebody->data;
+							error_log("Airsyncbase RTF Body");
+							break;
+				case '1' :	$body = $airsyncbasebody->data;
+							error_log("Airsyncbase Plain Body");
+							break;
+			}
+		}
+		// Nokia MfE 2.9.158 sends contact notes with RTF and Body element.
+		// The RTF is empty, the body contains the note therefore we need to unpack the rtf
+		// to see if it is realy empty and in case not, take the appointment body.
+		if (isset($message->rtf))
+		{
+			error_log("RTF Body");
+			$rtf_body = new rtf ();
+			$rtf_body->loadrtf(base64_decode($rtf));
+			$rtf_body->output("ascii");
+			$rtf_body->parse();
+			if (isset($body) && isset($rtf_body->out) && $rtf_body->out == "" && $body != "")
+			{
+				unset($rtf);
+			}
+			if($rtf_body->out <> "") $body=$rtf_body->out;
+		}
+		return $body;
 	}
-
-
 
 
 	/**

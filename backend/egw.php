@@ -97,7 +97,6 @@ class BackendEGW extends BackendDiff
 	 */
 	function AlterPing()
 	{
-		debugLog (__METHOD__);
 		return true;
 	}
 
@@ -254,6 +253,11 @@ class BackendEGW extends BackendDiff
 	function DeleteMessage($folderid, $id)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+	}
+
+	function SetReadFlag($folderid, $id, $flag)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
 	}
 
 
@@ -482,6 +486,31 @@ class BackendEGW extends BackendDiff
 	}
 
 	/**
+	 * Convert note to requested bodypreference and truncate if requested
+	 *
+	 * @param string $note
+	 * @param int requested bodypreference
+	 * @param int truncation size
+	 * @return body
+	 */
+	public function note2bodypreference($note, $bodypreference, $truncationsize)
+	{
+		error_log (__METHOD__);
+
+	}
+
+
+	public function messagenote2note($body, $rtf, $airsyncbasebody)
+	{
+		error_log (__METHOD__);
+
+
+	}
+
+
+
+
+	/**
 	 * Plugins to use, filled by setup_plugins
 	 *
 	 * @var array
@@ -654,6 +683,18 @@ interface activesync_plugin_write extends activesync_plugin_read
      * be able to delete messages on the PDA, but as soon as you sync, you'll get the item back
      */
     public function DeleteMessage($folderid, $id);
+
+    /**
+     * modify read flag of a message
+     *
+     * @param $folderid
+     * @param $id
+     * @param $flags
+     *
+     *
+     * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
+     */
+    public function SetReadFlag($folderid, $id, $flags);
 
 }
 

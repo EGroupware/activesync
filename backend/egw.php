@@ -527,6 +527,7 @@ class BackendEGW extends BackendDiff
 			else
 			{
 				debugLog("Plaintext Body");
+				$airsyncbasebody->type = 1;
 				$plainnote = str_replace("\n","\r\n",str_replace("\r","",$note));
 				if(isset($bodypreference[1]["TruncationSize"]) && strlen($plainnote) > $bodypreference[1]["TruncationSize"])
 				{

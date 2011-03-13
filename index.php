@@ -29,9 +29,9 @@ include_once("version.php");
 if (!defined("SCRIPT_TIMEOUT")) {
     define('REAL_SCRIPT_TIMEOUT', 3540+600);
 } else {
-    if ((SCRIPT_TIMEOUT-600) < 660) 
+    if ((SCRIPT_TIMEOUT-600) < 660)
 		define('REAL_SCRIPT_TIMEOUT', SCRIPT_TIMEOUT+660);
-    else 
+    else
 		define('REAL_SCRIPT_TIMEOUT', SCRIPT_TIMEOUT);
 }
 
@@ -47,7 +47,7 @@ debugLog("Client IP: ". $_SERVER['REMOTE_ADDR']);
 //debugLog(print_r($_POST,true));
 //debugLog(print_r(apache_request_headers(),true));
 register_shutdown_function("shutdownCommunication");
-$cachestatus = SYNCCACHE_UNCHANGED; 
+$cachestatus = SYNCCACHE_UNCHANGED;
 $input = fopen("php://input", "r");
 $output = fopen("php://output", "w+");
 
@@ -142,14 +142,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 // Get the request headers so we can see the versions
-$requestheaders = apache_request_headers();
-if (isset($requestheaders["Ms-Asprotocolversion"])) 
-	$requestheaders["MS-ASProtocolVersion"] = $requestheaders["Ms-Asprotocolversion"];
-if (isset($requestheaders["MS-ASProtocolVersion"]) ||
+if (isset($_SERVER['HTTP_MS_ASPROTOCOLVERSION']) ||
    	isset($uri_decoded['ProtVer'])) {
     global $protocolversion;
-    if (isset($requestheaders["MS-ASProtocolVersion"])) 
-		$protocolversion = $requestheaders["MS-ASProtocolVersion"];
+    if (isset($_SERVER['HTTP_MS_ASPROTOCOLVERSION']))
+		$protocolversion = $_SERVER['HTTP_MS_ASPROTOCOLVERSION'];
     else
 		$protocolversion = $uri_decoded['ProtVer']/10;
     debugLog("Client supports version " . $protocolversion);
@@ -161,9 +158,9 @@ if (isset($requestheaders["MS-ASProtocolVersion"]) ||
 
 // START ADDED dw2412 Support Multipart response
 //
-if ((isset($requestheaders["MS-ASAcceptMultiPart"]) &&
-    $requestheaders["MS-ASAcceptMultiPart"] == "T") ||
-    (isset($uri_decoded['Options']) && 
+if ((isset($_SERVER['HTTP_MS_ASACCEPTMULTIPART']) &&
+    $_SERVER['HTTP_MS_ASACCEPTMULTIPART'] == "T") ||
+    (isset($uri_decoded['Options']) &&
     $uri_decoded['Options'] & 0x02)) {
     $multipart = true;
 } else {
@@ -172,8 +169,8 @@ if ((isset($requestheaders["MS-ASAcceptMultiPart"]) &&
 // END ADDED dw2412 Support Multipart response
 
 // START ADDED dw2412 Support gzip compression in result
-if (isset($requestheaders["Accept-Encoding"])) {
-    $encodings = explode(", ",$requestheaders["Accept-Encoding"]);
+if (isset($_SERVER['HTTP_ACCEPT_ENCODING'])) {
+    $encodings = explode(", ",$_SERVER['HTTP_ACCEPT_ENCODING']);
     debugLog("Current zlib output compression setting: ".ini_get("zlib.output_compression"));
 
     if (array_search("gzip",$encodings) !== false &&
@@ -191,14 +188,14 @@ if (isset($requestheaders["Accept-Encoding"])) {
 }
 // END ADDED dw2412 Support gzip compression in result
 
-if (isset($requestheaders["X-Ms-Policykey"])) 
-	$requestheaders["X-MS-PolicyKey"] = $requestheaders["X-Ms-Policykey"];
-if (isset($requestheaders["X-MS-PolicyKey"]) ||
+if (isset($_SERVER['HTTP_X_MS_POLICYKEY']))
+	$_SERVER['HTTP_X_MS_POLICYKEY'] = $_SERVER['HTTP_X_MS_POLICYKEY'];
+if (isset($_SERVER['HTTP_X_MS_POLICYKEY']) ||
     isset($uri_decoded['PolKey'])) {
     global $policykey;
-    if (isset($requestheaders["X-MS-PolicyKey"])) 
-		$policykey = $requestheaders["X-MS-PolicyKey"];
-    else 
+    if (isset($_SERVER['HTTP_X_MS_POLICYKEY']))
+		$policykey = $_SERVER['HTTP_X_MS_POLICYKEY'];
+    else
 		$policykey = $uri_decoded['PolKey'];
 } else {
     global $policykey;
@@ -206,9 +203,9 @@ if (isset($requestheaders["X-MS-PolicyKey"]) ||
 }
 
 //get user agent
-if (isset($requestheaders["User-Agent"])) {
+if (isset($_SERVER['HTTP_USER_AGENT'])) {
     global $useragent;
-    $useragent = $requestheaders["User-Agent"];
+    $useragent = $_SERVER['HTTP_USER_AGENT'];
 } else {
     global $useragent;
     $useragent = "unknown";
@@ -246,12 +243,12 @@ if($backend->Logon($auth_user, $auth_domain, $auth_pw) == false) {
     return;
 }
 
-// check policy header 
-           
-if (PROVISIONING === true && $_SERVER["REQUEST_METHOD"] != 'OPTIONS' && $cmd != 'Ping' && $cmd != 'Provision' && 
+// check policy header
+
+if (PROVISIONING === true && $_SERVER["REQUEST_METHOD"] != 'OPTIONS' && $cmd != 'Ping' && $cmd != 'Provision' &&
     $backend->CheckPolicy($policykey, $devid) != SYNC_PROVISION_STATUS_SUCCESS &&
     (LOOSE_PROVISIONING === false ||
-    (LOOSE_PROVISIONING === true && (isset($requestheaders["X-MS-PolicyKey"]) || isset($uri_decoded['PolKey']) )))) {    	
+    (LOOSE_PROVISIONING === true && (isset($_SERVER['HTTP_X_MS_POLICYKEY']) || isset($uri_decoded['PolKey']) )))) {
     header("HTTP/1.1 449 Retry after sending a PROVISION command");
     // dw2412 changed to support AS14 Protocol
     header("MS-Server-ActiveSync: 14.00.048.018");
@@ -287,7 +284,7 @@ switch($_SERVER["REQUEST_METHOD"]) {
         header("MS-ASProtocolVersions: 1.0,2.0,2.1,2.5,12.0,12.1,14.0");
 		header("MS-ASProtocolRevisions: 12.1r1");
 		header("X-MS-MV: 14.0.255");
-		// START ADDED dw2412 
+		// START ADDED dw2412
 		// Compare and send X-MS-RP depending on Protocol Version string
 		// write the new Protocol Version string if update send
 		include_once ('statemachine.php');
@@ -299,7 +296,7 @@ switch($_SERVER["REQUEST_METHOD"]) {
     	    $protstate->setProtocolState("2.0,2.1,2.5,12.0,12.1,14.0");
     	}
     	unset($protstate);
-		// END ADDED dw2412 
+		// END ADDED dw2412
 		// START CHANGED dw2412 Settings and ItemOperations Command Support
         header("MS-ASProtocolCommands: Sync,SendMail,SmartForward,SmartReply,GetAttachment,GetHierarchy,CreateCollection,DeleteCollection,MoveCollection,FolderSync,FolderCreate,FolderDelete,FolderUpdate,MoveItems,GetItemEstimate,MeetingResponse,ResolveRecipients,ValidateCert,Provision,Settings,Search,Ping,ItemOperations");
         debugLog("Options request");

@@ -496,7 +496,7 @@ class BackendEGW extends BackendDiff
 	 */
 	public function note2messagenote($note, $bodypreference, &$airsyncbasebody)
 	{
-		error_log (__METHOD__);
+		//error_log (__METHOD__);
 		if ($bodypreference == false)
 		{
 			return ($note);
@@ -586,6 +586,16 @@ class BackendEGW extends BackendDiff
 		return $body;
 	}
 
+	/**
+	 * Run and return settings from all plugins
+	 *
+	 * @param array|string $hook_data
+	 * @var array
+	 */
+	public function settings($hook_data)
+	{
+		return self::run_on_all_plugins('settings',array(),$hook_data);
+	}
 
 	/**
 	 * Plugins to use, filled by setup_plugins
@@ -684,7 +694,6 @@ class BackendEGW extends BackendDiff
  */
 interface activesync_plugin_write extends activesync_plugin_read
 {
-
 	/**
 	 *  Creates or modifies a folder
      *
@@ -709,7 +718,6 @@ interface activesync_plugin_write extends activesync_plugin_read
      *
      */
     public function DeleteFolder($parentid, $id);
-
 
     /**
      * Changes or adds a message on the server
@@ -745,7 +753,6 @@ interface activesync_plugin_write extends activesync_plugin_read
      */
     public function MoveMessage($folderid, $id, $newfolderid);
 
-
     /**
      * Delete (really delete) a message in a folder
      *
@@ -772,7 +779,6 @@ interface activesync_plugin_write extends activesync_plugin_read
      * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
      */
     public function SetReadFlag($folderid, $id, $flags);
-
 }
 
 
@@ -878,6 +884,14 @@ interface activesync_plugin_read
 	 */
 	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0);
 
+	/**
+	 * Settings / Preferences like the usualy settings hook in egroupware
+	 *
+	 * Names should be prefixed with the application name and a dash '-', to not conflict with other plugins
+	 *
+	 * @return array name => array with values for keys: type, label, name, help, values, default, ...
+	 */
+	function settings($hook_data);
 }
 
 /**

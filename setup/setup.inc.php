@@ -30,8 +30,11 @@ $setup_info['activesync']['maintainer'] = array(
 		'email' => 'egroupware-developer@lists.sf.net',
 	);
 
+$setup_info['activesync']['hooks']['preferences']	= 'activesync_hooks::menus';
+$setup_info['activesync']['hooks']['settings']	= 'activesync_hooks::settings';
+
 /* Dependencies for this app to work */
 $setup_info['activesync']['depends'][] = array(
 	 'appname'  => 'phpgwapi',
-	 'versions' => Array('1.7','1.8','1.9')
+	 'versions' => Array('1.9')
 );

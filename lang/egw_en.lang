@@ -1,0 +1,6 @@
+activesync	common	en	ActiveSync
+addressbooks to sync	activesync	en	Addressbooks to sync
+calendars to sync	activesync	en	Calendars to sync
+global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	en	Global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.
+not all clients support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	en	Not all clients support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.
+sync all addressbooks as one	activesync	en	Sync all addressbooks as one

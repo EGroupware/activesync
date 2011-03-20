@@ -675,7 +675,12 @@ class BackendEGW extends BackendDiff
 		if (isset($plugins)) return;
 
 		$this->plugins = array();
-		foreach($GLOBALS['egw_info']['user']['apps'] as $app => $data)
+		$apps = $GLOBALS['egw_info']['user']['apps'];
+		if (!isset($apps))	// happens during setup
+		{
+			$apps = array('addressbook'=>null,'calendar'=>null,'felamimail'=>null,'infolog'=>null,'filemanager'=>null);
+		}
+		foreach($apps as $app => $data)
 		{
 			$class = $app.'_activesync';
 			if (class_exists($class))

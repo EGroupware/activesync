@@ -80,10 +80,20 @@ class BackendEGW extends BackendDiff
 	 */
 	function GetFolderList()
 	{
-		$folderlist = array();
-
 		$folderlist = $this->run_on_all_plugins(__FUNCTION__);
 
+		foreach(array('addressbook','calendar','felamimail') as $app)
+		{
+			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
+			{
+				$folderlist[] = $folder = array(
+					'id'	=>	$this->createID($app,$GLOBALS['egw_info']['user']['account_id']),
+					'mod'	=>	'not-enabled',
+					'parent'=>	'0',
+				);
+				debugLog(__METHOD__."() adding for disabled $app ".array2string($folder));
+			}
+		}
 		//debugLog(__METHOD__."() returning ".array2string($folderlist));
 
 		return $folderlist;
@@ -108,7 +118,33 @@ class BackendEGW extends BackendDiff
 	 */
 	function GetFolder($id)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
+		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id)))
+		{
+			$this->splitID($id, $type, $folder, $app);
+
+			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
+			{
+				$ret = new SyncFolder();
+				$ret->serverid = $id;
+				$ret->parentid = '0';
+				$ret->displayname = 'not-enabled';
+				$account_id = $GLOBALS['egw_info']['user']['account_id'];
+				switch($app)
+				{
+					case 'addressbook':
+						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_CONTACT : SYNC_FOLDER_TYPE_USER_CONTACT;
+						break;
+					case 'calendar':
+						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_APPOINTMENT : SYNC_FOLDER_TYPE_USER_APPOINTMENT;
+						break;
+					default:
+						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
+						break;
+				}
+			}
+		}
+		debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		return $ret;
 	}
 
 	/**
@@ -126,7 +162,21 @@ class BackendEGW extends BackendDiff
 	 */
 	function StatFolder($id)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $id);
+		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id)))
+		{
+			$this->splitID($id, $type, $folder, $app);
+
+			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
+			{
+				$ret = array(
+					'id' => $id,
+					'mod'	=>	'not-enabled',
+					'parent'=>	'0',
+				);
+			}
+		}
+		debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		return $ret;
 	}
 
 	/**
@@ -147,7 +197,16 @@ class BackendEGW extends BackendDiff
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
 		//debugLog(__METHOD__.__LINE__.' ID:'.$id.' Cutoffdate:'.$cutoffdate. function_backtrace());
-		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate);
+		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate)))
+		{
+			$this->splitID($id, $type, $folder, $app);
+
+			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
+			{
+				$return = array();
+			}
+		}
+		return $ret;
 	}
 
 	/**
@@ -457,9 +516,10 @@ class BackendEGW extends BackendDiff
 	 * @param string $str
 	 * @param string|int &$type on return appname or integer mail account ID
 	 * @param int &$folder on return integer folder ID
+	 * @param string &$app=null application of ID
 	 * @throws egw_exception_wrong_parameter
 	 */
-	public function splitID($str,&$type,&$folder)
+	public function splitID($str,&$type,&$folder,&$app=null)
 	{
 		$type = hexdec(substr($str,0,4));
 		$folder = hexdec(substr($str,4,8));
@@ -469,16 +529,17 @@ class BackendEGW extends BackendDiff
 		switch($type)
 		{
 			case self::TYPE_ADDRESSBOOK:
-				$type = 'addressbook';
+				$app = $type = 'addressbook';
 				break;
 			case self::TYPE_CALENDAR:
-				$type = 'calendar';
+				$app = $type = 'calendar';
 				break;
 			default:
 				if ($type < self::TYPE_MAIL)
 				{
 					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
 				}
+				$app = 'felamimail';
 				$type -= self::TYPE_MAIL;
 				break;
 		}

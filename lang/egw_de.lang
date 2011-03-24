@@ -1,5 +1,5 @@
 activesync	common	de	ActiveSync
-additional calendars to sync	activesync	de	Zusätzliche Kalender synchronisieren
+additional addressbooks to sync	activesync	de	Zusätzliche Addressbücher synchronisieren
 addressbooks to sync	activesync	de	Addressbücher zu synchronisieren
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	de	Die globale Adresssuche durchsucht immer alle Adressbücher, daher müssen Sie nicht alle Adressbücher synchronisieren, um darauf Zugriff zu haben solange Sie online sind.
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	de	Nicht alle Geräte unterstützen zusätzliche Kalender. Ihr persönlicher Kalender wird immer synchronisiert.

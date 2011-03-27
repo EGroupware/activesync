@@ -319,6 +319,11 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
 	}
 
+	function ChangeMessageFlag($folderid, $id, $flag)
+	{
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
+	}
+
 
 	/**
 	 * START ADDED dw2412 Settings Support
@@ -436,7 +441,7 @@ class BackendEGW extends BackendDiff
 				'global_search_status' => 1,
 			);
 		}
-		error_log(__METHOD__."('$searchquery', '$searchname') returning ".count($result['rows']).' rows = '.array2string($result));
+		//error_log(__METHOD__."('$searchquery', '$searchname') returning ".count($result['rows']).' rows = '.array2string($result));
 		return $result;
 	}
 
@@ -753,6 +758,7 @@ class BackendEGW extends BackendDiff
 }
 
 
+
 /**
  * Plugin interface for EGroupware application backends
  *
@@ -845,6 +851,19 @@ interface activesync_plugin_write extends activesync_plugin_read
      * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
      */
     public function SetReadFlag($folderid, $id, $flags);
+
+    /**
+     * modify olflags (outlook style) flag of a message
+     *
+     * @param $folderid
+     * @param $id
+     * @param $flags
+     *
+     *
+     * @DESC The $flags parameter must contains the poommailflag Object
+     */
+    public function ChangeMessageFlag($folderid, $id, $flags);
+
 }
 
 

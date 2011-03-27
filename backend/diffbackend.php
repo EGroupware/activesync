@@ -62,7 +62,7 @@ function GetDiff(array $old_in, array $new_in)
             if(isset($old_item['olflags']) && isset($item['olflags']) && $old_item['olflags'] != $item['olflags']) {
                 // Outlook Flags changed
                 $change['type'] = 'olflags';
-                $change['olflags'] = 0;
+                $change['olflags'] = $item['olflags'];
                 $changes[] = $change;
             }
 
@@ -130,7 +130,7 @@ function GetDiffOld($old, $new) {
                 // Outlook Flags changed
                 $change["type"] = "olflags";
                 $change["id"] = $new[$inew]["id"];
-                $change["olflags"] = 0;
+                $change["olflags"] = $new[$inew]["olflags"];
                 $changes[] = $change;
             }
 
@@ -293,7 +293,7 @@ class ImportContentsChangesDiff extends DiffState {
             $change["mod"] = 0; // dummy, will be updated later if the change succeeds
             $change["parent"] = $this->_folderid;
             $change["flags"] = (isset($message->read)) ? $message->read : 0;
-            $change["olflags"] = 0;
+            $change["olflags"] = (isset($message->poommailflag->flagstatus)) ? $message->poommailflag->flagstatus : 0;
             $this->updateState("change", $change);
 
             if($conflict && $this->_flags == SYNC_CONFLICT_OVERWRITE_PIM)
@@ -377,10 +377,11 @@ class ImportContentsChangesDiff extends DiffState {
         // Update client state
         $change = array();
         $change["id"] = $id;
-        $change["olflags"] = 1;
+        $change["olflags"] = isset ($flag->flagstatus) ? $flag->flagstatus : 0;
         $this->updateState("olflags", $change);
 
-	return true;
+        return $this->_backend->ChangeMessageFlag($this->_folderid, $id, $flag);
+
     }
 
 
@@ -576,6 +577,10 @@ class ExportChangesDiff extends DiffState {
                         	if ($change["type"] == "olflags") $this->updateState("olflags", $change);
 			    }
                         }
+                        if ($change["type"] == "olflags")
+                        {
+                        	debugLog(__METHOD__.__LINE__.array2string($change));
+                        }
                         break;
                     case "delete":
                         if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageDeletion($change["id"]) == true)
@@ -756,6 +761,10 @@ class BackendDiff {
 
     function SetReadFlag($folderid, $id, $flags) {
         return false;
+    }
+
+    function ChangeMessageFlag($folderid, $id, $flags) {
+    	return false;
     }
 
     function ChangeMessage($folderid, $id, $message) {

@@ -41,6 +41,7 @@ class BackendEGW extends BackendDiff
 	public function Logon($username, $domain, $password)
 	{
 		// check credentials and create session
+   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
 		if (!($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)))	// true = no real session
 		{
 			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
@@ -51,7 +52,6 @@ class BackendEGW extends BackendDiff
 			debugLog(__METHOD__."() z-push authentication failed: NO run rights for activesync application!");
 			return false;
 		}
-   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
    		$this->_loggedin = TRUE;

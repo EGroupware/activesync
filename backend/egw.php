@@ -738,7 +738,7 @@ class BackendEGW extends BackendDiff
 	 */
 	private function setup_plugins()
 	{
-		if (isset($plugins)) return;
+		if (isset($this->plugins)) return;
 
 		$this->plugins = array();
 		$apps = $GLOBALS['egw_info']['user']['apps'];

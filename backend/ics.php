@@ -26,6 +26,15 @@ include_once('mapi/class.recurrence.php');
 include_once('mapi/class.meetingrequest.php');
 include_once('mapi/class.freebusypublish.php');
 
+// START ADDED dw2412 to support x509 Certificates
+if (include_file_exists('mapi/class.userx509certificates.php') == true) {
+    include_once 'mapi/class.userx509certificates.php';
+    define("USERX509CERTIFICATES",true);
+} else {
+    define("USERX509CERTIFICATES",false);
+    debugLog("Working without user x509 certificates - necessary class cannot be found in include path");
+}
+// END ADDED dw2412
 // START ADDED dw2412 to support linked appointments
 if (include_file_exists('mapi/class.linkedappointment.php') == true) {
     include_once 'mapi/class.linkedappointment.php';
@@ -266,9 +275,9 @@ class MAPIMapping {
 
     var $_notemapping = array (
                             "body" => PR_BODY,
+                            "messageclass" => PR_MESSAGE_CLASS,
                             "categories" => "PT_MV_STRING8:{00020329-0000-0000-C000-000000000046}:Keywords",
-                            "complete" => "PT_BOOLEAN:{00062003-0000-0000-C000-000000000046}:0x811C",
-                            "lastmodifieddate" => "PT_SYSTIME:{00062003-0000-0000-C000-000000000046}:0x810F",
+                            "lastmodifieddate" => PR_LAST_MODIFICATION_TIME, // "PT_SYSTIME:{00062003-0000-0000-C000-000000000046}:0x810F",
                             "subject" => PR_SUBJECT,
                             );
 
@@ -627,12 +636,14 @@ class ImportContentsChangesICS extends MAPIMapping {
             debugLog("Unable to open folder: " . sprintf("%x", mapi_last_hresult()));
             $this->importer = false;
             return;
+        } else {
+        	$this->_folder = $folder;
         }
 
         $this->importer = mapi_openproperty($folder, PR_COLLECTOR, IID_IExchangeImportContentsChanges, 0 , 0);
     }
 
-    function Config($state, $flags = 0, $mclass = false, $restrict = false, $bodypreference = false) {
+    function Config($state, $flags = 0, $mclass = false, $restrict = false, $bodypreference = false, $optionbodypreference = false) {
         $stream = mapi_stream_create();
         if(strlen($state) == 0) {
             $state = hex2bin("0000000000000000");
@@ -648,9 +659,10 @@ class ImportContentsChangesICS extends MAPIMapping {
         // configure an exporter so we can detect conflicts
         $exporter = new ExportChangesICS($this->_session, $this->_store, $this->_folderid);
         $memImporter = new ImportContentsChangesMem();
-        $exporter->Config($memImporter, $mclass, $restrict, $state, 0, 0, $bodypreference);
+        $exporter->Config($memImporter, $mclass, $restrict, $state, 0, 0, $bodypreference, $optionbodypreference);
         while(is_array($exporter->Synchronize()));
         $this->_memChanges = $memImporter;
+		debugLog(print_r($this->_memChanges->_md5tosrvid,true));
     }
 
     function ImportMessageChange($id, &$message) {
@@ -683,34 +695,52 @@ class ImportContentsChangesICS extends MAPIMapping {
         else
             $flags = SYNC_NEW_MESSAGE;
 
-        if(mapi_importcontentschanges_importmessagechange($this->importer, $props, $flags, $mapimessage)) {
-            $this->_setMessage($mapimessage, $message);
-            mapi_message_savechanges($mapimessage);
+		$class = strtolower(get_class($message));
+		debugLog("Class is ".$class." Flags ".($flags != SYNC_NEW_MESSAGE ? " not SYNC_NEW_MESSAGE " : " SYNC_NEW_MESSAGE"));
+		if ($class != "syncsms" ||
+			($class == "syncsms" && $flags != SYNC_NEW_MESSAGE)) {
+			debugLog("Update Item using mapi_importcontentschanges_importmessagechange.");
+	        if(mapi_importcontentschanges_importmessagechange($this->importer, $props, $flags, $mapimessage)) {
+	            $this->_setMessage($mapimessage, $message);
+    	        mapi_message_savechanges($mapimessage);
 
-            $sourcekeyprops = mapi_getprops($mapimessage, array (PR_SOURCE_KEY));
-	    if (CONVERSATIONINDEX == true)
-        	$convidxprops = mapi_getprops($mapimessage, array (PR_CONVERSATION_INDEX));
+	            $sourcekeyprops = mapi_getprops($mapimessage, array (PR_SOURCE_KEY));
+		    	if (CONVERSATIONINDEX == true)
+        			$convidxprops = mapi_getprops($mapimessage, array (PR_CONVERSATION_INDEX));
+			} else {
+    	        debugLog("Unable to update object $id:" . sprintf("%x", mapi_last_hresult()));
+        	    return false;
+	    	}
         } else {
-            debugLog("Unable to update object $id:" . sprintf("%x", mapi_last_hresult()));
-            return false;
+			debugLog("New SMS detected. Create it by mapi_folder_createmessage");
+			$mapimessage = mapi_folder_createmessage($this->_folder);
+			if ($mapimessage) {
+	            $this->_setMessage($mapimessage, $message);
+    	        mapi_message_savechanges($mapimessage);
+  		        $sourcekeyprops = mapi_getprops($mapimessage, array (PR_SOURCE_KEY));
+	    		if (CONVERSATIONINDEX == true)
+        			$convidxprops = mapi_getprops($mapimessage, array (PR_CONVERSATION_INDEX));
+			} else {
+    	        debugLog("Unable to create object $id:" . sprintf("%x", mapi_last_hresult()));
+        	    return false;
+			}
         }
-
-		if (is_array($convidxprops) && isset($convidxprops[PR_CONVERSATION_INDEX]) &&
-		    strlen($convidxprops[PR_CONVERSATION_INDEX]) >= 22) {
-		    $tmp = $convidxprops[PR_CONVERSATION_INDEX];
+		if (isset($convidxprops) &&	is_array($convidxprops) && 
+			isset($convidxprops[PR_CONVERSATION_INDEX]) && strlen($convidxprops[PR_CONVERSATION_INDEX]) >= 22) {
+		   	$tmp = $convidxprops[PR_CONVERSATION_INDEX];
 		    $convid = substr($tmp,6,16);
 		    $convindex = substr($tmp,0,22);
 		    $tmp = substr($convidxprops[PR_CONVERSATION_INDEX],22,strlen($convidxprops[PR_CONVERSATION_INDEX]-22));
-		    while (strlen($tmp) > 0) {
+		   	while (strlen($tmp) > 0) {
 				$convindex .= $substr($tmp,0,5);
 				$tmp = substr(5,strlen($tmp)-5);
 		    }
-		    $ret['sourcekey'] = bin2hex($sourcekeyprops[PR_SOURCE_KEY]);
+		   	$ret['sourcekey'] = bin2hex($sourcekeyprops[PR_SOURCE_KEY]);
 		    $ret['convid'] = $convid;
 		    $ret['convidx'] = $convindex;
     	    return $ret;
-        }
-        return bin2hex($sourcekeyprops[PR_SOURCE_KEY]);
+	    }
+	    return bin2hex($sourcekeyprops[PR_SOURCE_KEY]);
     }
 
     // Import a deletion. This may conflict if the local object has been modified.
@@ -971,6 +1001,31 @@ class ImportContentsChangesICS extends MAPIMapping {
     function _setNote($mapimessage, $note) {
 		debugLog("setNote Mapimessage: ".print_r($mapimessage,true));
 		debugLog("setNote Note       : ".print_r($note,true));
+		if (!isset($note->messageclass)) $note->messageclass = 'IPM.StickyNote';
+		if (isset($note->airsyncbasebody)) {
+		    switch($note->airsyncbasebody->type) {
+				case '3' 	: $note->rtf = $note->airsyncbasebody->data; break;
+				case '1' 	: $note->body = $note->airsyncbasebody->data; break;
+		    }
+		}
+		if(isset($note->rtf)) {
+		    // start dw2412
+		    // Nokia MfE 2.9.158 sends contact notes with RTF and Body element. 
+		    // The RTF is empty, the body contains the note therefore we need to unpack the rtf 
+		    // to see if it is realy empty and in case not, take the appointment body.
+		    $rtf_body = new rtf ();
+		    $rtf_body->loadrtf(base64_decode($email->rtf));
+		    $rtf_body->output("ascii");
+		    $rtf_body->parse();
+		    if (isset($email->body) &&
+				isset($rtf_body->out) &&
+				$rtf_body->out == "" && $email->body != "") {
+				unset($email->rtf);
+		    }
+		    // end dw2412
+		}
+        $this->_setPropsInMAPI($mapimessage, $note, $this->_notemapping);
+
     }
 
     // START ADDED dw2412 Take care SMS
@@ -988,12 +1043,17 @@ class ImportContentsChangesICS extends MAPIMapping {
 		}
 
 		// Since SMS Messages get delivered to servers sent mail folder when submitted on device,
-		// we need for nice looklike the datereceived in PR_CLIENT_SUBMIT_TIME. 
+		// we set the readflag to read since otherwise message is always shown as new...
 		// So we need first of all to find out if this is the sent mail folder the item is being stored in.
         $entryid = mapi_msgstore_entryidfromsourcekey($this->_store, $this->_folderid);
         $storeprops = mapi_getprops($this->_store, array(PR_IPM_SENTMAIL_ENTRYID));
-		if ($entryid == $storeprops[PR_IPM_SENTMAIL_ENTRYID]) 
-	    	mapi_setprops($mapimessage, array(PR_CLIENT_SUBMIT_TIME => $email->datereceived));
+		debugLog("Is Sent Items folder? ".(bin2hex($entryid) == bin2hex($storeprops[PR_IPM_SENTMAIL_ENTRYID]) ? "Yes" : "No"));
+		if (bin2hex($entryid) == bin2hex($storeprops[PR_IPM_SENTMAIL_ENTRYID])) {
+			$email->read=1; 
+		}
+
+		mapi_setprops($mapimessage, array(	PR_MESSAGE_DELIVERY_TIME => $email->datereceived,
+											PR_CLIENT_SUBMIT_TIME => $email->datereceived));
 
 		if (isset($email->airsyncbasebody)) {
 		    switch($email->airsyncbasebody->type) {
@@ -1029,13 +1089,11 @@ class ImportContentsChangesICS extends MAPIMapping {
 	    	unset($addrparts);
     		$sender[PR_SENDER_ENTRYID] = mapi_createoneoff($sender[PR_SENDER_NAME], $sender[PR_SENDER_ADDRTYPE], $sender[PR_SENDER_EMAIL_ADDRESS]);
     	    $sender[PR_SENT_REPRESENTING_ENTRYID] = mapi_createoneoff($sender[PR_SENT_REPRESENTING_NAME], $sender[PR_SENT_REPRESENTING_ADDRTYPE], $sender[PR_SENT_REPRESENTING_EMAIL_ADDRESS]);
-    	    $email->from = "\"" . w2u($sender[PR_SENT_REPRESENTING_NAME]) . "\" [MOBILE:" . w2u($sender[PR_SENT_REPRESENTING_EMAIL_ADDRESS]) . "]"; 
+    	    $email->from = "\"" . u2w($sender[PR_SENT_REPRESENTING_NAME]) . "\" [MOBILE:" . u2w($sender[PR_SENT_REPRESENTING_EMAIL_ADDRESS]) . "]"; 
     	    mapi_setprops($mapimessage, $sender);
 //    	    mapi_savechanges($mapimessage);
-
-
-
     	}
+
 		if (preg_match('/(\"(.*)\" ){0,1}\[(.*):(.*)\]$/',$email->to,$addrparts)) {
     	    $recip = array();
     	    $recips = array();
@@ -1044,14 +1102,21 @@ class ImportContentsChangesICS extends MAPIMapping {
     	    $recip[PR_EMAIL_ADDRESS] = $addrparts[4];
 		    unset($addrparts);
             $recip[PR_RECIPIENT_TYPE] = MAPI_TO;
-    	    $recip[PR_RECIPIENT_ENTRYID] = mapi_createoneoff($recip[PR_DISPLAY_NAME], $recip[PR_ADDRTYPE], $recip[PR_EMAIL_ADDRESS]);
-    	    $email->to = "\"" . w2u($recip[PR_DISPLAY_NAME]) . "\" [MOBILE:" . w2u($recip[PR_EMAIL_ADDRESS]) . "]"; 
+    	    $recip[PR_ENTRYID] = mapi_createoneoff($recip[PR_DISPLAY_NAME], $recip[PR_ADDRTYPE], $recip[PR_EMAIL_ADDRESS]);
+    	    $email->to = "\"" . u2w($recip[PR_DISPLAY_NAME]) . "\" [MOBILE:" . u2w($recip[PR_EMAIL_ADDRESS]) . "]"; 
             array_push($recips, $recip);
             $result = mapi_message_modifyrecipients($mapimessage, MODRECIP_ADD, $recips);
 
 //    	    mapi_savechanges($mapimessage);
     	}
-    	mapi_setprops($mapimessage, array(PR_SUBJECT => u2w($email->body), PR_BODY => u2w($email->body)));
+    	mapi_setprops($mapimessage, array(	PR_SUBJECT => u2w($email->body), 
+    										PR_BODY => u2w($email->body), 
+    										PR_MESSAGE_TO_ME => true, 
+    										PR_MESSAGE_CC_ME => false, 
+    										PR_MESSAGE_RECIP_ME => false, 
+    										mapi_prop_tag(PT_SYSTIME,     0x6786) => (int)($email->datereceived/86400)*86400, 
+    										mapi_prop_tag(PT_SYSTIME,     0x6787) => (int)($email->datereceived/86400)*86400, 
+    										));
 //		$email->airsyncbasebody->data = w2u(mapi_openproperty($mapimessage, PR_BODY));
 //    	mapi_savechanges($mapimessage);
     }
@@ -1325,9 +1390,9 @@ class ImportContentsChangesICS extends MAPIMapping {
 
     //START ADDED dw2412 Birthday & Anniversary create / update
     function _setLinkedContact($mapimessage) {
-	if (LINKED_APPOINTMENTS==false) return;
-	$linkApp = new linkedAppointment($this->_store);
-	$linkApp->setLinkedContact($mapimessage);
+		if (LINKED_APPOINTMENTS==false) return;
+		$linkApp = new linkedAppointment($this->_store);
+		$linkApp->setLinkedContact($mapimessage);
     }
     //END ADDED dw2412 Birthday & Anniversary create / update
 
@@ -1683,14 +1748,16 @@ class PHPContentsImportProxy extends MAPIMapping {
     var $importer;
 
     // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function PHPContentsImportProxy($session, $store, $folder, &$importer, $truncation, $bodypreference, $mclass=false) {
+    function PHPContentsImportProxy($session, $store, $folder, &$importer, $truncation, $bodypreference, $optionbodypreference, $mimesupport = 0, $mclass=false) {
         $this->_session = $session;
         $this->_store = $store;
         $this->_folderid = $folder;
         $this->importer = &$importer;
         $this->_truncation = $truncation;
         $this->_bodypreference = $bodypreference;
+        $this->_optionbodypreference = $optionbodypreference;
         $this->_mclass = $mclass;
+		$this->_mimesupport = $mimesupport;
 //		debugLog("PHP ContentsImportProxy mclass: ".$mclass);
     }
 
@@ -1715,8 +1782,7 @@ class PHPContentsImportProxy extends MAPIMapping {
         $mapimessage = mapi_msgstore_openentry($this->_store, $entryid);
 
 		// CHANGED dw2412 Support Protocol Version 12 (added $this->_bodypreference)
-        $message = $this->_getMessage($mapimessage, $this->getTruncSize($this->_truncation), $this->_bodypreference);
-		if ($message === false) return SYNC_E_IGNORE;
+        $message = $this->_getMessage($mapimessage, $this->getTruncSize($this->_truncation), $this->_bodypreference, $this->_optionbodypreference, $this->_mimesupport);
 
         // substitute the MAPI SYNC_NEW_MESSAGE flag by a z-push proprietary flag
         if ($flags == SYNC_NEW_MESSAGE) $message->flags = SYNC_NEWMESSAGE;
@@ -1739,13 +1805,22 @@ class PHPContentsImportProxy extends MAPIMapping {
 		$i=0;
         foreach($sourcekeys as $sourcekey) {
 			debugLog("Item ".bin2hex($sourcekey)." should be deleted!");
-            $this->importer->ImportMessageDeletion(bin2hex($sourcekey));
-    	    if ($i<250) {
+/*        	$entryid = mapi_msgstore_entryidfromsourcekey($this->_store, $this->_folderid, $sourcekey);
+        	$mapimessage = mapi_msgstore_openentry($this->_store, $entryid);
+			if ($mapimessage === false) {
+				debugLog("Message really deleted!");
+			} else {
+				debugLog("Message still existing!");
+			}
+*/            $this->importer->ImportMessageDeletion(bin2hex($sourcekey));
+// Since we track messages we ever send to device we don't need this anymore.
+/*    	    if ($i<250) {
     		$i++;
     	    } else {
     		debugLog("Import Message Deletion no 250. Aborting now!");
     		break;
     	    } 
+*/
         }
     }
 
@@ -1763,7 +1838,7 @@ class PHPContentsImportProxy extends MAPIMapping {
     // ------------------------------------------------------------------------------------------------------------
 
     // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function _getMessage($mapimessage, $truncsize, $bodypreference, $mimesupport = 0) {
+    function _getMessage($mapimessage, $truncsize, $bodypreference, $optionbodypreference, $mimesupport = 0) {
 //		debugLog("_getMessage mclass here=".$this->_mclass);
         // Gets the Sync object from a MAPI object according to its message class
 
@@ -1773,11 +1848,10 @@ class PHPContentsImportProxy extends MAPIMapping {
 	    	return false;
 	    if (isset($props[PR_MESSAGE_CLASS])) {
 	        $messageclass = $props[PR_MESSAGE_CLASS];
-	    	if (($this->_mclass === false && $messageclass == 'IPM.Note.Mobile.SMS')) return false;
 	    	if (($this->_mclass == "SMS" && $messageclass != 'IPM.Note.Mobile.SMS')) return false;
         } else
             $messageclass = "IPM";
-		debugLog("_getMessage");
+//		debugLog("_getMessage");
 
 /*        if(isset($props[PR_MESSAGE_CLASS])) 
             $messageclass = $props[PR_MESSAGE_CLASS];
@@ -1785,7 +1859,8 @@ class PHPContentsImportProxy extends MAPIMapping {
             $messageclass = "IPM";
 */
         // CHANGED dw2412 Support Protocol Version 12 (added bodypreference to the _get functions)
-        if(strpos($messageclass,"IPM.StickyNote") === 0)
+        if (strpos($messageclass,"IPM.StickyNote") === 0 ||
+			strpos($messageclass,"IPM.InkNote") === 0)
             return $this->_getNote($mapimessage, $truncsize, $bodypreference, $mimesupport);
         else if(strpos($messageclass,"IPM.Contact") === 0)
             return $this->_getContact($mapimessage, $truncsize, $bodypreference, $mimesupport);
@@ -1794,13 +1869,14 @@ class PHPContentsImportProxy extends MAPIMapping {
         else if(strpos($messageclass,"IPM.Task") === 0)
             return $this->_getTask($mapimessage, $truncsize, $bodypreference, $mimesupport);
         else
-            return $this->_getEmail($mapimessage, $truncsize, $bodypreference, $mimesupport);
+            return $this->_getEmail($mapimessage, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
     }
 
     // Get the right body for sync object
 
-    function _getBody($mapimessage,$message,$truncsize,$bodypreference) {
+    function _getBody($mapimessage,$message,$truncsize,$mimesupport = false, $bodypreference) {
 	// START ADDED dw2412 Support Protocol Version 12 (added bodypreference compare)
+		debugLog("_getBody: MimeSupport is ".$mimesupport);
 		if ($bodypreference == false) {
 	    	$rtf = mapi_message_openproperty($mapimessage, PR_RTF_COMPRESSED);
 		    if (isset($rtf) && $rtf) {
@@ -1936,7 +2012,7 @@ class PHPContentsImportProxy extends MAPIMapping {
         $this->_getPropsFromMAPI($message, $mapimessage, $this->_notemapping);
 
         // Override 'body' for truncation
-		$message = $this->_getBody($mapimessage,$message,$truncsize,$bodypreference);
+		$message = $this->_getBody($mapimessage,$message,$truncsize,$mimesupport,$bodypreference);
 		debugLog(print_r($message,true));
 		return $message;
     }
@@ -1949,7 +2025,7 @@ class PHPContentsImportProxy extends MAPIMapping {
         $this->_getPropsFromMAPI($message, $mapimessage, $this->_contactmapping);
 
         // Override 'body' for truncation
-		$message = $this->_getBody($mapimessage,$message,$truncsize,$bodypreference);
+		$message = $this->_getBody($mapimessage,$message,$truncsize,$mimesupport,$bodypreference);
 
         //check the picture
         $haspic = $this->_getPropIDFromString("PT_BOOLEAN:{00062004-0000-0000-C000-000000000046}:0x8015");
@@ -1981,7 +2057,7 @@ class PHPContentsImportProxy extends MAPIMapping {
         $this->_getPropsFromMAPI($message, $mapimessage, $this->_taskmapping);
 
         // Override 'body' for truncation
-		$message = $this->_getBody($mapimessage,$message,$truncsize,$bodypreference);
+		$message = $this->_getBody($mapimessage,$message,$truncsize,$mimesupport,$bodypreference);
 
         // when set the task to complete using the WebAccess, the dateComplete property is not set correctly
         if ($message->complete == 1 && !isset($message->datecompleted))
@@ -1999,7 +2075,7 @@ class PHPContentsImportProxy extends MAPIMapping {
         $this->_getPropsFromMAPI($message, $mapimessage, $this->_appointmentmapping);
 
         // Override 'body' for truncation
-		$message = $this->_getBody($mapimessage,$message,$truncsize,$bodypreference);
+		$message = $this->_getBody($mapimessage,$message,$truncsize,$mimesupport,$bodypreference);
 
         // Disable reminder if it is off
         $reminderset = $this->_getPropIDFromString("PT_BOOLEAN:{00062008-0000-0000-C000-000000000046}:0x8503");
@@ -2219,7 +2295,7 @@ class PHPContentsImportProxy extends MAPIMapping {
     
     // Get an SyncEmail object
     // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function _getEmail($mapimessage, $truncsize, $bodypreference, $mimesupport = 0) {
+    function _getEmail($mapimessage, $truncsize, $bodypreference, $optionbodypreference, $mimesupport = 0) {
         $messageprops = mapi_getprops($mapimessage, array(PR_MESSAGE_CLASS,PR_LAST_VERB_EXECUTED,PR_LAST_VERB_EXECUTION_TIME,PR_CONVERSATION_INDEX));
 
 		// Destinguish between SMS and eMail Messages. In case we have an SMS to sync
@@ -2227,9 +2303,11 @@ class PHPContentsImportProxy extends MAPIMapping {
 		// We even could create a separate _get function BUT since its Folderclass is email it
 		// makes things easier to work just with one function. Except the Address Handling and 
 		// less fields everything else remains the same
-		if ($messageprops[PR_MESSAGE_CLASS] == 'IPM.Note.Mobile.SMS') 
+		if (strtolower($messageprops[PR_MESSAGE_CLASS]) == 'ipm.note.mobile.sms') {
     	    $message = new SyncSMS();
-		else 
+			if (isset($optionbodypreference) && $optionbodypreference != false) 
+				$bodypreference = $optionbodypreference;
+		} else 
 	   	    $message = new SyncMail();
 		if (isset($messageprops[PR_LAST_VERB_EXECUTED])) {
 	    	switch($messageprops[PR_LAST_VERB_EXECUTED]) {
@@ -2261,6 +2339,7 @@ class PHPContentsImportProxy extends MAPIMapping {
 
         // Override 'body' for truncation
 		// START CHANGED dw2412 Support Protocol Version 12 (added bodypreference compare)
+		debugLog("_getemail: MimeSupport is ".$mimesupport);
 		if ($bodypreference == false) {
 		    $body = mapi_openproperty($mapimessage, PR_BODY);
             $bodysize = strlen($body);
@@ -2297,7 +2376,9 @@ class PHPContentsImportProxy extends MAPIMapping {
 	    };
 	    $message->airsyncbasebody = new SyncAirSyncBaseBody();
 	    debugLog("airsyncbasebody!");
-	    if (isset($bodypreference[4]) && isset($mstream)) {
+	    if (isset($bodypreference[4]) && isset($mstream) &&
+	    	($mimesupport == 2 ||
+	    	($mimesupport == 1 && strtolower(substr($messageprops[PR_MESSAGE_CLASS],0,14)) == 'ipm.note.smime'))) {
            	$mstreamcontent = mapi_stream_read($mstream, MAX_EMBEDDED_SIZE);
 			$message->airsyncbasebody->type = 4;
            	if (isset($bodypreference[4]["TruncationSize"])) {
@@ -2617,122 +2698,82 @@ class PHPContentsImportProxy extends MAPIMapping {
 
         // Add attachments
         $attachtable = mapi_message_getattachmenttable($mapimessage);
-	// START CHANGED dw2412 to contain the Attach Method (needed for eml discovery)
+		// START CHANGED dw2412 to contain the Attach Method (needed for eml discovery)
         $rows = mapi_table_queryallrows($attachtable, array(PR_ATTACH_NUM, PR_ATTACH_METHOD));
-	// END CHANGED dw2412 to contain the Attach Method (needed for eml discovery)
+		// END CHANGED dw2412 to contain the Attach Method (needed for eml discovery)
 
         $n = 1;
         foreach($rows as $row) {
             if(isset($row[PR_ATTACH_NUM])) {
-        	$mapiattach = mapi_message_openattach($mapimessage, $row[PR_ATTACH_NUM]);
-		
-		// CHANGED dw2412 for HTML eMail Inline Attachments...
+    	    	$mapiattach = mapi_message_openattach($mapimessage, $row[PR_ATTACH_NUM]);
+				// CHANGED dw2412 for HTML eMail Inline Attachments...
                 $attachprops = mapi_getprops($mapiattach, array(PR_ATTACH_LONG_FILENAME,PR_ATTACH_FILENAME,PR_DISPLAY_NAME,PR_ATTACH_FLAGS,PR_ATTACH_CONTENT_ID,PR_ATTACH_MIME_TAG));
-                
             	$attach = new SyncAttachment();
-		// START CHANGED dw2412 EML Attachment
+				// START CHANGED dw2412 EML Attachment
                 if ($row[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) {
-		    $stream = buildEMLAttachment($mapiattach);
-		} else {
-	            $stream = mapi_openpropertytostream($mapiattach, PR_ATTACH_DATA_BIN);
+				    $stream = buildEMLAttachment($mapiattach);
+				} else {
+	    	        $stream = mapi_openpropertytostream($mapiattach, PR_ATTACH_DATA_BIN);
                 };
-		// END CHANGED dw2412 EML Attachment
+				// END CHANGED dw2412 EML Attachment
 
-/*                if($stream) {
-                    $stat = mapi_stream_stat($stream);
-
-                    $attach->attsize = $stat["cb"];
-		    $attach->attmethod=1;
-		    // START CHANGED dw2412 EML Attachment
-                    if(isset($attachprops[PR_ATTACH_LONG_FILENAME])) 
-                	$attach->displayname = w2u($attachprops[PR_ATTACH_LONG_FILENAME]);
-            	    else if(isset($attachprops[PR_ATTACH_FILENAME]))
-			$attach->displayname = w2u($attachprops[PR_ATTACH_FILENAME]);
-		    else if(isset($attachprops[PR_DISPLAY_NAME]))
-			$attach->displayname = w2u($attachprops[PR_DISPLAY_NAME]);
-		    else
-			$attach->displayname = w2u("untitled");
-
-        	    if (strlen($attach->displayname) == 0) {
-        		$attach->displayname = "Untitled_".$n;
-        		$n++;
-        	    }
-
-        	    if ($row[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) {
-        		$attach->displayname .= w2u(".eml");
-        		$attach->attmethod=5;
-        	    }
-		    // END CHANGED dw2412 EML Attachment
-
-		    // in case the attachment has got a content id it is an inline one...
-		    if (isset($attachprops[PR_ATTACH_CONTENT_ID])) {
-			$attach->isinline=true;
-			$attach->attmethod=6;
-			$attach->contentid=$attachprops[PR_ATTACH_CONTENT_ID];
-			$attach->contenttype = $attachprops[PR_ATTACH_MIME_TAG];
-		    }
-		    
-                    $attach->attname = bin2hex($this->_folderid) . ":" . bin2hex($sourcekey) . ":" . $row[PR_ATTACH_NUM];
-
-                    if(!isset($message->attachments))
-    	                $message->attachments = array();
-
-            	    array_push($message->attachments, $attach);
-                }
-*/
                 if($stream) {
                     $stat = mapi_stream_stat($stream);
 
                     if(isset($message->_mapping['POOMMAIL:Attachments'])) {
-            		$attach = new SyncAttachment();
+          	  			$attach = new SyncAttachment();
             	    } else if(isset($message->_mapping['AirSyncBase:Attachments'])) {
-            		$attach = new SyncAirSyncBaseAttachment();
+            			$attach = new SyncAirSyncBaseAttachment();
             	    }
 
             	    $attach->attsize = $stat["cb"];
             	    $attach->attname = bin2hex($this->_folderid) . ":" . bin2hex($sourcekey) . ":" . $row[PR_ATTACH_NUM];
-		    // START CHANGED dw2412 EML Attachment
+				    // START CHANGED dw2412 EML Attachment
+
+					debugLog("Mime Tag for attachment='".strtolower(trim($attachprops[PR_ATTACH_MIME_TAG]))."'");
             	    if(isset($attachprops[PR_ATTACH_LONG_FILENAME])) 
-                	$attach->displayname = w2u($attachprops[PR_ATTACH_LONG_FILENAME]);
+        	        	$attach->displayname = w2u($attachprops[PR_ATTACH_LONG_FILENAME]);
             	    else if(isset($attachprops[PR_ATTACH_FILENAME]))
-			$attach->displayname = w2u($attachprops[PR_ATTACH_FILENAME]);
-		    else if(isset($attachprops[PR_DISPLAY_NAME]))
-			$attach->displayname = w2u($attachprops[PR_DISPLAY_NAME]);
-		    else
-			$attach->displayname = w2u("untitled");
+						$attach->displayname = w2u($attachprops[PR_ATTACH_FILENAME]);
+				    else if(isset($attachprops[PR_DISPLAY_NAME]))
+						$attach->displayname = w2u($attachprops[PR_DISPLAY_NAME]);
+				    else if (strtolower(trim($attachprops[PR_ATTACH_MIME_TAG])) == 'multipart/signed') 
+						$attach->displayname = w2u("smime.p7m");
+				    else
+						$attach->displayname = w2u("untitled");
 
-        	    if (strlen($attach->displayname) == 0) {
-        		$attach->displayname = "Untitled_".$n;
-        		$n++;
-        	    }
+        		    if (strlen($attach->displayname) == 0) {
+        				$attach->displayname = "Untitled_".$n;
+		        		$n++;
+        		    }
 
-        	    if ($row[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) $attach->displayname .= w2u(".eml");
-		    // END CHANGED dw2412 EML Attachment
+        		    if ($row[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) $attach->displayname .= w2u(".eml");
+				    // END CHANGED dw2412 EML Attachment
 
-		    // in case the attachment has got a content id it is an inline one...
-		    if (isset($attachprops[PR_ATTACH_CONTENT_ID])) {
-		        $attach->isinline=true;
-		        $attach->method=6;
-		        $attach->contentid=$attachprops[PR_ATTACH_CONTENT_ID];
-		        $attach->contenttype = $attachprops[PR_ATTACH_MIME_TAG];
-		    } else {
-			$attach->attmethod = 1;
-		    }
+				    // in case the attachment has got a content id it is an inline one...
+				    if (isset($attachprops[PR_ATTACH_CONTENT_ID])) {
+				        $attach->isinline=true;
+				        $attach->method=6;
+				        $attach->contentid=$attachprops[PR_ATTACH_CONTENT_ID];
+				        $attach->contenttype = $attachprops[PR_ATTACH_MIME_TAG];
+				    } else {
+						$attach->attmethod = 1;
+				    }
 
                     if(isset($message->_mapping['POOMMAIL:Attachments'])) {
-			if (!isset($message->attachments) ||
-			    !is_array($message->attachments)) 
-			    $message->attachments = array();
-            		array_push($message->attachments, $attach);
-		    } else if(isset($message->_mapping['AirSyncBase:Attachments'])) {
-			if (!isset($message->airsyncbaseattachments) ||
-			    !is_array($message->airsyncbaseattachments)) 
-			    $message->airsyncbaseattachments = array();
-            		array_push($message->airsyncbaseattachments, $attach);
-		    }
-                }
-            }
-        }
+						if (!isset($message->attachments) ||
+						    !is_array($message->attachments)) 
+						    $message->attachments = array();
+		            		array_push($message->attachments, $attach);
+					} else if(isset($message->_mapping['AirSyncBase:Attachments'])) {
+						if (!isset($message->airsyncbaseattachments) ||
+						    !is_array($message->airsyncbaseattachments)) 
+						    $message->airsyncbaseattachments = array();
+		            	array_push($message->airsyncbaseattachments, $attach);
+					}
+				}
+			}
+		}
 
         // Get To/Cc as SMTP addresses (this is different from displayto and displaycc because we are putting
         // in the SMTP addresses as well, while displayto and displaycc could just contain the display names
@@ -3033,18 +3074,19 @@ class ExportChangesICS  {
     }
 
     // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function Config(&$importer, $mclass, $restrict, $syncstate, $flags, $truncation, $bodypreference) {
+    function Config(&$importer, $mclass, $restrict, $syncstate, $flags, $truncation, $bodypreference, $optionbodypreference, $mimesupport = 0) {
         // Because we're using ICS, we need to wrap the given importer to make it suitable to pass
         // to ICS. We do this in two steps: first, wrap the importer with our own PHP importer class
         // which removes all MAPI dependency, and then wrap that class with a C++ wrapper so we can
         // pass it to ICS
         $exporterflags = 0;
 
+//		debugLog("Importer: ".$importer. " mclass: ".$mclass." restrict: ".$restrict." syncstate: ".bin2hex($syncstate)." flags: ".$flags." truncation: ".$truncation. " bodypreference: ".$bodypreference);
         if($this->_folderid) {
             // PHP wrapper
 	    	// CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
 //	    	debugLog("Config: mclass=".$mclass);
-            $phpimportproxy = new PHPContentsImportProxy($this->_session, $this->_store, $this->_folderid, $importer, $truncation, $bodypreference, $mclass);
+            $phpimportproxy = new PHPContentsImportProxy($this->_session, $this->_store, $this->_folderid, $importer, $truncation, $bodypreference, $optionbodypreference, $mimesupport, $mclass);
             // ICS c++ wrapper
             $mapiimporter = mapi_wrap_importcontentschanges($phpimportproxy);
             $exporterflags |= SYNC_NORMAL | SYNC_READ_STATE;
@@ -3053,7 +3095,7 @@ class ExportChangesICS  {
             // we check the change ID of the syncstate (0 at initial sync) 
             // On subsequent syncs, we do want to receive delete events.
             if(strlen($syncstate) == 0 || bin2hex(substr($syncstate,4,4)) == "00000000") {
-                debugLog("synching inital data");
+//                debugLog("syncing inital data");
 				$exporterflags |= SYNC_NO_SOFT_DELETIONS | SYNC_NO_DELETIONS;
             }
 			$msgstore_props = mapi_getprops($this->_store, array(PR_IPM_OUTBOX_ENTRYID));
@@ -3235,7 +3277,7 @@ class ExportChangesICS  {
 
         return $restriction;
     }
-    
+
     function _getEmailRestriction($timestamp) {
         $restriction = array ( RES_PROPERTY,
                           array (    RELOP => RELOP_GE,
@@ -3420,6 +3462,7 @@ class BackendICS {
         $this->_importedFolders = array();
 
         debugLog("User $user logged on");
+		$this->_isUnicodeStore();
         return true;
     }
 
@@ -4031,9 +4074,9 @@ class BackendICS {
 		$props = mapi_getprops($message, array(PR_PARENT_SOURCE_KEY));
 
         // Fake a contents importer because it can do the conversion for us
-        $importer = new PHPContentsImportProxy($this->_session, $this->_defaultstore, $props[PR_PARENT_SOURCE_KEY], $dummy, SYNC_TRUNCATION_ALL, $bodypreference);
+        $importer = new PHPContentsImportProxy($this->_session, $this->_defaultstore, $props[PR_PARENT_SOURCE_KEY], $dummy, SYNC_TRUNCATION_ALL, $bodypreference, false, $mimesupport);
 
-        return $importer->_getMessage($message, 1024*1024, $bodypreference,$mimesupport); // Get 1MB of body size
+        return $importer->_getMessage($message, 1024*1024, $bodypreference, false, $mimesupport); // Get 1MB of body size
     }
 
     function ItemOperationsGetAttachmentData($attname) {
@@ -4051,7 +4094,7 @@ class BackendICS {
             return false;
         }
 
-        $importer = new PHPContentsImportProxy($this->_session, $this->_defaultstore, $foldersourcekey, $dummy, SYNC_TRUNCATION_ALL, false);
+        $importer = new PHPContentsImportProxy($this->_session, $this->_defaultstore, $foldersourcekey, $dummy, SYNC_TRUNCATION_ALL, false, false, false);
 
         $message = mapi_msgstore_openentry($this->_defaultstore, $entryid);
         if(!$message) {
@@ -4144,14 +4187,14 @@ class BackendICS {
 
     function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {
         if (WBXML_DEBUG === true &&
-    	    $protocolversion < 14.0)
+    	    $protocolversion <= 14.0)
             debugLog("SendMail: task ".$smartdata['task']." itemid: ".(isset($smartdata['itemid']) ? $smartdata['itemid'] : "")." parent: ".(isset($smartdata['folderid']) ? $smartdata['folderid'] : "")."\n" . $rfc822);
 
         $mimeParams = array('decode_headers' => false,
                             'decode_bodies' => true,
                             'include_bodies' => true,
 					        'charset' => 'utf-8');
-        
+
         $mimeObject = new Mail_mimeDecode($rfc822);
         $message = $mimeObject->decode($mimeParams);
 
@@ -4173,7 +4216,7 @@ class BackendICS {
         mapi_setprops($mapimessage, array(
     	    PR_SUBJECT => u2w($mimeObject->_decodeHeader(isset($message->headers["subject"])?$message->headers["subject"]:"")),
             PR_SENTMAIL_ENTRYID => $storeprops[PR_IPM_SENTMAIL_ENTRYID],
-            PR_MESSAGE_CLASS => "IPM.Note",
+            PR_MESSAGE_CLASS => 'IPM.Note',
             PR_MESSAGE_DELIVERY_TIME => time()
         ));
 
@@ -4235,17 +4278,17 @@ class BackendICS {
         // Loop through message subparts.
         $body = "";
         $body_html = "";
-        if($message->ctype_primary == "multipart" && ($message->ctype_secondary == "mixed" || $message->ctype_secondary == "alternative")) {
+        if($message->ctype_primary == "multipart" && ($message->ctype_secondary == "signed" || $message->ctype_secondary == "mixed" || $message->ctype_secondary == "alternative")) {
     	    $mparts = $message->parts;
             for($i=0; $i<count($mparts); $i++) {
             	$part = $mparts[$i];
 
-	        // palm pre & iPhone send forwarded messages in another subpart which are also parsed
-	        if($part->ctype_primary == "multipart" && ($part->ctype_secondary == "mixed" || $part->ctype_secondary == "alternative"  || $part->ctype_secondary == "related")) {
-	    	    foreach($part->parts as $spart)
-	    		$mparts[] = $spart;
-	    	    continue;
-	    	}
+	        	// palm pre & iPhone send forwarded messages in another subpart which are also parsed
+		        if($part->ctype_primary == "multipart" && ($part->ctype_secondary == "mixed" || $part->ctype_secondary == "alternative"  || $part->ctype_secondary == "related")) {
+		    	    foreach($part->parts as $spart)
+	    				$mparts[] = $spart;
+	    	    	continue;
+		    	}
 
             	// standard body
             	if($part->ctype_primary == "text" && $part->ctype_secondary == "plain" && isset($part->body) && (!isset($part->disposition) || $part->disposition != "attachment")) {
@@ -4266,13 +4309,13 @@ class BackendICS {
                         if (isset($mapiprops[$tnefrecurr])) {
                             $this->_handleRecurringItem($mapimessage, $mapiprops);
                         }
-			debugLog(print_r($mapiprops,true));
+						debugLog(print_r($mapiprops,true));
                         mapi_setprops($mapimessage, $mapiprops);
                     }
                     else debugLog("TNEF: Mapi props array was empty");
                 }
 
-		// iCalendar 
+				// iCalendar 
                 elseif($part->ctype_primary == "text" && $part->ctype_secondary == "calendar") {
                     $zpical = new ZPush_ical($this->_defaultstore);
                     $mapiprops = array();
@@ -4280,13 +4323,13 @@ class BackendICS {
 
                     // iPhone sends a second ICS which we ignore if we can
                     if (!isset($mapiprops[PR_MESSAGE_CLASS]) && strlen(trim($body)) == 0) {
-                	debugLog("Secondary iPhone response is being ignored!! Mail dropped!");
-                	return true;
+        	        	debugLog("Secondary iPhone response is being ignored!! Mail dropped!");
+            	    	return true;
                     }
 
                     if (!checkMapiExtVersion("6.30") && is_array($mapiprops) && !empty($mapiprops)) {
                          mapi_setprops($mapimessage, $mapiprops);
-                     }
+                    }
                     else {
                         // store ics as attachment
                         $this->_storeAttachment($mapimessage, $part);
@@ -4295,42 +4338,67 @@ class BackendICS {
 
                 }
 
-		// dw2412 iCalendar Nokia Nokia MfE sends secondary type x-vCalendar
+				// dw2412 iCalendar Nokia Nokia MfE sends secondary type x-vCalendar
                 elseif($part->ctype_primary == "text" && $part->ctype_secondary == "x-vCalendar") {
                     $zpical = new ZPush_ical($this->_defaultstore);
                     $mapiprops = array();
                     $zpical->extractProps($part->body, $mapiprops);
 
                     if (is_array($mapiprops) && !empty($mapiprops)) {
-			// dw2412 Nokia sends incomplete iCal calendar item, so we have to add properties like 
-			// message class and icon index
-			if ((isset($mapiprops[PR_MESSAGE_CLASS]) &&
-			    $mapiprops[PR_MESSAGE_CLASS] == "IPM.Note") ||
-			    !isset($mapiprops[PR_MESSAGE_CLASS])) {
-			    $mapiprops[PR_ICON_INDEX] = 0x404;
-			    $mapiprops[PR_OWNER_APPT_ID] = 0;
-			    $mapiprops[PR_MESSAGE_CLASS] = "IPM.Schedule.Meeting.Request";
-                        };
+						// dw2412 Nokia sends incomplete iCal calendar item, so we have to add properties like 
+						// message class and icon index
+						if ((isset($mapiprops[PR_MESSAGE_CLASS]) &&
+						    $mapiprops[PR_MESSAGE_CLASS] == "IPM.Note") ||
+						    !isset($mapiprops[PR_MESSAGE_CLASS])) {
+						    $mapiprops[PR_ICON_INDEX] = 0x404;
+						    $mapiprops[PR_OWNER_APPT_ID] = 0;
+						    $mapiprops[PR_MESSAGE_CLASS] = "IPM.Schedule.Meeting.Request";
+			            };
                         // dw2412 Nokia sends no location information field in case user did not type in some
                         // thing in this field...
-			$namedIntentedBusyStatus = GetPropIDFromString($this->_defaultstore, "PT_LONG:{00062002-0000-0000-C000-000000000046}:8224");
-			if (!isset($mapiprops[$namedIntentedBusyStatus])) $mapiprops[$namedIntentedBusyStatus] = 0;
+						$namedIntentedBusyStatus = GetPropIDFromString($this->_defaultstore, "PT_LONG:{00062002-0000-0000-C000-000000000046}:8224");
+						if (!isset($mapiprops[$namedIntentedBusyStatus])) $mapiprops[$namedIntentedBusyStatus] = 0;
                         $namedLocation = GetPropIDFromString($this->_defaultstore, "PT_STRING8:{00062002-0000-0000-C000-000000000046}:0x8208");
-			if (!isset($mapiprops[$namedLocation])) $mapiprops[$namedLocation] = "";
+						if (!isset($mapiprops[$namedLocation])) $mapiprops[$namedLocation] = "";
                         $tnefLocation = GetPropIDFromString($this->_defaultstore, "PT_STRING8:{6ED8DA90-450B-101B-98DA-00AA003F1305}:0x2");
-			if (!isset($mapiprops[$tnefLocation])) $mapiprops[$tnefLocation] = "";
-    			$useTNEF = GetPropIDFromString($this->_defaultstore, "PT_BOOLEAN:{00062008-0000-0000-C000-000000000046}:0x8582");
-    			$mapiprops[$useTNEF] = true;
-                        mapi_setprops($mapimessage, $mapiprops);
+						if (!isset($mapiprops[$tnefLocation])) $mapiprops[$tnefLocation] = "";
+			   			$useTNEF = GetPropIDFromString($this->_defaultstore, "PT_BOOLEAN:{00062008-0000-0000-C000-000000000046}:0x8582");
+			   			$mapiprops[$useTNEF] = true;
                     }
                     else debugLog("ICAL: Mapi props array was empty");
                 }
-		// any other type, store as attachment
+				elseif($part->ctype_primary == 'application' && $part->ctype_secondary == 'x-pkcs7-signature') {
+					$rfc822_p7m = $this->_rfc822tosmimep7m($rfc822);
+
+        			$smimepart = (object) array('ctype_primary' => 'multipart',
+        										'ctype_secondary' => 'signed',
+        										'body' => $rfc822_p7m);
+					debugLog(print_r($smimepart,true));
+					$mapiprops = array();
+					$mapiprops[PR_MESSAGE_CLASS] = "IPM.Note.SMIME.MultipartSigned";
+					$hideattachments = GetPropIDFromString($this->_defaultstore, "PT_BOOLEAN:{00062008-0000-0000-C000-000000000046}:0x8514");
+					$mapiprops[$hideattachments] = true;
+                    mapi_setprops($mapimessage, $mapiprops);
+                    $this->_storeAttachment($mapimessage, $smimepart);
+				}
+				// any other type, store as attachment
                 else
                     $this->_storeAttachment($mapimessage, $part);
             }
         } else {
-	    // start dw2412 handle windows mobile html replies...
+		    // start dw2412 handle smime encrypted emails...
+			if ($message->ctype_primary == "application" && $message->ctype_secondary == "x-pkcs7-mime") {
+				$mapiprops = array();
+				$mapiprops[PR_MESSAGE_CLASS] = "IPM.Note.SMIME";
+				$hideattachments = GetPropIDFromString($this->_defaultstore, "PT_BOOLEAN:{00062008-0000-0000-C000-000000000046}:0x8514");
+				$mapiprops[$hideattachments] = true;
+				$mapicontenttype = mapi_prop_tag(PT_STRING8, 0x85E8);
+				$mapiprops[$mapicontenttype] = $message->headers['content-type'];
+                mapi_setprops($mapimessage, $mapiprops);
+                $this->_storeAttachment($mapimessage, $message);
+            }
+			// end dw2412 handle encrypted emails
+		    // start dw2412 handle windows mobile html replies...
             // standard body
             if($message->ctype_primary == "text" && $message->ctype_secondary == "plain" && isset($message->body) && (!isset($message->disposition) || $message->disposition != "attachment")) {
                 $body = u2w($message->body); // assume only one text body
@@ -4339,7 +4407,7 @@ class BackendICS {
             elseif($message->ctype_primary == "text" && $message->ctype_secondary == "html") {
                 $body_html = u2w($message->body);
             }
-	    // end dw2412 handle windows mobile html replies...
+		    // end dw2412 handle windows mobile html replies...
             // $body = u2w($message->body);
         }
 
@@ -4349,35 +4417,35 @@ class BackendICS {
             $body = strip_tags($body_html);
         }
 
-	// START ADDED dw2412 update/create conversation index
-	$conversationindex = false;
-	// END ADDED dw2412 update/create conversation index
+		// START ADDED dw2412 update/create conversation index
+		$conversationindex = false;
+		// END ADDED dw2412 update/create conversation index
         if(isset($smartdata['itemid']) && $smartdata['itemid']) {
             // Append the original text body for reply/forward
             $entryid = mapi_msgstore_entryidfromsourcekey($this->_defaultstore, hex2bin($smartdata['folderid']), hex2bin($smartdata['itemid']));
             $fwmessage = mapi_msgstore_openentry($this->_defaultstore, $entryid);
 
             if($fwmessage) {
-		// START CHANGED dw2412 LAST Verb Exec Props included
+				// START CHANGED dw2412 LAST Verb Exec Props included
                 //update icon when forwarding or replying message
                 if ($smartdata['task'] == 'forward') {
-		    mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x68, PR_LAST_VERB_EXECUTION_TIME => time()));
+				    mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x68, PR_LAST_VERB_EXECUTION_TIME => time()));
             	    mapi_setprops($fwmessage, array(PR_ICON_INDEX=>262));
             	} elseif ($smartdata['task'] == 'reply') {
-		    // START ADDED dw2412 update/create conversation index
-		    $fwmessageprops = mapi_getprops($fwmessage, array(PR_CONVERSATION_INDEX));
-		    if (isset($fwmessageprops[PR_CONVERSATION_INDEX])) 
-			$conversationindex = $fwmessageprops[PR_CONVERSATION_INDEX];
-		    // END ADDED dw2412 update/create conversation index
-		    if (sizeof($recips) > 1)
-		        mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x67, PR_LAST_VERB_EXECUTION_TIME => time()));
-		    else 
-			mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x66, PR_LAST_VERB_EXECUTION_TIME => time()));
-            	    mapi_setprops($fwmessage, array(PR_ICON_INDEX=>261));
-            	} else {
-		    mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x000, PR_LAST_VERB_EXECUTION_TIME => time()));
+		   	 		// START ADDED dw2412 update/create conversation index
+			    	$fwmessageprops = mapi_getprops($fwmessage, array(PR_CONVERSATION_INDEX));
+			    	if (isset($fwmessageprops[PR_CONVERSATION_INDEX])) 
+						$conversationindex = $fwmessageprops[PR_CONVERSATION_INDEX];
+			  		// END ADDED dw2412 update/create conversation index
+			    	if (sizeof($recips) > 1)
+			        	mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x67, PR_LAST_VERB_EXECUTION_TIME => time()));
+			    	else 
+						mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x66, PR_LAST_VERB_EXECUTION_TIME => time()));
+           	    	mapi_setprops($fwmessage, array(PR_ICON_INDEX=>261));
+           		} else {
+				    mapi_setprops($fwmessage, array(PR_LAST_VERB_EXECUTED => 0x000, PR_LAST_VERB_EXECUTION_TIME => time()));
             	}
-		// END CHANGED dw2412 LAST Verb Exec Props included
+				// END CHANGED dw2412 LAST Verb Exec Props included
 
                 mapi_savechanges($fwmessage);
 
@@ -4400,7 +4468,7 @@ class BackendICS {
                         break;
                     $fwbody_html .= $data;
                 }
-                                
+
                 $stream = mapi_openproperty($fwmessage, PR_HTML, IID_IStream, 0, 0);
                 $fwbody_html = "";
 
@@ -4411,8 +4479,8 @@ class BackendICS {
                     $fwbody_html .= $data;
                 }
 
-		// dw2412 Enable this only in case of AS2.5 Protocol... in AS12 this seem 
-		// being done already by winmobile client.
+				// dw2412 Enable this only in case of AS2.5 Protocol... in AS12 this seem 
+				// being done already by winmobile client.
                 if($smartdata['task'] == 'forward' && $protocolversion<=2.5) {
                     // During a forward, we have to add the forward header ourselves. This is because
                     // normally the forwarded message is added as an attachment. However, we don't want this
@@ -4493,20 +4561,20 @@ class BackendICS {
             }
         }
 
-	// START ADDED dw2412 update/create conversation index
-	if (CONVERSATIONINDEX == true) {
-	    $ci = new ConversationIndex();
+		// START ADDED dw2412 update/create conversation index
+		if (CONVERSATIONINDEX == true) {
+		    $ci = new ConversationIndex();
 
-	    if ($conversationindex) {
-		$ci->Decode($conversationindex);
-		$ci->Update();
-	    } else {
-		$ci->Create();
-	    }
+		    if ($conversationindex) {
+				$ci->Decode($conversationindex);
+				$ci->Update();
+		    } else {
+				$ci->Create();
+		    }
     	    mapi_setprops($mapimessage, array(PR_CONVERSATION_INDEX => $ci->Encode()));
-	}
-	// END ADDED dw2412 update/create conversation index
-	
+		}
+		// END ADDED dw2412 update/create conversation index
+
         mapi_setprops($mapimessage, array(PR_BODY => $body));
 
         if(strlen($body_html) > 0){
@@ -4518,14 +4586,14 @@ class BackendICS {
         return true;
     }
 
-    function Fetch($folderid, $id, $bodypreference=false, $mimesupport = 0) {
+    function Fetch($folderid, $id, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0) {
         $foldersourcekey = hex2bin($folderid);
         $messagesourcekey = hex2bin($id);
 
         $dummy = false;
 
         // Fake a contents importer because it can do the conversion for us
-        $importer = new PHPContentsImportProxy($this->_session, $this->_defaultstore, $foldersourcekey, $dummy, SYNC_TRUNCATION_ALL, $bodypreference);
+        $importer = new PHPContentsImportProxy($this->_session, $this->_defaultstore, $foldersourcekey, $dummy, SYNC_TRUNCATION_ALL, $bodypreference, $optionbodypreference, $mimesupport);
 
         $entryid = mapi_msgstore_entryidfromsourcekey($this->_defaultstore, $foldersourcekey, $messagesourcekey);
         if(!$entryid) {
@@ -4539,7 +4607,7 @@ class BackendICS {
             return false;
         }
 
-        return $importer->_getMessage($message, 1024*1024, $bodypreference, $mimesupport); // Get 1MB of body size
+        return $importer->_getMessage($message, 1024*1024, $bodypreference, $optionbodypreference, $mimesupport); // Get 1MB of body size
     }
 
     function GetWasteBasket() {
@@ -4573,21 +4641,21 @@ class BackendICS {
             debugLog("Unable to open attachment number $attachnum");
             return false;
         }
-        
+
         $attachtable = mapi_message_getattachmenttable($message);
-	// START CHANGED dw2412 EML Attachment
+		// START CHANGED dw2412 EML Attachment
         $rows = mapi_table_queryallrows($attachtable, array(PR_ATTACH_NUM, PR_ATTACH_METHOD));
         foreach($rows as $row) {
     	    if (isset($row[PR_ATTACH_NUM]) && $row[PR_ATTACH_NUM] == $attachnum) {
-    		if ($row[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) {
-		    $stream = buildEMLAttachment($attach);
-		} else {
-		    $stream = mapi_openpropertytostream($attach, PR_ATTACH_DATA_BIN);
-    		};
+    			if ($row[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) {
+				    $stream = buildEMLAttachment($attach);
+				} else {
+		    		$stream = mapi_openpropertytostream($attach, PR_ATTACH_DATA_BIN);
+    			};
     	    };
         };
-	// END CHANGED dw2412 EML Attachment
-        
+		// END CHANGED dw2412 EML Attachment
+
         if(!$stream) {
             debugLog("Unable to open attachment data stream");
             return false;
@@ -4636,7 +4704,7 @@ class BackendICS {
                 $newentryid = $meetingrequest->doAccept(true, false, $meetingrequest->isInCalendar());
                 break;
             default:      // dw2412 accept = default = 1 // 
-		$newentryid = $meetingrequest->doAccept(false, false, $meetingrequest->isInCalendar());
+				$newentryid = $meetingrequest->doAccept(false, false, $meetingrequest->isInCalendar());
                 break;
         }
 
@@ -4648,54 +4716,54 @@ class BackendICS {
         // the one found by the globalobjid of the original message that we use to find the Source_Key of the 
         // appointment created by Outlook - otherwise we have two appointments on mobile device.
         // This is why I do the below things to overcome the problem... 
-	if ($newentryid === false && $response != 3) {
-	    debugLog("doAccept EntryID == false $response");
+		if ($newentryid === false && $response != 3) {
+		    debugLog("doAccept EntryID == false $response");
 
-	    $namedgoid = GetPropIDFromString($this->_defaultstore, "PT_BINARY:{6ED8DA90-450B-101B-98DA-00AA003F1305}:0x3");
-	    $namedgoid2 = GetPropIDFromString($this->_defaultstore, "PT_BINARY:{6ED8DA90-450B-101B-98DA-00AA003F1305}:0x23");
+		    $namedgoid = GetPropIDFromString($this->_defaultstore, "PT_BINARY:{6ED8DA90-450B-101B-98DA-00AA003F1305}:0x3");
+		    $namedgoid2 = GetPropIDFromString($this->_defaultstore, "PT_BINARY:{6ED8DA90-450B-101B-98DA-00AA003F1305}:0x23");
 
-	    $messageprops = mapi_getprops($mapimessage, Array($namedgoid, $namedgoid2, PR_OWNER_APPT_ID));
-	    $goid2 = $messageprops[$namedgoid2];
-	    if(isset($messageprops[PR_OWNER_APPT_ID]))
-    		$apptid = $messageprops[PR_OWNER_APPT_ID];
-    	    else
-        	$apptid = false;
+		    $messageprops = mapi_getprops($mapimessage, Array($namedgoid, $namedgoid2, PR_OWNER_APPT_ID));
+		    $goid2 = $messageprops[$namedgoid2];
+		    if(isset($messageprops[PR_OWNER_APPT_ID]))
+    			$apptid = $messageprops[PR_OWNER_APPT_ID];
+	        else
+    	    	$apptid = false;
 
-	    $basedate = $meetingrequest->getBasedateFromGlobalID($messageprops[$namedgoid]);
-	    /**
-	     * If basedate is found in globalID, then there are two possibilities.
-	     * case 1) User has only this occurrence OR
-	     * case 2) User has recurring item and has received an update for an occurrence
-	     */
-	    if ($basedate) {
-		// First try with GlobalID(0x3) (case 1)
-		$entryid = $meetingrequest->findCalendarItems($messageprops[$namedgoid], $apptid);
-		// If not found then try with CleanGlobalID(0x23) (case 2)
-		if (!is_array($entryid))
-		    $entryid = $meetingrequest->findCalendarItems($goid2, $apptid);
-	    } else {
-		$entryid = $meetingrequest->findCalendarItems($goid2, $apptid);
-	    }
-	    $newentryid = $entryid[0];
-	    debugLog("New EntryID from our try to find it by globalid ".bin2hex($newentryid));
-    
-	    // Now just update the appointment item since otherwise it remains always tentative...
-    	    $newitem = mapi_msgstore_openentry($this->_defaultstore, $newentryid);
-	    mapi_setprops($newitem, array(
-		    GetPropIDFromString($this->_defaultstore,"PT_LONG:{00062002-0000-0000-C000-000000000046}:0x8205") => (($response == 2) ? 1 : 2),
-		    GetPropIDFromString($this->_defaultstore,"PT_LONG:{00062002-0000-0000-C000-000000000046}:0x8218") => (($response == 2) ? olResponseTentative : olResponseAccepted)
-		    ));
-	    mapi_savechanges($newitem);
-	} else {
-	    debugLog("New EntryID from doAccept ".bin2hex($newentryid));
-	}
+		    $basedate = $meetingrequest->getBasedateFromGlobalID($messageprops[$namedgoid]);
+		    /**
+		     * If basedate is found in globalID, then there are two possibilities.
+		     * case 1) User has only this occurrence OR
+		     * case 2) User has recurring item and has received an update for an occurrence
+		     */
+		    if ($basedate) {
+				// First try with GlobalID(0x3) (case 1)
+				$entryid = $meetingrequest->findCalendarItems($messageprops[$namedgoid], $apptid);
+				// If not found then try with CleanGlobalID(0x23) (case 2)
+				if (!is_array($entryid))
+				    $entryid = $meetingrequest->findCalendarItems($goid2, $apptid);
+			} else {
+				$entryid = $meetingrequest->findCalendarItems($goid2, $apptid);
+			}
+			$newentryid = $entryid[0];
+			debugLog("New EntryID from our try to find it by globalid ".bin2hex($newentryid));
 
-    	$newitem = mapi_msgstore_openentry($this->_defaultstore, $newentryid);
-	$newprops = mapi_getprops($newitem, array(PR_SOURCE_KEY));
+			// Now just update the appointment item since otherwise it remains always tentative...
+	    	$newitem = mapi_msgstore_openentry($this->_defaultstore, $newentryid);
+			mapi_setprops($newitem, array(
+					    GetPropIDFromString($this->_defaultstore,"PT_LONG:{00062002-0000-0000-C000-000000000046}:0x8205") => (($response == 2) ? 1 : 2),
+					    GetPropIDFromString($this->_defaultstore,"PT_LONG:{00062002-0000-0000-C000-000000000046}:0x8218") => (($response == 2) ? olResponseTentative : olResponseAccepted)
+			));
+			mapi_savechanges($newitem);
+		} else {
+			debugLog("New EntryID from doAccept ".bin2hex($newentryid));
+		}
 
-        $calendarid = bin2hex($newprops[PR_SOURCE_KEY]);
+	    $newitem = mapi_msgstore_openentry($this->_defaultstore, $newentryid);
+		$newprops = mapi_getprops($newitem, array(PR_SOURCE_KEY));
 
-        return true;
+	    $calendarid = bin2hex($newprops[PR_SOURCE_KEY]);
+
+	    return true;
     }
 
 
@@ -4766,48 +4834,46 @@ class BackendICS {
                    debugLog("found other calendar entryid");
                 }
         }
-        
-        
+
         // delete meeting request from Inbox
         $folderentryid = mapi_msgstore_entryidfromsourcekey($this->_defaultstore, hex2bin($folderid));
         $folder = mapi_msgstore_openentry($this->_defaultstore, $folderentryid);
         mapi_folder_deletemessages($folder, array($reqentryid), 0);
-        
+
         return true;
     }
 
     // START ADDED dw2412 Settings Support
-    function setSettings($request,$devid) 
-    {
-	if (isset($request["oof"])) {
-	    if ($request["oof"]["oofstate"] == 1) {
-		foreach ($request["oof"]["oofmsgs"] as $oofmsg) {
-		    switch ($oofmsg["appliesto"]) {
-			case SYNC_SETTINGS_APPLIESTOINTERNAL :  
-			    $result = mapi_setprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE_MSG 		=> u2w(isset($oofmsg["replymessage"]) ? $oofmsg["replymessage"] : ""),
-			    					    		PR_EC_OUTOFOFFICE_SUBJECT 	=> u2w(_("Out of office notification"))));
-			    break;
+    function setSettings($request,$devid) {
+		if (isset($request["oof"])) {
+		    if ($request["oof"]["oofstate"] == 1) {
+				foreach ($request["oof"]["oofmsgs"] as $oofmsg) {
+				    switch ($oofmsg["appliesto"]) {
+						case SYNC_SETTINGS_APPLIESTOINTERNAL :  
+						    $result = mapi_setprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE_MSG 		=> u2w(isset($oofmsg["replymessage"]) ? $oofmsg["replymessage"] : ""),
+											    					    		PR_EC_OUTOFOFFICE_SUBJECT 	=> u2w(_("Out of office notification"))));
+					    break;
+				    }
+				}
+				$response["oof"]["status"] = mapi_setprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE => $request["oof"]["oofstate"] == 1 ? true : false)); 
+		    } else {
+				$response["oof"]["status"] = mapi_setprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE => $request["oof"]["oofstate"] == 1 ? true : false)); 
 		    }
 		}
-		$response["oof"]["status"] = mapi_setprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE => $request["oof"]["oofstate"] == 1 ? true : false)); 
-	    } else {
-		$response["oof"]["status"] = mapi_setprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE => $request["oof"]["oofstate"] == 1 ? true : false)); 
-	    }
-	}
-	if (isset($request["deviceinformation"])) {
-	    if ($this->_defaultstore !== false) {
+		if (isset($request["deviceinformation"])) {
+		    if ($this->_defaultstore !== false) {
         	//get devices settings from store
-		$props=array();
-		$props[SYNC_SETTINGS_MODEL] = mapi_prop_tag(PT_MV_STRING8,  0x6890);
-		$props[SYNC_SETTINGS_IMEI] =  mapi_prop_tag(PT_MV_STRING8,  0x6891);
-    		$props[SYNC_SETTINGS_FRIENDLYNAME] = mapi_prop_tag(PT_MV_STRING8,  0x6892);
-		$props[SYNC_SETTINGS_OS] = mapi_prop_tag(PT_MV_STRING8,  0x6893);
-		$props[SYNC_SETTINGS_OSLANGUAGE] = mapi_prop_tag(PT_MV_STRING8,  0x6894);
-	        $props[SYNC_SETTINGS_PHONENUMBER] = mapi_prop_tag(PT_MV_STRING8,  0x6895);
-		$props[SYNC_SETTINGS_USERAGENT] = mapi_prop_tag(PT_MV_STRING8,  0x6896);
-		$props[SYNC_SETTINGS_ENABLEOUTBOUNDSMS] = mapi_prop_tag(PT_MV_STRING8,  0x6897);
-		$props[SYNC_SETTINGS_MOBILEOPERATOR] = mapi_prop_tag(PT_MV_STRING8,  0x6898);
-        	$sprops = mapi_getprops($this->_defaultstore, array(0x6881101E,
+				$props=array();
+				$props[SYNC_SETTINGS_MODEL] = mapi_prop_tag(PT_MV_STRING8,  0x6890);
+				$props[SYNC_SETTINGS_IMEI] =  mapi_prop_tag(PT_MV_STRING8,  0x6891);
+	    		$props[SYNC_SETTINGS_FRIENDLYNAME] = mapi_prop_tag(PT_MV_STRING8,  0x6892);
+				$props[SYNC_SETTINGS_OS] = mapi_prop_tag(PT_MV_STRING8,  0x6893);
+				$props[SYNC_SETTINGS_OSLANGUAGE] = mapi_prop_tag(PT_MV_STRING8,  0x6894);
+		        $props[SYNC_SETTINGS_PHONENUMBER] = mapi_prop_tag(PT_MV_STRING8,  0x6895);
+				$props[SYNC_SETTINGS_USERAGENT] = mapi_prop_tag(PT_MV_STRING8,  0x6896);
+				$props[SYNC_SETTINGS_ENABLEOUTBOUNDSMS] = mapi_prop_tag(PT_MV_STRING8,  0x6897);
+				$props[SYNC_SETTINGS_MOBILEOPERATOR] = mapi_prop_tag(PT_MV_STRING8,  0x6898);
+	        	$sprops = mapi_getprops($this->_defaultstore, array(0x6881101E,
         							    $props[SYNC_SETTINGS_MODEL],
         							    $props[SYNC_SETTINGS_IMEI],
         							    $props[SYNC_SETTINGS_FRIENDLYNAME],
@@ -4818,113 +4884,344 @@ class BackendICS {
         							    $props[SYNC_SETTINGS_ENABLEOUTBOUNDSMS],
         							    $props[SYNC_SETTINGS_MOBILEOPERATOR]
         							    ));
-		//try to find index of current device
-        	$ak = array_search($devid, $sprops[0x6881101E]);
-		// Set undefined properties to the amount of known device ids
+				//try to find index of current device
+	        	$ak = array_search($devid, $sprops[0x6881101E]);
+				// Set undefined properties to the amount of known device ids
             	foreach($props as $key => $value) {
-		    if (!isset($sprops[$value])) {
-			for ($i=0;$i<sizeof($sprops[0x6881101E]);$i++) {
-			    $sprops[$value][] = "undefined";
-			}
-		    }
-		}
-        	if ($ak !== false) {
+				    if (!isset($sprops[$value])) {
+						for ($i=0;$i<sizeof($sprops[0x6881101E]);$i++) {
+						    $sprops[$value][] = "undefined";
+						}
+				    }
+				}
+	        	if ($ak !== false) {
             	    //update settings (huh this could really occur?!?! - maybe in case of OS update)
             	    foreach($request["deviceinformation"] as $key => $value) {
-			if (trim($value) != "") {
-        		    $sprops[$props[$key]][$ak] = $value;
-        		} else {
-        		    $sprops[$props[$key]][$ak] = "undefined";
-        		}
-        	    }
-        	} else {
-        	    //new device settings for the db
+						if (trim($value) != "") {
+		        		    $sprops[$props[$key]][$ak] = $value;
+		        		} else {
+		        		    $sprops[$props[$key]][$ak] = "undefined";
+		        		}
+	        	    }
+    	    	} else {
+	        	    //new device settings for the db
                     $devicesprops[0x6881101E][] = $devid;
-            	    foreach($props as $key => $value) {
-			if (isset($request["deviceinformation"][$key]) && trim($request["deviceinformation"][$key]) != "") {
-        		    $sprops[$value][] = $request["deviceinformation"][$key];
-        		} else {
-        		    $sprops[$value][] = "undefined";
-        		}
-        	    }
-        	}
-        	// save them
-        	$response["deviceinformation"]["status"] = mapi_setprops($this->_defaultstore, $sprops);
-	    }
-	}
-	if (isset($request["devicepassword"])) {
-	    if ($this->_defaultstore !== false) {
-        	//get devices settings from store
-		$props=array();
-		$props[SYNC_SETTINGS_PASSWORD] = mapi_prop_tag(PT_MV_STRING8,  0x689F);
-        	$pprops = mapi_getprops($this->_defaultstore, array(0x6881101E,
-        							    $props[SYNC_SETTINGS_PASSWORD]
-        							    ));
-		//try to find index of current device
-        	$ak = array_search($devid, $pprops[0x6881101E]);
-		// Set undefined properties to the amount of known device ids
-            	foreach($props as $key => $value) {
-		    if (!isset($pprops[$value])) {
-			for ($i=0;$i<sizeof($pprops[0x6881101E]);$i++) {
-			    $pprops[$value][] = "undefined";
-			}
+   	        	    foreach($props as $key => $value) {
+						if (isset($request["deviceinformation"][$key]) && trim($request["deviceinformation"][$key]) != "") {
+		        		    $sprops[$value][] = $request["deviceinformation"][$key];
+		        		} else {
+		        		    $sprops[$value][] = "undefined";
+		        		}
+	        	    }
+	        	}
+	        	// save them
+	        	$response["deviceinformation"]["status"] = mapi_setprops($this->_defaultstore, $sprops);
 		    }
 		}
-        	if ($ak !== false) {
+		if (isset($request["devicepassword"])) {
+		    if ($this->_defaultstore !== false) {
+    	    	//get devices settings from store
+				$props=array();
+				$props[SYNC_SETTINGS_PASSWORD] = mapi_prop_tag(PT_MV_STRING8,  0x689F);
+	        	$pprops = mapi_getprops($this->_defaultstore, array(0x6881101E,
+								       							    $props[SYNC_SETTINGS_PASSWORD]
+								 							    ));
+				//try to find index of current device
+		       	$ak = array_search($devid, $pprops[0x6881101E]);
+				// Set undefined properties to the amount of known device ids
+            	foreach($props as $key => $value) {
+				    if (!isset($pprops[$value])) {
+						for ($i=0;$i<sizeof($pprops[0x6881101E]);$i++) {
+						    $pprops[$value][] = "undefined";
+						}
+				    }
+				}
+	        	if ($ak !== false) {
             	    //update password
-		    if (trim($value) != "") {
-        	        $pprops[$props[$key]][$ak] = $request["devicepassword"];
-        	    } else {
-        	        $pprops[$props[$key]][$ak] = "undefined";
-        	    }
-        	} else {
-        	    //new device password for the db
+				    if (trim($value) != "") {
+        		        $pprops[$props[$key]][$ak] = $request["devicepassword"];
+	        	    } else {
+    	    	        $pprops[$props[$key]][$ak] = "undefined";
+        		    }
+	        	} else {
+	        	    //new device password for the db
                     $devicesprops[0x6881101E][] = $devid;
             	    foreach($props as $key => $value) {
-			if (isset($request["devicepassword"]) && trim($request["devicepassword"]) != "") {
-        		    $pprops[$value][] = $request["devicepassword"];
-        		} else {
-        		    $pprops[$value][] = "undefined";
-        		}
-        	    }
-        	}
-        	// save them
-        	$response["devicepassword"]["status"] = mapi_setprops($this->_defaultstore, $pprops);
-	    }
-	}
-	return $response;
+						if (isset($request["devicepassword"]) && trim($request["devicepassword"]) != "") {
+        				    $pprops[$value][] = $request["devicepassword"];
+		        		} else {
+		        		    $pprops[$value][] = "undefined";
+		        		}
+	        	    }
+	        	}
+	        	// save them
+    	    	$response["devicepassword"]["status"] = mapi_setprops($this->_defaultstore, $pprops);
+		    }
+		}
+		return $response;
     }
-    function getSettings($request,$devid) 
-    {
-	if (isset($request["userinformation"])) {
-	    $userdetails = mapi_zarafa_getuser($this->_defaultstore, $this->_user);
-	    if ($userdetails != false) {
-		$response["userinformation"]["status"] = 1;
-		$response["userinformation"]["emailaddresses"][] = $userdetails["emailaddress"];
-	    } else {
-		$response["userinformation"]["status"] = false;
-	    };
-	}
-	if (isset($request["oof"])) {
-	    $props = mapi_getprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE, PR_EC_OUTOFOFFICE_MSG, PR_EC_OUTOFOFFICE_SUBJECT));
-	    if ($props != false) {
-		$response["oof"]["status"] 	= 1;
-		$response["oof"]["oofstate"]	= isset($props[PR_EC_OUTOFOFFICE]) ? ($props[PR_EC_OUTOFOFFICE] ? 1 : 0) : 0;
 
-		$oofmsg["appliesto"]		= SYNC_SETTINGS_APPLIESTOINTERNAL;
-		$oofmsg["replymessage"] 	= w2u(isset($props[PR_EC_OUTOFOFFICE_MSG]) ? $props[PR_EC_OUTOFOFFICE_MSG] : "");
-		$oofmsg["enabled"]		= isset($props[PR_EC_OUTOFOFFICE]) ? ($props[PR_EC_OUTOFOFFICE] ? 1 : 0) : 0;
-		$oofmsg["bodytype"] 		= $request["oof"]["bodytype"];
+    function getSettings($request,$devid)  {
+		if (isset($request["userinformation"])) {
+		    $userdetails = mapi_zarafa_getuser($this->_defaultstore, $this->_user);
+		    if ($userdetails != false) {
+				$response["userinformation"]["status"] = 1;
+				$response["userinformation"]["emailaddresses"][] = $userdetails["emailaddress"];
+		    } else {
+				$response["userinformation"]["status"] = false;
+		    };
+		}
+		if (isset($request["oof"])) {
+		    $props = mapi_getprops($this->_defaultstore, array(PR_EC_OUTOFOFFICE, PR_EC_OUTOFOFFICE_MSG, PR_EC_OUTOFOFFICE_SUBJECT));
+		    if ($props != false) {
+				$response["oof"]["status"] 	= 1;
+				$response["oof"]["oofstate"]	= isset($props[PR_EC_OUTOFOFFICE]) ? ($props[PR_EC_OUTOFOFFICE] ? 1 : 0) : 0;
 
-	        $response["oof"]["oofmsgs"][]	= $oofmsg;
-	    // $this->settings["outofoffice"]["subject"] = windows1252_to_utf8(isset($props[PR_EC_OUTOFOFFICE_SUBJECT]) ? $props[PR_EC_OUTOFOFFICE_SUBJECT] : "");
-	    } else {
-		$response["oof"]["status"] 	= 0;
-	    }
-	}
-	return $response;
+				$oofmsg["appliesto"]		= SYNC_SETTINGS_APPLIESTOINTERNAL;
+				$oofmsg["replymessage"] 	= w2u(isset($props[PR_EC_OUTOFOFFICE_MSG]) ? $props[PR_EC_OUTOFOFFICE_MSG] : "");
+				$oofmsg["enabled"]		= isset($props[PR_EC_OUTOFOFFICE]) ? ($props[PR_EC_OUTOFOFFICE] ? 1 : 0) : 0;
+				$oofmsg["bodytype"] 		= $request["oof"]["bodytype"];
+
+		        $response["oof"]["oofmsgs"][]	= $oofmsg;
+			    // $this->settings["outofoffice"]["subject"] = windows1252_to_utf8(isset($props[PR_EC_OUTOFOFFICE_SUBJECT]) ? $props[PR_EC_OUTOFOFFICE_SUBJECT] : "");
+		    } else {
+				$response["oof"]["status"] 	= 0;
+		    }
+		}
+		return $response;
     }
     // END ADDED dw2412 Settings Support
+
+	// START ADDED dw2412 ResolveRecipient Support
+	function ResolveRecipient($what, $to, $options) {
+		switch ($what) {
+			case 'availability' : 
+				$res1 = $this->readFBfromGAL($to,$options['starttime'],$options['endtime']);
+				if (count($res1[$to]) == 0)
+					$res2 = $this->readFBfromContact($to,$options['starttime'],$options['endtime']);
+				if (isset($res2) && isset($res1))
+					$result = array_merge_recursive($res1,$res2);
+				else if (isset($res2)) 
+					$result = $res2;
+				else if (isset($res1))
+					$result = $res1;
+				foreach ($result as $key1=>$val1) {
+					foreach ($val1 as $key2=>$val2) {
+						$result[$key1][$key2]['mergedfb'] = generateMergedFB($options['starttime'],$options['endtime'],$val2['entries']);
+					}
+				}
+				break;
+			case 'certificate' : 
+				$res1 = $this->readCertsfromGAL($to,$options['maxambigious']);
+				if (count($res1[$to]) <= $options['maxambigious'])
+					$res2 = $this->readCertsfromContact($to,$options['maxambigious']);
+				if (isset($res2) && isset($res1))
+					$result = array_merge_recursive($res1,$res2);
+				else if (isset($res2)) 
+					$result = $res2;
+				else if (isset($res1))
+					$result = $res1;
+				break;
+		}
+		return $result;
+	}
+
+	function readResolveRecipientfromGAL($emailaddress) {
+		$ab = mapi_openaddressbook($this->_session);
+
+		$ab_entryid = mapi_ab_getdefaultdir($ab);
+		$ab_dir = mapi_ab_openentry($ab,$ab_entryid);
+		$table = mapi_folder_getcontentstable($ab_dir);
+
+	    $restriction = array(	RES_PROPERTY,
+									array(	RELOP => RELOP_EQ,
+											ULPROPTAG=>PR_SMTP_ADDRESS,
+											VALUE=>$emailaddress
+									)
+							);
+
+		mapi_table_restrict($table, $restriction);
+		$rows = mapi_table_queryrows($table, array(PR_ENTRYID, PR_DISPLAY_NAME, PR_SMTP_ADDRESS, PR_USER_CERTIFICATE),0,999);
+		return $rows;
+	}
+
+	function readFBfromGAL($emailaddress, $starttime, $endtime) {
+		$rows = $this->readResolveRecipientfromGAL($emailaddress);
+		$fbsupport = mapi_freebusysupport_open($this->_session);
+        foreach ($rows as $entry) {
+			$fbDataArray = mapi_freebusysupport_loaddata($fbsupport, array($entry[PR_ENTRYID]));
+			$res['displayname'] = $entry[PR_DISPLAY_NAME];
+			$res['emailaddress'] = $entry[PR_SMTP_ADDRESS];
+			$res['type'] = 1;
+			$res['entries'] = array();
+			if ($fbDataArray[0] != NULL) {
+				foreach ($fbDataArray as $fbDataUser) {
+					$rangeuser1 = mapi_freebusydata_getpublishrange($fbDataUser);
+					if ($rangeuser1 == NULL) {
+						return $result;
+					}
+
+					$enumblock = mapi_freebusydata_enumblocks($fbDataUser, $starttime, $endtime);
+					mapi_freebusyenumblock_reset($enumblock);
+
+					while (true) {
+						$blocks = mapi_freebusyenumblock_next($enumblock, 100);
+						if (!$blocks) {
+							break;
+						}
+						foreach ($blocks as $blockItem) {
+							if ($blockItem['start'] < $starttime) $blockItem['start'] = $starttime;
+							if ($blockItem['end'] > $endtime) $blockItem['end'] = $endtime;
+							$res['entries'][] = $blockItem;
+						}
+					}
+				}
+			}
+			$result[$emailaddress][] = $res;
+		}
+
+		mapi_freebusysupport_close($fbsupport);
+
+		return $result;
+	}
+
+	function readCertsfromGAL($emailaddress) {
+		$rows = $this->readResolveRecipientfromGAL($emailaddress);
+        $result = array();
+        foreach ($rows as $entry) {
+			$res['displayname'] = w2u($entry[PR_DISPLAY_NAME]);
+			$res['emailaddress'] = w2u($entry[PR_SMTP_ADDRESS]);
+			$res['type'] = 1;
+			$entries = array();
+			if (isset($entry[PR_USER_CERTIFICATE])) {
+				$entries[] = base64_encode($entry[PR_USER_CERTIFICATE]);
+			}
+			$res['entries'] = $entries;
+			if (sizeof($res['entries']) > 0)
+				$result[$emailaddress][] = $res;
+		}
+
+		return $result;
+	}
+
+	function readResolveRecipientsfromContacts($emailaddress) {
+	    $storeprops = mapi_getprops($this->_defaultstore, array(PR_USER_ENTRYID));
+	    $root = mapi_msgstore_openentry($this->_defaultstore);
+	    if (!$root) return true;
+
+	    $rootprops = mapi_getprops($root, array(PR_IPM_CONTACT_ENTRYID));
+
+		$contactfolder = mapi_msgstore_openentry($this->_defaultstore, $rootprops[PR_IPM_CONTACT_ENTRYID]);
+
+		$contactstable = mapi_folder_getcontentstable($contactfolder);
+
+	    $email1address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x8083");
+	    $email2address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x8093");
+	    $email3address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x80A3");
+		$internetfb = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x80D8");
+		$x509certs = mapi_prop_tag(PT_MV_BINARY,0x3A70);
+
+		$restriction = array(	RES_OR, 
+										array(
+												array(	RES_PROPERTY,
+																		array(	RELOP => RELOP_EQ,
+																				ULPROPTAG => $email1address,
+																				VALUE => array($email1address => $emailaddress),
+																		),
+												),
+												array(	RES_PROPERTY,
+																		array(	RELOP => RELOP_EQ,
+																				ULPROPTAG => $email2address,
+																				VALUE => array($email2address => $emailaddress),
+																		),
+												),
+												array(	RES_PROPERTY,
+																		array(	RELOP => RELOP_EQ,
+																				ULPROPTAG => $email3address,
+																				VALUE => array($email3address => $emailaddress),
+																		),
+												),
+										),
+						);
+
+		$rows = mapi_table_queryallrows($contactstable, array(PR_ENTRYID, PR_DISPLAY_NAME, $x509certs, $internetfb, $email1address, $email2address, $email3address), $restriction);
+
+		return $rows;
+	}
+
+	function readFBfromContact($emailaddress, $starttime, $endtime) {
+	    $email1address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x8083");
+	    $email2address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x8093");
+	    $email3address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x80A3");
+		$internetfb = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x80D8");
+
+		$rows = $this->readResolveRecipientsfromContacts($emailaddress);
+
+		foreach($rows as $entry) {
+			$res['displayname'] = w2u($entry[PR_DISPLAY_NAME]);
+			$res['type'] = 2;
+			if (isset($entry[$email1address]) && $entry[$email1address] == $emailaddress) 
+				$res['emailaddress'] = $entry[$email1address];
+			else if (isset($entry[$email2address]) && $entry[$email2address] == $emailaddress) 
+				$res['emailaddress'] = $entry[$email2address];
+			else if (isset($entry[$email3address]) && $entry[$email3address] == $emailaddress) 
+				$res['emailaddress'] = $entry[$email3address];
+			$entries = array();
+			if (isset($entry[$internetfb])) {
+				if (($fb_file = file_get_contents($entry[$internetfb]))) {
+					$lines = preg_split('/\n/',str_replace("\r","",$fb_file));
+					$line_no = 0;
+					$vfb = parseVFB($lines, $line_no);
+					if (isset($vfb['vcalendar']['vfreebusy']['freebusy'])) {
+						foreach($vfb['vcalendar']['vfreebusy']['freebusy'] as $value) {
+							if ($value['starttime'] > $starttime || $value['endtime'] < $endtime)
+								$entries[] = array(	'start'=>($value['starttime'] < $starttime ? $starttime : $value['starttime']),
+													'end'=>($value['endtime'] > $endtime ? $endtime : $value['endtime']),'status'=>'2');
+						}
+					}
+				} 
+			}
+			$res['entries'] = $entries;
+			$result[$emailaddress][] = $res;
+		}
+		return $result;
+	}
+
+	function readCertsfromContact($emailaddress) {
+	    $email1address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x8083");
+	    $email2address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x8093");
+	    $email3address = GetPropIDFromString($this->_defaultstore,"PT_STRING8:{00062004-0000-0000-C000-000000000046}:0x80A3");
+		$x509certs = mapi_prop_tag(PT_MV_BINARY,0x3A70);
+
+		$rows = $this->readResolveRecipientsfromContacts($emailaddress);
+
+		foreach($rows as $entry) {
+			$res['displayname'] = w2u($entry[PR_DISPLAY_NAME]);
+			$res['type'] = 2;
+			if (isset($entry[$email1address]) && $entry[$email1address] == $emailaddress) 
+				$res['emailaddress'] = $entry[$email1address];
+			else if (isset($entry[$email2address]) && $entry[$email2address] == $emailaddress) 
+				$res['emailaddress'] = $entry[$email2address];
+			else if (isset($entry[$email3address]) && $entry[$email3address] == $emailaddress) 
+				$res['emailaddress'] = $entry[$email3address];
+			$entries = array();
+			if (isset($entry[$x509certs]) &&
+				USERX509CERTIFICATES == true) {
+				$certs = new Userx509Certificates((isset($entry[$x509certs]) ? $entry[$x509certs] : array()));
+				if (($der_certs = $certs->findCertificatebySubjectValue('emailAddress',$emailaddress))) {
+					foreach($der_certs as $der_cert) {
+						$entries[] = base64_encode($der_cert);
+					}
+				}
+			}
+			$res['entries'] = $entries;
+			if (count($res['entries']) > 0)
+				$result[$emailaddress][] = $res;
+		}
+		return $result;
+	}
+
+	// END ADDED dw2412 ResolveRecipient Support
 
     // ----------------------------------------------------------
 
@@ -4987,6 +5284,7 @@ class BackendICS {
 
         $filename = "";
         // Filename is present in both Content-Type: name=.. and in Content-Disposition: filename=
+		debugLog("_storeAttachment: ".print_r($part,true));
         if(isset($part->ctype_parameters["name"]))
             $filename = $part->ctype_parameters["name"];
         else if(isset($part->d_parameters["name"]))
@@ -5013,14 +5311,23 @@ class BackendICS {
                 $part->body = base64_decode($part->body);
         }
 
-        // Set filename and attachment type
-        mapi_setprops($attach, array(PR_ATTACH_LONG_FILENAME => u2w($filename), PR_ATTACH_METHOD => ATTACH_BY_VALUE));
+		if ($part->ctype_primary == 'multipart' && $part->ctype_secondary == 'signed') {
+        	// Set filename and attachment type
+			$filename = "smime.p7m";
+	        mapi_setprops($attach, array(PR_ATTACH_FILENAME => u2w($filename), PR_ATTACH_METHOD => ATTACH_BY_VALUE, PR_ATTACH_TAG => hex2bin("2A864886F714030A04")));
+		} else if ($part->ctype_primary == 'application' && $part->ctype_secondary == 'x-pkcs7-mime') {
+			$filename = "smime.p7m";
+	        mapi_setprops($attach, array(PR_ATTACH_FILENAME => u2w($filename), PR_ATTACH_METHOD => ATTACH_BY_VALUE, PR_ATTACH_TAG => hex2bin("2A864886F714030A04")));
+		} else {
+        	// Set filename and attachment type
+	        mapi_setprops($attach, array(PR_ATTACH_LONG_FILENAME => u2w($filename), PR_ATTACH_METHOD => ATTACH_BY_VALUE));
+		}
 
-        // Set attachment data
-        mapi_setprops($attach, array(PR_ATTACH_DATA_BIN => $part->body));
+ 		// Set attachment data
+    	mapi_setprops($attach, array(PR_ATTACH_DATA_BIN => $part->body));
 
-        // Set MIME type
-        mapi_setprops($attach, array(PR_ATTACH_MIME_TAG => $part->ctype_primary . "/" . $part->ctype_secondary));
+ 		// Set MIME type
+    	mapi_setprops($attach, array(PR_ATTACH_MIME_TAG => $part->ctype_primary . "/" . $part->ctype_secondary));
 
         mapi_savechanges($attach);
     }
@@ -5078,19 +5385,53 @@ class BackendICS {
                     ) // RES_AND
         );
     }
+
+	function _isUnicodeStore() {
+		$supportmask = mapi_getprops($this->_defaultstore, array(PR_STORE_SUPPORT_MASK));
+		if (isset($supportmask[PR_STORE_SUPPORT_MASK]) && ($supportmask[PR_STORE_SUPPORT_MASK] & STORE_UNICODE_OK)) {
+			debugLog("Store supports properties containing Unicode characters.");
+			define('STORE_SUPPORTS_UNICODE', true);
+            //setlocale to UTF-8 in order to support properties containing Unicode characters
+            setlocale(LC_CTYPE, "en_US.UTF-8");
+		}
+	}
+
+	function _rfc822tosmimep7m($rfc822) {
+		if (strpos($rfc822,"\n\n")) 
+			$eol = "\n";
+		else 
+			$eol = "\r\n";
+		$lines = explode ($eol,$rfc822);
+		$out = '';
+		$t = false;
+		$i = 0;
+		foreach($lines as $line) {
+			$i++;
+			if (strlen($line) == '') {
+				break;
+			}
+			$lineval = explode(":",$line);
+			if ($lineval[0]{0} == ' ') {
+				if ($t == true)
+					$out .= $lineval[0].$eol;
+			} else {
+				switch (strtolower($lineval[0])) {
+					case 'content-type' :
+					case 'mime-version' :
+						$out .= $lineval[0].':'.$lineval[1].$eol;
+						$t = true;
+						break;
+				}
+			}
+		}
+		$body = '';
+		for ($i;$i<sizeof($lines);$i++) {
+			$body .= $lines[$i].$eol;
+		}
+		return $out.$eol.$body;
+	}
+
 }
 
-
-// START ADDED dw2412 just to find out if include file is available (didn't find a better place to have this 
-// nice function reachable to check if common classes not already integrated in Zarafa Server exists)
-function include_file_exists($filename) {
-     $path = explode(":", ini_get('include_path'));
-     foreach($path as $value) {
-        if (file_exists($value.$filename)) return true;
-     }
-     
-     return false;
-}
-// END ADDED dw2412 just to find out if include file is available
 
 ?>

@@ -335,6 +335,14 @@ define("SYNC_RESOLVERECIPIENTS_RECIPIENTCOUNT","ResolveRecipients:RecipientCount
 define("SYNC_RESOLVERECIPIENTS_MAXCERTIFICATES","ResolveRecipients:MaxCertificates");
 define("SYNC_RESOLVERECIPIENTS_MAXAMBIGUOUSRECIPIENTS","ResolveRecipients:MaxAmbiguousRecipients");
 define("SYNC_RESOLVERECIPIENTS_CERTIFICATECOUNT","ResolveRecipients:CertificateCount");
+define("SYNC_RESOLVERECIPIENTS_AVAILABILITY","ResolveRecipients:Availability");
+define("SYNC_RESOLVERECIPIENTS_STARTTIME","ResolveRecipients:StartTime");
+define("SYNC_RESOLVERECIPIENTS_ENDTIME","ResolveRecipients:EndTime");
+define("SYNC_RESOLVERECIPIENTS_MERGEDFREEBUSY","ResolveRecipients:MergedFreeBusy");
+define("SYNC_RESOLVERECIPIENTS_PICTURE","ResolveRecipients:Picture");
+define("SYNC_RESOLVERECIPIENTS_MAXSIZE","ResolveRecipients:MaxSize");
+define("SYNC_RESOLVERECIPIENTS_DATA","ResolveRecipients:Data");
+define("SYNC_RESOLVERECIPIENTS_MAXPICTURES","ResolveRecipients:MaxPictures");
 
 // ValidateCert
 define("SYNC_VALIDATECERT_VALIDATECERT","ValidateCert:ValidateCert");

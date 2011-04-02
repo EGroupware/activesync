@@ -35,6 +35,7 @@ class BackendiCalDir extends BackendDiff {
             'starttime' => 'starttime',
             'meetingstatus' => 'meetingstatus',
             'reminder' => 'reminder',
+            'uid' => 'uid',
             'rec_type' => 'recurrence->type',
             'rec_until' => 'recurrence->until',
             'rec_occurrences' => 'recurrence->occurrences',
@@ -68,6 +69,25 @@ class BackendiCalDir extends BackendDiff {
         $this->_protocolversion = $protocolversion;
         $this->_path = str_replace('%u', $this->_user, ICALDIR_DIR);
 
+		// ItemID Cache
+    	$dir = opendir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid));
+        if(!$dir) {
+	    	debugLog("IMAP Backend: creating folder for device ".strtolower($this->_devid));
+	    	if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false) 
+				debugLog("IMAP Backend: failed to create folder ".strtolower($this->_devid));
+		}
+		$filename = STATE_DIR . '/' . strtolower($this->_devid). '/ical_items_'. $this->_user;
+		$this->_items = false;
+		if (file_exists($filename)) {
+	    	if (($this->_items = file_get_contents(STATE_DIR . '/' . strtolower($this->_devid). '/ical_items_'. $this->_user)) !== false) {
+				$this->_items = unserialize($this->_items);
+	    	} else {
+	        	$this->_items = array();
+		    }
+		} else {
+	    	$this->_items =  array();
+	    }
+
         return true;
     }
 
@@ -81,26 +101,53 @@ class BackendiCalDir extends BackendDiff {
         return false;
     }
 
+    function _uid() {
+	    $id = sprintf( '%04x%04x%04x%04x%04x%04x%04x%04x',
+                    mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+                    mt_rand( 0, 0x0fff ) | 0x4000,
+                    mt_rand( 0, 0x3fff ) | 0x8000,
+                    mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ) );
+		return $id;
+    }
+
     function GetMessageList($folderid, $cutoffdate) {
         debugLog('iCalDir::GetMessageList('.$folderid.')');
         $messages = array();
 
         $dir = opendir($this->_path);
+		$mod = false;
         if(!$dir)
             return false;
-
         while($entry = readdir($dir)) {
             if(is_dir($this->_path .'/'.$entry))
                 continue;
 
             $message = array();
-            $message["id"] = bin2hex($entry);
+			// put real item id in cache and create unique itemids instead
+			if (($entryid = array_search($entry,$this->_items)) === false) {
+/*				ksort($this->_items);
+				end($this->_items);
+				if (key($this->_items)+1 == 1)
+			    	$entryid = sprintf("1%09d",key($this->_items)+1);
+			    else 
+			    	$entryid = key($this->_items)+1;
+			    $this->_items[$entryid] = $entry;
+			    $mod = true;
+*/
+				$entryid = $this->_itemid();
+			    $this->_items[$entryid] = $entry;
+				$mod = true;
+			}
+            $message["id"] = $entryid;
             $stat = stat($this->_path .'/'.$entry);
             $message["mod"] = $stat["mtime"];
             $message["flags"] = 1; // always 'read'
 
             $messages[] = $message;
         }
+
+		if ($mod == true)
+			file_put_contents(STATE_DIR . '/' . strtolower($this->_devid). '/ical_items_'. $this->_user, serialize($this->_items));
 
         return $messages;
     }
@@ -145,11 +192,11 @@ class BackendiCalDir extends BackendDiff {
     }
 
     function StatMessage($folderid, $id) {
-        debugLog('iCalDir::StatMessage('.$folderid.', '.hex2bin($id).')');
+        debugLog('iCalDir::StatMessage('.$folderid.', '.$this->_items[$id].')');
         if($folderid != "root")
             return false;
 
-        $stat = stat($this->_path . "/" . hex2bin($id));
+        $stat = stat($this->_path . "/" . $this->_items[$id]);
 
         $message = array();
         $message["mod"] = $stat["mtime"];
@@ -167,8 +214,8 @@ class BackendiCalDir extends BackendDiff {
                     mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ) );
     }
 
-    function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0) {
-        debugLog('iCalDir::GetMessage('.$folderid.', '.hex2bin($id).', ..)');
+    function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0) {
+        debugLog('iCalDir::GetMessage('.$folderid.', '.$this->_items[$id].', ..)');
         if($folderid != "root")
             return;
 
@@ -183,14 +230,14 @@ class BackendiCalDir extends BackendDiff {
             'mpeg' => 'type', 'mpeg2' => 'type', 'avi' => 'type',
             'wave' => 'type', 'aiff' => 'type', 'pcm' => 'type',
             'x509' => 'type', 'pgp' => 'type', 'text' => 'value', 'inline' => 'value', 'url' => 'value', 'cid' => 'value', 'content-id' => 'value',
-            '7bit' => 'encoding', '8bit' => 'encoding', 'quoted-printable' => 'encoding', 'base64' => 'encoding',
+            '7bit' => 'encoding', '8bit' => 'encoding', 'quoted-printable' => 'encoding', 'base64' => 'encoding', 'uid' => 'value',
         );
 
 
         // Parse the vcard
         $message = new SyncAppointment();
 
-        $data = file_get_contents($this->_path . "/" . hex2bin($id));
+        $data = file_get_contents($this->_path . "/" . $this->_items[$id]);
         $data = str_replace("\x00", '', $data);
         $data = str_replace("\r\n", "\n", $data);
         $data = str_replace("\r", "\n", $data);
@@ -269,78 +316,114 @@ class BackendiCalDir extends BackendDiff {
         // debugLog('iCalDir::LoadedMessage-source:' . print_r($vcard,1));
         //http://www.zachstronaut.com/posts/2009/02/09/careful-with-php-empty.html
 
-	$fieldmapping = $this->_mapping;
-	foreach ($fieldmapping as $k=>$v) {
-	    switch ($v) {
-		// these fields should be filled with 0
-    		case 'busystatus' :
-    		case 'sensitivity' :
-    		case 'meetingstatus' :
-    		case 'alldayevent' :
-    			$message->$fieldmapping[$k]= (!empty($vcard[$k][0]['val'][0]) 	? w2u($vcard[$k][0]['val'][0]) 	: "0");
-			break;
-		case 'body' :
-        		if ($bodypreference == false) {
-    			    $message->body = w2u(str_replace("\n","\r\n",str_replace("\r","",$vcard[$k][0]['val'][0])));
-			    $message->bodysize = strlen($message->body);
-        		    $message->bodytruncated = 0;
-			} else {
-			    $message->airsyncbasebody = new SyncAirSyncBaseBody();
-			    debugLog("airsyncbasebody!");
-			    $message->airsyncbasenativebodytype=1;
-			    if (isset($bodypreference[2])) {
-		    		debugLog("HTML Body");
-		    	    // Send HTML if requested and native type was html
-		    		$message->airsyncbasebody->type = 2;
-		    		$html = '<html>'.
-					    '<head>'.
-					    '<meta name="Generator" content="Z-Push">'.
-					    '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
-					    '</head>'.
-					    '<body>'.
-					    str_replace("\n","<BR>",str_replace("\r","<BR>", str_replace("\r\n","<BR>",w2u($vcard[$k][0]['val'][0])))).
-					    '</body>'.
-			    		'</html>';
-    		    		if (isset($bodypreference[2]["TruncationSize"]) &&
+		// We pass all times in GMT to device. Calculation to gmt takes place based on timezone definition in config.php
+   		$message->timezone = base64_encode($this->_getSyncBlobFromTZ(array("bias" => 0,
+   															 "dstendmonth" => 0,
+   															 "dstendday" => 0,
+   															 "dstendweek" => 0,
+   															 "dstendhour" => 0,
+   															 "dstendminute" => 0,
+   															 "dstendsecond" => 0,
+   															 "dstendmillis" => 0,
+   															 "stdbias" => 0,
+   															 "dststartmonth" => 0,
+   															 "dststartday" => 0,
+   															 "dststartweek" => 0,
+   															 "dststarthour" => 0,
+   															 "dststartminute" => 0,
+   															 "dststartsecond" => 0,
+   															 "dststartmillis" => 0,
+   															 "dstbias" => 0
+   															 )));
+		$fieldmapping = $this->_mapping;
+		foreach ($fieldmapping as $k=>$v) {
+	    	switch ($v) {
+			// these fields should be filled with 0
+    			case 'busystatus' :
+	    		case 'sensitivity' :
+    			case 'meetingstatus' :
+    			case 'alldayevent' :
+	    			$message->$fieldmapping[$k]= (!empty($vcard[$k][0]['val'][0]) 	? w2u($vcard[$k][0]['val'][0]) 	: "0");
+					break;
+				case 'starttime' :
+				case 'endtime' :
+				case 'dtstamp' :
+					if (empty($vcard[$k][0]['val'][0])) {
+						$message->$fieldmapping[$k] = NULL;
+						break;
+					};
+					$time = w2u($vcard[$k][0]['val'][0]);
+					$time = gmmktime(gmdate("H",$time),gmdate("i",$time),gmdate("s",$time),
+									 gmdate("n",$time),gmdate("j",$time),gmdate("Y",$time));
+				    $message->$fieldmapping[$k] = $time;
+				    break;
+				case 'body' :
+        			if ($bodypreference == false) {
+    				    $message->body = w2u(str_replace("\n","\r\n",str_replace("\r","",$vcard[$k][0]['val'][0])));
+					    $message->bodysize = strlen($message->body);
+		        	    $message->bodytruncated = 0;
+					} else {
+					    $message->airsyncbasebody = new SyncAirSyncBaseBody();
+					    debugLog("airsyncbasebody!");
+					    $message->airsyncbasenativebodytype=1;
+					    if (isset($bodypreference[2])) {
+				    		debugLog("HTML Body");
+				    	    // Send HTML if requested and native type was html
+				    		$message->airsyncbasebody->type = 2;
+		    				$html = '<html>'.
+							    '<head>'.
+							    '<meta name="Generator" content="Z-Push">'.
+							    '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
+							    '</head>'.
+							    '<body>'.
+							    str_replace("\n","<BR>",str_replace("\r","<BR>", str_replace("\r\n","<BR>",w2u($vcard[$k][0]['val'][0])))).
+							    '</body>'.
+					    		'</html>';
+	    		    		if (isset($bodypreference[2]["TruncationSize"]) &&
     	    	        	    strlen($html) > $bodypreference[2]["TruncationSize"]) {
-        	        	    $html = utf8_truncate($html,$bodypreference[2]["TruncationSize"]);
-		    		    $message->airsyncbasebody->truncated = 1;
-				}
-				$message->airsyncbasebody->data = $html;
-				$message->airsyncbasebody->estimateddatasize = strlen($html);
-    			    } else {
-		    	    // Send Plaintext as Fallback or if original body is plaintext
-		    		debugLog("Plaintext Body");
-				$plain = w2u(str_replace("\n","\r\n",str_replace("\r","",$vcard[$k][0]['val'][0])));
-				$message->airsyncbasebody->type = 1;
-    				if(isset($bodypreference[1]["TruncationSize"]) &&
-    				    strlen($plain) > $bodypreference[1]["TruncationSize"]) {
-        			    $plain = utf8_truncate($plain, $bodypreference[1]["TruncationSize"]);
-		    		    $message->airsyncbasebody->truncated = 1;
-    	    		        }
-				$message->airsyncbasebody->estimateddatasize = strlen($plain);
-    				$message->airsyncbasebody->data = $plain;
-    			    }
-			    // In case we have nothing for the body, send at least a blank... 
-			    // dw2412 but only in case the body is not rtf!
-    			    if ($message->airsyncbasebody->type != 3 && (!isset($message->airsyncbasebody->data) || strlen($message->airsyncbasebody->data) == 0))
-        			$message->airsyncbasebody->data = " ";
+	        	        	    $html = utf8_truncate($html,$bodypreference[2]["TruncationSize"]);
+				    		    $message->airsyncbasebody->truncated = 1;
+							}
+							$message->airsyncbasebody->data = $html;
+							$message->airsyncbasebody->estimateddatasize = strlen($html);
+    				    } else {
+				    	    // Send Plaintext as Fallback or if original body is plaintext
+		    				debugLog("Plaintext Body");
+							$plain = w2u(str_replace("\n","\r\n",str_replace("\r","",$vcard[$k][0]['val'][0])));
+							$message->airsyncbasebody->type = 1;
+		    				if(isset($bodypreference[1]["TruncationSize"]) &&
+		    				    strlen($plain) > $bodypreference[1]["TruncationSize"]) {
+		        			    $plain = utf8_truncate($plain, $bodypreference[1]["TruncationSize"]);
+				    		    $message->airsyncbasebody->truncated = 1;
+	   	    		        }
+							$message->airsyncbasebody->estimateddatasize = strlen($plain);
+		    				$message->airsyncbasebody->data = $plain;
+	    			    }
+					    // In case we have nothing for the body, send at least a blank... 
+					    // dw2412 but only in case the body is not rtf!
+	    			    if ($message->airsyncbasebody->type != 3 && (!isset($message->airsyncbasebody->data) || strlen($message->airsyncbasebody->data) == 0))
+    		    			$message->airsyncbasebody->data = " ";
+					}
+					break;
+				default : 
+					$vs = explode("->",$v);
+					if ($vs[0] == "recurrence" &&
+					    !empty($vcard[$k][0]['val'][0])) {
+					    if (!isset($message->recurrence)) $message->recurrence = new SyncRecurrence();
+						    $message->recurrence->$vs[1] = (!empty($vcard[$k][0]['val'][0]) ? w2u($vcard[$k][0]['val'][0]) : NULL);
+					} else {
+					    $message->$fieldmapping[$k] = (!empty($vcard[$k][0]['val'][0]) ? w2u($vcard[$k][0]['val'][0]) : NULL);
+					}
 			}
-			break;
-		default : 
-			$vs = explode("->",$v);
-			if ($vs[0] == "recurrence" &&
-			    !empty($vcard[$k][0]['val'][0])) {
-			    if (!isset($message->recurrence)) $message->recurrence = new SyncRecurrence();
-			    $message->recurrence->$vs[1] = (!empty($vcard[$k][0]['val'][0]) ? w2u($vcard[$k][0]['val'][0]) : NULL);
-			} else {
-			    $message->$fieldmapping[$k] = (!empty($vcard[$k][0]['val'][0]) ? w2u($vcard[$k][0]['val'][0]) : NULL);
+		}
+		if (!isset($message->uid) ||
+			strlen($message->uid) == 0) $message->uid = $this->_uid();
+		if (isset($message->recurrence)) {
+			if (!isset($message->recurrence->interval)) {
+				debugLog('iCalDir::GetMessage: Error, recurrence object found but no interval is set. Set it to 1 since it needs to be set');
+				$message->recurrence->interval = 1;
 			}
-	    }
-	}
-
-
-
+		}
 
         // debugLog('iCalDir::LoadedMessage-imported:' . print_r($message,1));
 
@@ -348,8 +431,8 @@ class BackendiCalDir extends BackendDiff {
     }
 
     function DeleteMessage($folderid, $id) {
-        debugLog('iCalDir::DeleteMessage ('.hex2bin($id).')');
-        return unlink($this->_path . '/' . hex2bin($id));
+        debugLog('iCalDir::DeleteMessage ('.$this->_items[$id].')');
+        return unlink($this->_path . '/' . $this->_items[$id]);
     }
 
     function SetReadFlag($folderid, $id, $flags) {
@@ -363,43 +446,43 @@ class BackendiCalDir extends BackendDiff {
 
 
     function ChangeMessage($folderid, $id, $message) {
-        debugLog('iCalDir::ChangeMessage('.$folderid.', '.$id.', ..)');
-        debugLog('iCalDir::ChangeMessage:' . print_r($message,1));
+        debugLog('iCalDir::ChangeMessage('.$folderid.', '.$this->_items[$id].', ..)');
+//        debugLog('iCalDir::ChangeMessage:' . print_r($message,1));
 		
-	// Since in >=AS12.1 we have the airsyncbasebody object
-	// By doing this hack we can continue using our current functions...
-	if (isset($message->airsyncbasebody)) {
-	    switch($message->airsyncbasebody->type) {
-	        case '3' 	: $message->rtf = $message->airsyncbasebody->data; break;
-	        case '1' 	: $message->body = $message->airsyncbasebody->data; break;
-	    }
-	}
-	// In case body is sent in rtf, convert it to ascii and use it as message body element so that we
-	// can later on write it to file
-	if (isset($message->rtf)) {
-	    // Nokia MfE 2.9.158 sends contact notes with RTF and Body element. 
-	    // The RTF is empty, the body contains the note therefore we need to unpack the rtf 
-	    // to see if it is realy empty and in case not, take the appointment body.
-	    $rtf_body = new rtf ();
-	    $rtf_body->loadrtf(base64_decode($message->rtf));
-	    $rtf_body->output("ascii");
-	    $rtf_body->parse();
-	    if (isset($message->body) &&
-	        isset($rtf_body->out) &&
-	        $rtf_body->out == "" && $message->body != "") {
-	        unset($message->rtf);
-	    }
-	    debugLog('iCalDir::RTFDATA:' . $message->rtf);
-	    $rtf_body = new rtf ();
-	    $rtf_body->loadrtf(base64_decode($message->rtf));
-	    $rtf_body->output("ascii");
-	    $rtf_body->parse();
-	    debugLog('iCalDir::RTFDATA-parsed:' . $rtf_body->out);
-	    //put rtf into body
-	    if($rtf_body->out <> "") $message->body=$rtf_body->out;
-	}
-		
-	$fieldmapping = array_flip($this->_mapping);
+		// Since in >=AS12.1 we have the airsyncbasebody object
+		// By doing this hack we can continue using our current functions...
+		if (isset($message->airsyncbasebody)) {
+		    switch($message->airsyncbasebody->type) {
+		        case '3' 	: $message->rtf = $message->airsyncbasebody->data; break;
+	    	    case '1' 	: $message->body = $message->airsyncbasebody->data; break;
+		    }
+		}
+		// In case body is sent in rtf, convert it to ascii and use it as message body element so that we
+		// can later on write it to file
+		if (isset($message->rtf)) {
+		    // Nokia MfE 2.9.158 sends contact notes with RTF and Body element. 
+		    // The RTF is empty, the body contains the note therefore we need to unpack the rtf 
+		    // to see if it is realy empty and in case not, take the appointment body.
+		    $rtf_body = new rtf ();
+		    $rtf_body->loadrtf(base64_decode($message->rtf));
+		    $rtf_body->output("ascii");
+		    $rtf_body->parse();
+		    if (isset($message->body) &&
+		        isset($rtf_body->out) &&
+		        $rtf_body->out == "" && $message->body != "") {
+		        unset($message->rtf);
+		    }
+//		    debugLog('iCalDir::RTFDATA:' . $message->rtf);
+		    $rtf_body = new rtf ();
+		    $rtf_body->loadrtf(base64_decode($message->rtf));
+		    $rtf_body->output("ascii");
+		    $rtf_body->parse();
+//		    debugLog('iCalDir::RTFDATA-parsed:' . $rtf_body->out);
+		    //put rtf into body
+		    if($rtf_body->out <> "") $message->body=$rtf_body->out;
+		}
+
+		$fieldmapping = array_flip($this->_mapping);
         //$message->uid
         //   ist vom iPhone nicht wirklich barauchbar..., vorerst *deaktiviert*
 
@@ -412,58 +495,68 @@ class BackendiCalDir extends BackendDiff {
         //   der Datentypendokumentation der Acticesync Doku
 
         $data = "BEGIN:itacomCalendarEntry\nVERSION:1.0\nPRODID:MobileSync\nLASTCHANGED:".date('Ymd:His')."\n";
-        foreach($fieldmapping as $k => $v){
-	    switch ($k) {
-		default	:
-        	    $val = '';
-        	    // PHP.split durch PHP.explode ersetzt da die Funktion ausläuft und ab PHP6 nicht mehr verfügbar sein wird!
-        	    // $ks = split(';', $k);
-        	    $ks = explode('->', $k);
-        	    if ($ks[0] == "recurrence") {
-            		debugLog("HERE ".print_r($ks,true));
-            		debugLog("HERE ".$message->recurrence->$ks[1]);
-            		if(!empty($message->recurrence->$ks[1]))
-                	    $val .= $this->escape($message->recurrence->$ks[1]);
-            		$val.=';';
-        	    } else {
-        		$ks = explode(';', $v);
-        		foreach($ks as $i) {
-            		    if(!empty($message->$i))
-                		$val .= $this->escape($message->$i);
-            		    $val.=';';
-        		}
-        	    }
-        	    if(empty($val))
-            		continue;
-        	    $val = substr($val,0,-1);
-		    $data .= strtoupper($v);
-        	    if(strlen($val)>50) {
-            		$data .= ":\n\t".substr(chunk_split($val, 50, "\n\t"), 0, -1);
-        	    } else {
-            		$data .= ':'.$val."\n";
-        	    }
-	    }
+        foreach($fieldmapping as $zpushobj => $icalfield){
+		    switch ($zpushobj) {
+				default	:
+        		    $val = '';
+	        	    // PHP split durch PHP.explode ersetzt da die Funktion auslÃ¤uft und ab PHP6 nicht mehr verfÃ¼gbar sein wird!
+	        	    $zpushfields = explode('->', $zpushobj);
+	        	    if ($zpushfields[0] == "recurrence") {
+	            		if(!empty($message->recurrence->$zpushfields[1]))
+	                	    $val .= $this->escape($message->recurrence->$zpushfields[1]);
+		            	$val.=';';
+	        	    } else {
+		        		foreach($zpushfields as $zpushfield) {
+	            		    if(!empty($message->$zpushfield))
+		                		$val .= $this->escape($message->$zpushfield);
+    	        		    $val.=';';
+		        		}
+	        	    }
+	        	    if(empty($val))
+	            		continue;
+		       	    $val = substr($val,0,-1);
+				    $data .= strtoupper($icalfield);
+	        	    if(strlen($val)>50) {
+    	        		$data .= ":\n\t".substr(chunk_split($val, 50, "\n\t"), 0, -1);
+	        	    } else {
+	            		$data .= ':'.$val."\n";
+	        	    }
+			}
         }
+		if (!isset($fieldmapping['uid'])) {
+			$uid = $this->_uid();
+			$data .= "UID:".$uid."\n";
+		}
         $data .= "END:itacomCalendarEntry";
-        debugLog('iCalDir::DATA:' . print_r($data,1));
-	$data=utf8_encode($data);
+//        debugLog('iCalDir::DATA:' . print_r($data,1));
+		$data=utf8_encode($data);
 
         if(!$id){
             // jeder Termin müsste eine Startzeit haben, auch sollten relativ wenig Termine zur elben zeit beginnen
             // dadurch sollten die ID's/Dateinamen ziemlich einzigartig bleiben, so das es nicht nötig sein sollte "_i" hinten an die Dateinmaen zu packen
             $name=$message->starttime;
-            $id = $name.'.iCal';
+            $entry = $name.'.iCal';
             $i = 0;
-            while(file_exists($this->_path.'/'.$id)){
+            while(file_exists($this->_path.'/'.$entry)){
                 $i++;
-                $id = $name.'_'.$i.'.iCal';
+                $entry = $name.'_'.$i.'.iCal';
             }
-    	    file_put_contents($this->_path.'/'.$id, $data);
-    	    $id = bin2hex($id);
+    	    file_put_contents($this->_path.'/'.$entry, $data);
+/*			ksort($this->_items);
+			end($this->_items);
+			if (key($this->_items)+1 == 1) {
+				$id = sprintf("1%09d",key($this->_items)+1);
+			} else {
+				$id = key($this->_items)+1;
+			}
+*/
+			$id = $this->_itemid();
+			$this->_items[$id] = $entry;
+			file_put_contents(STATE_DIR . '/' . strtolower($this->_devid). '/ical_items_'. $this->_user, serialize($this->_items));
         } else {
-    	    file_put_contents($this->_path.'/'.hex2bin($id), $data);
+    	    file_put_contents($this->_path.'/'.$this->_items[$id], $data);
         }
-        
+
         return $this->StatMessage($folderid, $id);
     }
 
@@ -473,7 +566,7 @@ class BackendiCalDir extends BackendDiff {
     }
 
     // -----------------------------------
-	
+
     function escape($data){
         debugLog('iCalDir::escape:input:' . $data );
         if (is_array($data)) {
@@ -493,5 +586,35 @@ class BackendiCalDir extends BackendDiff {
         $data = str_replace(array('\\\\', '\\;', '\\,', '\\n','\\N'),array('\\', ';', ',', "\n", "\n"),$data);
         return $data;
     }
+
+    // Unpack timezone info from Sync
+    function _getTZFromSyncBlob($data) {
+        $tz = unpack(    "lbias/a64name/vdstendyear/vdstendmonth/vdstendday/vdstendweek/vdstendhour/vdstendminute/vdstendsecond/vdstendmillis/" .
+                        "lstdbias/a64name/vdststartyear/vdststartmonth/vdststartday/vdststartweek/vdststarthour/vdststartminute/vdststartsecond/vdststartmillis/" .
+                        "ldstbias", $data);
+
+        return $tz;
+    }
+
+    // Pack timezone info for Sync
+    function _getSyncBlobFromTZ($tz) {
+        $packed = pack("la64vvvvvvvv" . "la64vvvvvvvv" . "l",
+                $tz["bias"], "", 0, $tz["dstendmonth"], $tz["dstendday"], $tz["dstendweek"], $tz["dstendhour"], $tz["dstendminute"], $tz["dstendsecond"], $tz["dstendmillis"],
+                $tz["stdbias"], "", 0, $tz["dststartmonth"], $tz["dststartday"], $tz["dststartweek"], $tz["dststarthour"], $tz["dststartminute"], $tz["dststartsecond"], $tz["dststartmillis"],
+                $tz["dstbias"]);
+
+        return $packed;
+    }
+
+    function _itemid() {
+        return sprintf( '%04x%04x%04x%04x%04x%04x%04x%04x',
+                    mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+                    mt_rand( 0, 0x0fff ) | 0x4000,
+                    mt_rand( 0, 0x3fff ) | 0x8000,
+                    mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ) );
+    }
+
+
+
 };
 ?>

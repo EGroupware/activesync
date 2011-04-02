@@ -22,8 +22,6 @@ include_once('backend.php');
 
 function GetDiff(array $old_in, array $new_in)
 {
-    $start = microtime(true);
-
     $changes = $old = array();
 
     // create associative array of old items with id as key
@@ -85,103 +83,8 @@ function GetDiff(array $old_in, array $new_in)
             'id'   => $id,
         );
     }
-/*
-    // report performance
-    $new_time = microtime(true)-$start;
-    $start = microtime(true);
-    $old_changes = GetDiffOld($old_in,$new_in);
-    $old_time = microtime(true)-$start;
-    error_log(__METHOD__."() count(old)=".count($old_in).', count(new)='.count($new_in).', count(changes)='.count($changes).', count(old_changes)='.count($old_changes).", old_time=$old_time, new_time=$new_time");
-    debugLog(__METHOD__."() count(old)=".count($old_in).', count(new)='.count($new_in).', count(changes)='.count($changes).', count(old_changes)='.count($old_changes).", old_time=$old_time, new_time=$new_time");
-*/
-    return $changes;
-}
-
-function GetDiffOld($old, $new) {
-    $changes = array();
-
-    // Sort both arrays in the same way by ID
-    usort($old, "RowCmp");
-    usort($new, "RowCmp");
-
-    $inew = 0;
-    $iold = 0;
-
-    // Get changes by comparing our list of messages with
-    // our previous state
-    while(1) {
-        $change = array();
-
-        if($iold >= count($old) || $inew >= count($new))
-            break;
-
-        if($old[$iold]["id"] == $new[$inew]["id"]) {
-            // Both messages are still available, compare flags and mod
-            // isset($old[$iold]["flags"]) && isset($new[$inew]["flags"]) && $old[$iold]["flags"] != $new[$inew]["flags"]
-            if(isset($old[$iold]["flags"]) && isset($new[$inew]["flags"]) && $old[$iold]["flags"] != $new[$inew]["flags"]) {
-                // Flags changed
-                $change["type"] = "flags";
-                $change["id"] = $new[$inew]["id"];
-                $change["flags"] = $new[$inew]["flags"];
-                $changes[] = $change;
-            }
-
-            if(isset($old[$iold]["olflags"]) && isset($new[$inew]["olflags"]) && $old[$iold]["olflags"] != $new[$inew]["olflags"]) {
-                // Outlook Flags changed
-                $change["type"] = "olflags";
-                $change["id"] = $new[$inew]["id"];
-                $change["olflags"] = $new[$inew]["olflags"];
-                $changes[] = $change;
-            }
-
-            if($old[$iold]["mod"] != $new[$inew]["mod"]) {
-                $change["type"] = "change";
-                $change["id"] = $new[$inew]["id"];
-                $changes[] = $change;
-            }
-
-            $inew++;
-            $iold++;
-        } else {
-            if($old[$iold]["id"] > $new[$inew]["id"]) {
-                // Message in state seems to have disappeared (delete)
-                $change["type"] = "delete";
-                $change["id"] = $old[$iold]["id"];
-                $changes[] = $change;
-                $iold++;
-            } else {
-                // Message in new seems to be new (add)
-                $change["type"] = "change";
-                $change["flags"] = SYNC_NEWMESSAGE;
-                $change["id"] = $new[$inew]["id"];
-                $changes[] = $change;
-                $inew++;
-            }
-        }
-    }
-
-    while($iold < count($old)) {
-        // All data left in _syncstate have been deleted
-        $change["type"] = "delete";
-        $change["id"] = $old[$iold]["id"];
-        $changes[] = $change;
-        $iold++;
-    }
-
-    while($inew < count($new)) {
-        // All data left in new have been added
-        $change["type"] = "change";
-        $change["flags"] = SYNC_NEWMESSAGE;
-        $change["id"] = $new[$inew]["id"];
-        $changes[] = $change;
-        $inew++;
-    }
 
     return $changes;
-}
-
-function RowCmp($a, $b) {
-    return strcmp($a["id"],$b["id"]);
 }
 
 class DiffState {
@@ -449,17 +352,20 @@ class ExportChangesDiff extends DiffState {
     }
 
     // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function Config(&$importer, $folderid, $restrict, $syncstate, $flags, $truncation, $bodypreference) {
+    function Config(&$importer, $folderid, $restrict, $syncstate, $flags, $truncation, $bodypreference, $optionbodypreference, $mimesupport=0) {
         $this->_importer = &$importer;
         $this->_restrict = $restrict;
         $this->_syncstate = unserialize($syncstate);
         $this->_flags = $flags;
         $this->_truncation = $truncation;
-	$this->_bodypreference = $bodypreference;
+		$this->_bodypreference = $bodypreference;
+		$this->_optionbodypreference = $optionbodypreference;
+		$this->_mimesupport = $mimesupport;
 
         $this->_changes = array();
         $this->_step = 0;
 
+		debugLog("DiffBackend::Config mimesupport is: ". $this->_mimesupport);
         $cutoffdate = $this->getCutOffDate($restrict);
 
         if($this->_folderid) {
@@ -514,6 +420,7 @@ class ExportChangesDiff extends DiffState {
     function Synchronize() {
         $progress = array();
 
+		debugLog("DiffBackend::Synchronize mimesupport is: ". $this->_mimesupport);
         // Get one of our stored changes and send it to the importer, store the new state if
         // it succeeds
         if($this->_folderid == false) {
@@ -564,7 +471,7 @@ class ExportChangesDiff extends DiffState {
                         // calls. This may cause our algorithm to 'double see' changes.
 
                         $stat = $this->_backend->StatMessage($this->_folderid, $change["id"]);
-                        $message = $this->_backend->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false));
+                        $message = $this->_backend->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false),(isset($this->_optionbodypreference) ? $this->_optionbodypreference : false), $this->_mimesupport);
 
                         // copy the flag to the message
                         if (!$message || !$stat) error_log(__METHOD__."() FATAL !message || !stat");
@@ -727,8 +634,8 @@ class BackendDiff {
         return $folders;
     }
 
-    function Fetch($folderid, $id, $bodypreference=false, $mimesupport = 0) {
-        return $this->GetMessage($folderid, $id, 1024*1024, $bodypreference, $mimesupport); // Forces entire message (up to 1Mb)
+    function Fetch($folderid, $id, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0) {
+        return $this->GetMessage($folderid, $id, 1024*1024, $bodypreference, $optionbodypreference, $mimesupport); // Forces entire message (up to 1Mb)
     }
 
     function GetAttachmentData($attname) {
@@ -751,7 +658,7 @@ class BackendDiff {
         return false;
     }
 
-    function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0) {
+    function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0) {
         return false;
     }
 

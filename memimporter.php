@@ -18,9 +18,41 @@ class ImportContentsChangesMem extends ImportContentsChanges {
     function ImportContentsChangesMem() {
         $this->_changes = array();
         $this->_deletions = array();
+        $this->_md5tosrvid = array();
     }
     
     function ImportMessageChange($id, $message) {
+		if (isset($message->messageclass) &&
+			strtolower($message->messageclass) == 'ipm.note.mobile.sms') {
+//			debugLog(print_r($message,true));
+			$md5msg = array('datereceived' 				=> (isset($message->datereceived) 			? $message->datereceived 				: ''),
+							'importance' 				=> (isset($message->importance) 			? $message->importance 					: ''),
+							'messageclass' 				=> (isset($message->messageclass) 			? $message->messageclass 				: ''),
+							'to' 						=> (isset($message->to) 					? $message->to 							: ''),
+							'cc' 						=> (isset($message->cc) 					? $message->cc 							: ''),
+							'from' 						=> (isset($message->from) 					? $message->from 						: ''),
+							'internetcpid' 				=> (isset($message->internetcpid) 			? $message->internetcpid 				: ''),
+//							'conversationid' 			=> (isset($message->conversationid) 		? bin2hex($message->conversationid) 	: ''),
+//							'conversationindex' 		=> (isset($message->conversationindex) 		? bin2hex($message->conversationindex) 	: ''),
+							'body' 						=> (isset($message->airsyncbasebody->data)	? $message->airsyncbasebody->data 		: ''),
+							'flagstatus' 				=> (isset($message->poommailflag->flagstatus) 		? $message->poommailflag->flagstatus 		: ''),
+							'flagtype'					=> (isset($message->poommailflag->flagtype) 		? $message->poommailflag->flagtype 			: ''),
+							'startdate'					=> (isset($message->poommailflag->startdate) 		? $message->poommailflag->startdate 		: ''),
+							'utcstartdate'				=> (isset($message->poommailflag->utcstartdate) 	? $message->poommailflag->utcstartdate 		: ''),
+							'duedate'					=> (isset($message->poommailflag->duedate) 			? $message->poommailflag->duedate 			: ''),
+							'utcduedate'				=> (isset($message->poommailflag->utcduedate) 		? $message->poommailflag->utcduedate 		: ''),
+							'datecomplete'				=> (isset($message->poommailflag->datecompleted) 	? $message->poommailflag->datecompleted 	: ''),
+							'reminderset'			 	=> (isset($message->poommailflag->reminderset) 		? $message->poommailflag->reminderset 		: ''),
+							'subject'					=> (isset($message->poommailflag->subject) 			? $message->poommailflag->subject 			: ''),
+							'ordinaldate'				=> (isset($message->poommailflag->ordinaldate) 		? $message->poommailflag->ordinaldate 		: ''),
+							'subordinaldate'			=> (isset($message->poommailflag->subordinaldate) 	? $message->poommailflag->subordinaldate 	: ''),
+							'completetime'				=> (isset($message->poommailflag->completetime) 	? $message->poommailflag->completetime 		: ''),
+							);
+			$this->_md5tosrvid[md5(serialize($md5msg))] = array('serverid' 			=> $id,
+																'conversationid' 	=> $message->conversationid,
+																'conversationindex' => $message->conversationindex,
+																);
+		}
         $this->_changes[] = $id; 
         return true;
     }

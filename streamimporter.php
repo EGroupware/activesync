@@ -32,7 +32,8 @@ class ImportContentsChangesStream {
         $this->_deletedObjects = array();
         $this->_readids = $ids['readids'];
         $this->_flagids = $ids['flagids'];
-		$this->_msginfos = $msginfos;
+		if (!is_array($msginfos)) $this->_msginfos = array();
+		else $this->_msginfos = $msginfos;
     }
 
     function ImportMessageChange($id, $message) {
@@ -62,6 +63,14 @@ class ImportContentsChangesStream {
         debugLog("ImportMessageChange: Object $id Class ".strtolower(get_class($message))." Flags=".$message->flags);
 		switch($class) {
 			case 'syncnote' 		:
+				$md5msg = array('messageclass' 				=> (isset($message->messageclass) 			? $message->messageclass 			: ''),
+								'subject' 					=> (isset($message->subject) 				? $message->subject 				: ''),
+								'categories' 				=> (isset($message->categories)				? $message->categories				: ''),
+								'body' 						=> (isset($message->md5body) 				? $message->md5body 				: ""),
+								'lastmodifieddate' 			=> (isset($message->lastmodifieddate) 		? $message->lastmodifieddate		: ""),
+								);
+				$md5flags = array();
+				break;
 			case 'synctask' 		:
 				$md5msg = array('complete' 					=> (isset($message->complete) 				? $message->complete 				: ''),
 								'datecompleted' 			=> (isset($message->datecompleted) 			? $message->datecompleted			: ''),
@@ -247,11 +256,12 @@ class ImportContentsChangesStream {
 		$msginfo['md5msg'] = md5(serialize($md5msg));
 		$msginfo['md5flags'] = md5(serialize($md5flags));
 		$msginfo['read'] = (isset($message->read) ? $message->read : '');
-		if ($message->flags === false || $message->flags === SYNC_NEWMESSAGE) {
+		$msginfo['class'] = $class;
+/*		if ($message->flags === false || $message->flags === SYNC_NEWMESSAGE) {
 			if (isset($this->_msginfos[$id])) 
 				unset($this->_msginfos[$id]);
 		}
-		unset($md5msg);
+*/		unset($md5msg);
 		unset($md5flags);
 
 		if (isset($this->_msginfos[$id]) &&
@@ -261,7 +271,7 @@ class ImportContentsChangesStream {
 			debugLog("ImportMessageChange: Discarding change since read,  md5 sums for flags and message didn't change");
 		    $this->_lastObjectStatus = -1;
             return true;
-		}
+		} 
 
         $this->_seenObjects[] = $id;
 
@@ -278,7 +288,7 @@ class ImportContentsChangesStream {
 			debugLog("ImportMessageChange: Seems to be new message, no entry in msginfos");
 		}
 
-		if ($this->_optiontype && $message->messageclass == "IPM.Note.Mobile.SMS") {
+		if ($class == 'syncsms') {
 	    	$this->_encoder->startTag(SYNC_FOLDERTYPE);
 		    $this->_encoder->content("SMS");
     	    $this->_encoder->endTag();
@@ -344,14 +354,25 @@ class ImportContentsChangesStream {
 	// prevent sending changes for objects that delete information was sent already
         if (in_array($id, $this->_deletedObjects)) {
             debugLog("Object $id discarded! Object already deleted.");
-	    $this->_lastObjectStatus = -1;
+	    	$this->_lastObjectStatus = -1;
     	    return true;
         } 
         $this->_deletedObjects[] = $id;
-		if (isset($this->_msginfos[$id])) unset($this->_msginfos[$id]);
-
+//		if (isset($this->_msginfos[$id])) {
+		if (!isset($this->_msginfos[$id])) {
+//			if (isset($this->_msginfos[$id]['class']) &&
+//				$this->_optiontype != $this->_msginfos[$id]['class'] && $this->_type != $this->_msginfos[$id]['class']) {
+//            	debugLog("Object $id Optiontype and type not matching class stored in msginfo, discarding");
+//	    		$this->_lastObjectStatus = -1;
+//            	return true;
+//			}
+//		} else {
+        	debugLog("Object $id is not in sync with client, discarding");
+	    	$this->_lastObjectStatus = -1;
+        	return true;
+        }
         $this->_encoder->startTag(SYNC_REMOVE);
-		if ($this->_optiontype && $this->_optiontype == "syncsms") {
+		if ($this->_msginfos[$id]['class'] == "syncsms") {
 		    $this->_encoder->startTag(SYNC_FOLDERTYPE);
 		    $this->_encoder->content("SMS");
     	    $this->_encoder->endTag();
@@ -362,6 +383,7 @@ class ImportContentsChangesStream {
         $this->_encoder->endTag();
 
 		$this->_lastObjectStatus = 1;
+		unset($this->_msginfos[$id]);
         return true;
     }
 
@@ -377,9 +399,21 @@ class ImportContentsChangesStream {
 	    	$this->_lastObjectStatus = -1;
     	    return true;
 		}
-		if (isset($this->_msginfos[$id])) $this->_msginfos[$id]['read'] = $flags;
+		if (isset($this->_msginfos[$id])) {
+			if (isset($this->_msginfos[$id]['class']) &&
+				$this->_optiontype != $this->_msginfos[$id]['class'] && $this->_type != $this->_msginfos[$id]['class']) {
+            	debugLog("Object $id Optiontype and type not matching class stored in msginfo, discarding");
+	    		$this->_lastObjectStatus = -1;
+            	return true;
+			}
+			if (isset($this->_msginfos[$id])) $this->_msginfos[$id]['read'] = $flags;
+		} else {
+        	debugLog("Object $id is not in sync with client, discarding");
+	    	$this->_lastObjectStatus = -1;
+        	return true;
+        }
         $this->_encoder->startTag(SYNC_MODIFY);
-		if ($this->_optiontype && $this->_optiontype == "syncsms") {
+		if ($this->_msginfos[$id]['class'] == "syncsms") {
 		    $this->_encoder->startTag(SYNC_FOLDERTYPE);
 		    $this->_encoder->content("SMS");
     	    $this->_encoder->endTag();

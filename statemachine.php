@@ -48,9 +48,10 @@ class StateMachine {
     // Gets the sync state for a specified sync key. Requesting a sync key also implies
     // that previous sync states for this sync key series are no longer needed, and the
     // state machine will tidy up these files.
-    function StateMachine($devid) {
+    function StateMachine($devid, $user) {
 		$this->_devid = strtolower($devid);
-		debugLog ("Statemachine _devid initialized with ".$this->_devid);
+		$this->_user = strtolower($user);
+		debugLog ("Statemachine _devid initialized with ".$this->_devid." for user ".$user);
         $dir = opendir(STATE_DIR. "/" .$this->_devid);
         if(!$dir) {
 	    	debugLog("StateMachine: created folder for device ".$this->_devid);
@@ -62,13 +63,13 @@ class StateMachine {
     function getSyncState($synckey) {
 
         // No sync state for sync key '0'
-        if($synckey == "0" || $synckey == "SMS0" || $synckey == "s0") {
+        if($synckey == "0" || $synckey == "SMS0" || $synckey == "s0" || $synckey == "mi0") {
 	    	debugLog("GetSyncState: Sync key 0 detected");
             return "";
 		}
 
         // Check if synckey is allowed
-        if(!preg_match('/^(s|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $synckey, $matches)) {
+        if(!preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $synckey, $matches)) {
 		    debugLog("GetSyncState: Sync key invalid formatted (".$syckey.")");
             return -9;
         }
@@ -112,13 +113,13 @@ class StateMachine {
     // we need to seperate the cleanup from the get since with AS14 cached synckeys being used. Synckeys
     // should only be unlinked in case the got confirmed from device to keep the sync alive.
     function cleanOldSyncState($synckey) {
-        if($synckey == "0" || $synckey == "SMS0" || $synckey == "s0") {
+        if($synckey == "0" || $synckey == "SMS0" || $synckey == "s0" || $synckey == "mi0" ) {
 	    	debugLog("cleanOldSyncState: Sync key 0 detected");
             return true;
 		}
 
         // Check if synckey is allowed
-        if(!preg_match('/^(s|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $synckey, $matches)) {
+        if(!preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $synckey, $matches)) {
 		    debugLog("cleanOldSyncState: Sync key invalid formatted");
             return -9;
         }
@@ -136,7 +137,7 @@ class StateMachine {
 
         // Cleanup all older syncstates
     	while($entry = readdir($dir)) {
-    	    if(preg_match('/^(s|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $entry, $matches)) {
+    	    if(preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $entry, $matches)) {
                 if($matches[1] == $key && $matches[2] == $guid && $matches[3] < ($n-1)) {
 	    	    debugLog("GetSyncState: Removing old Sync Key ".STATE_DIR . "/". $this->_devid . "/$entry");
             	    unlink(STATE_DIR . "/".$this->_devid . "/$entry");
@@ -153,7 +154,7 @@ class StateMachine {
         if(!isset($synckey) || $synckey == "0") {
             return "{" . $this->uuid() . "}" . "1";
         } else {
-            if(preg_match('/^(s|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $synckey, $matches)) {
+            if(preg_match('/^(s|mi|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $synckey, $matches)) {
                 $n = $matches[3];
                 $n++;
                 return "{" . $matches[2] . "}" . $n;
@@ -178,7 +179,7 @@ class StateMachine {
 //        	};
 //		}
 
-        if(!preg_match('/^(s|SMS){0,1}\{[0-9A-Za-z-]+\}[0-9]+$/', $synckey)) {
+        if(!preg_match('/^(s|mi|SMS){0,1}\{[0-9A-Za-z-]+\}[0-9]+$/', $synckey)) {
 		    debugLog("setSyncState: Format not match!");
             return false;
         }
@@ -198,7 +199,7 @@ class StateMachine {
 				$this->_compareCacheRecursive($this->newsynccache["collections"],$this->oldsynccache["collections"],$cachestatus);
 		    } else $cachestatus = SYNCCACHE_CHANGED;
 		} else $cachestatus = SYNCCACHE_CHANGED;
-		return file_put_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid, $cachestate);
+		return file_put_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $cachestate);
     }
 
     function _compareCacheRecursive($old, $new, &$cachestatus) {
@@ -222,8 +223,16 @@ class StateMachine {
     }
 
     function getSyncCache() {
-        if(file_exists(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid)) {
+
+        if(file_exists(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
+    	    $content = file_get_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
+    	    $this->oldsynccache=unserialize($content);
+            return $content;
+        } else if(file_exists(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid)) {
+// just for compatibility to take old cache and apply it for new format
     	    $content = file_get_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid);
+			if (file_put_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $content))
+				unlink(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid);
     	    $this->oldsynccache=unserialize($content);
             return $content;
         } else return false;
@@ -247,17 +256,17 @@ class StateMachine {
 		    case 13	: $cache['folders'][$serverid]['class'] = "Calendar"; break;
 		    case 9	: // These are contact classes
 		    case 14	: $cache['folders'][$serverid]['class'] = "Contacts"; break;
+		    case 17	:
+		    case 10	: $cache['folders'][$serverid]['class'] = "Notes"; break;
 		    case 1	: // All other types map to Email
 		    case 2	:
 		    case 3	:
 		    case 4	:
 		    case 5	:
 		    case 6	:
-		    case 10	:
 		    case 11	:
 		    case 12	:
 		    case 16	:
-		    case 17	:
 		    case 18	:
 		    default	: $cache['folders'][$serverid]['class'] = "Email";
 		}
@@ -289,13 +298,14 @@ class StateMachine {
         if(!isset($hierarchysynckey) || $hierarchysynckey == "0") {
             return array();
         } else {
-            if(preg_match('/^(s|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $hierarchysynckey, $matches)) {
+            if(preg_match('/^(s|mi|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $hierarchysynckey, $matches)) {
                 $filename = "mi{" . $matches[2] . "}";
             } else array();
         }
 		$filename = STATE_DIR . "/". $this->_devid . "/". $filename;
 		$res = unserialize(file_get_contents($filename));
 		if ($res === false) return array();
+		debugLog("getMsgInfos called with synckey ".$hierarchysynckey);
 		return $res;
 	}
 
@@ -303,11 +313,12 @@ class StateMachine {
         if(!isset($hierarchysynckey) || $hierarchysynckey == "0") {
             return array();
         } else {
-            if(preg_match('/^(s|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $hierarchysynckey, $matches)) {
+            if(preg_match('/^(s|mi|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $hierarchysynckey, $matches)) {
                 $filename = "mi{" . $matches[2] . "}";
             } else array();
         }
 		$filename = STATE_DIR . "/". $this->_devid . "/". $filename;
+		debugLog("setMsgInfos called with synckey ".$hierarchysynckey);
 		return file_put_contents($filename,serialize($msginfos));
 	}
 

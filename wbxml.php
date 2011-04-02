@@ -64,6 +64,7 @@ class WBXMLDecoder {
     var $ungetbuffer;
 
     var $logStack = array();
+	var $_inputRaw = '';
 
     function WBXMLDecoder($input, $dtd) {
         $this->in = $input;
@@ -142,6 +143,10 @@ class WBXMLDecoder {
             return $element;
         else {
             debug("Unmatched end tag:");
+			if (defined('WBXML_DEBUG') &&
+				WBXML_DEBUG == true) {
+				debugLog("WBXML RAW Input (bin2hex): ".bin2hex($this->_inputRaw));
+			}
             debug(print_r($element,true));
             $bt = debug_backtrace();
             $c = count($bt);
@@ -447,16 +452,33 @@ class WBXMLDecoder {
     }
 
     function getOpaque($len) {
-	$result = "";
+		$result = "";
         while (byte_strlen($result) < $len) {
            if (($ch = fread($this->in, $len-byte_strlen($result))) == false) return false;
            $result .= $ch;
         };
+        $this->_inputRaw .= $result;
         return $result;
     }
 
     function getByte() {
-        $ch = fread($this->in, 1);
+//        $ch = fread($this->in, 1);
+// Start to cover timeout scenarios in input stream where stream is not eof but no char is read
+// Could solve t-sync problem. if not above line was replaced until END
+		$i = 0;
+		do {
+			if ($i > 0) usleep(500);
+        	$ch = fread($this->in, 1);
+        	$i++;
+        } while (!feof($this->in) &&
+        		  (byte_strlen($ch) == 0 && $i < 10));
+		if ($i == 10 &&
+			byte_strlen($ch) == 0 &&
+			!feof($this->in)) {
+			debugLog("wbxml: input stream is not feof and limit 10 reached during read without getting any byte from input!");
+		}
+// END
+        $this->_inputRaw .= $ch;
         if(byte_strlen($ch) > 0)
             return ord($ch);
         else
@@ -487,6 +509,7 @@ class WBXMLDecoder {
         if($length > 0)
             $stringtable = fread($this->in, $length);
 
+        $this->_inputRaw .= $stringtable;
         return $stringtable;
     }
 
@@ -740,6 +763,8 @@ class WBXMLEncoder {
             $cp = 0;
         }
 
+//		debugLog(print_r($this->_dtd,true));
+//		debugLog("cp: ".$cp." split tag: ".$split["tag"]);
         $code = $this->_dtd["codes"][$cp][$split["tag"]];
 
         $mapping["cp"] = $cp;

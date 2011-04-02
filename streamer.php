@@ -52,6 +52,30 @@ class Streamer {
     // means that if there are multiple objects at this level, then only the first is decoded
     // SubOjects are auto-instantiated and decoded using the same functionality
     function decode(&$decoder) {
+
+		// START HACK dw2412
+		// We need this just for decoding items sent by HTC Android Devices (HTC DESIRE Z - maybe others!) the right way...
+		switch (get_class($this)) {
+			case "SyncAppointment" :
+				if (!isset($this->_mapping[SYNC_POOMCAL_BODY]))
+					$this->_mapping += array(
+    			                SYNC_POOMCAL_BODY => array (STREAMER_VAR => "body"),
+                			    SYNC_POOMCAL_BODYTRUNCATED => array (STREAMER_VAR => "bodytruncated"),
+			                    SYNC_POOMCAL_RTF => array (STREAMER_VAR => "rtf"),
+    	    				);
+				break;
+			case "SyncContact" :
+				if (!isset($this->_mapping[SYNC_POOMCONTACTS_BODY]))
+				    $this->_mapping += array(
+								SYNC_POOMCONTACTS_RTF => array (STREAMER_VAR => "rtf"),
+					        	SYNC_POOMCONTACTS_BODY => array (STREAMER_VAR => "body"),
+					        	SYNC_POOMCONTACTS_BODYSIZE => array (STREAMER_VAR => "bodysize"),
+					        	SYNC_POOMCONTACTS_BODYTRUNCATED => array (STREAMER_VAR => "bodytruncated"),
+				    	    );
+    	    	break;
+		}
+		// END HACK dw2412
+
         while(1) {
             $entity = $decoder->getElement();
 		    if (isset($entity[EN_TAG])) {
@@ -67,7 +91,7 @@ class Streamer {
 			};
 
             if($entity[EN_TYPE] == EN_TYPE_STARTTAG) {
-                if(! ($entity[EN_FLAGS] & EN_FLAGS_CONTENT)) {
+                if(! ($entity[EN_FLAGS] & EN_FLAGS_CONTENT) && (isset($entity[EN_TAG]) && $entity[EN_TAG] != '' && isset($this->_mapping[$entity[EN_TAG]]))) {
                     $map = $this->_mapping[$entity[EN_TAG]];
                     if(!isset($map[STREAMER_TYPE])) {
                         $this->$map[STREAMER_VAR] = "";
@@ -78,7 +102,8 @@ class Streamer {
 		    		    $this->poommailflag->flagstatus="";
                     }
                     continue;
-                }
+                } else if (! ($entity[EN_FLAGS] & EN_FLAGS_CONTENT) && (!isset($entity[EN_TAG]) || $entity[EN_TAG] == '' || !isset($this->_mapping[$entity[EN_TAG]])))
+                	debugLog("Streamer::DEBUGDEBUGDEBUG:".print_r($entity,true));
                 // Found a start tag
                 if(!isset($this->_mapping[$entity[EN_TAG]])) {
                     // This tag shouldn't be here, abort
@@ -122,12 +147,13 @@ class Streamer {
                                     return false;
                             } else {
                                 $subdecoder = new $map[STREAMER_TYPE]();
-                                if($subdecoder->decode($decoder) === false)
+                                if($subdecoder->decode($decoder) === false) {
                                     return false;
-
+                                }
                                 $decoded = $subdecoder;
 
                                 if(!$decoder->getElementEndTag()) {
+                                	debug("HERE");
                                     debug("No end tag for " . $entity[EN_TAG]);
                                     return false;
                                 }
@@ -137,11 +163,18 @@ class Streamer {
                             $decoded = $decoder->getElementContent();
 
                             if($decoded === false) {
-                                debug("Unable to get content for " . $entity[EN_TAG]);
-                                return false;
+//                                debug("Unable to get content for " . $entity[EN_TAG]);
+//                                return false;
+								// the tag is declared to have content, but no content is available.
+								// set an empty content
+								$decoded = "";
                             }
 
                             if(!$decoder->getElementEndTag()) {
+								while($decoder->getByte()) {
+									debug("Getting Bytes since no ElementEndTag was found");
+								}
+                                debugLog("inputRaw: ".bin2hex($decoder->_inputRaw));
                                 debug("Unable to get end tag for " . $entity[EN_TAG]);
                                 return false;
                             }

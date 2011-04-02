@@ -143,7 +143,7 @@ class BackendEGW extends BackendDiff
 				}
 			}
 		}
-		debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -175,7 +175,7 @@ class BackendEGW extends BackendDiff
 				);
 			}
 		}
-		debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -216,10 +216,11 @@ class BackendEGW extends BackendDiff
 	 * @param string $id
 	 * @param int $truncsize
 	 * @param int $bodypreference
+	 * @param $optionbodypreference
 	 * @param bool $mimesupport
 	 * @return $messageobject|boolean false on error
 	 */
-	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0)
+	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
 	{
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $mimesupport);
 	}
@@ -964,10 +965,11 @@ interface activesync_plugin_read
 	 * @param string $id
 	 * @param int $truncsize
 	 * @param int $bodypreference
+	 * @param $optionbodypreference
 	 * @param bool $mimesupport
 	 * @return $messageobject|boolean false on error
 	 */
-	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $mimesupport = 0);
+	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0);
 
 	/**
 	 * Settings / Preferences like the usualy settings hook in egroupware

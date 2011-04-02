@@ -122,7 +122,10 @@ if (!isset($_GET['Cmd']) &&
     }
     if (isset($uri_decoded['AttachmentName'])) $_GET['AttachmentName'] = $uri_decoded['AttachmentName'];
     if (isset($uri_decoded['ItemId'])) $_GET['ItemId'] = $uri_decoded['ItemId'];
-    if (isset($uri_decoded['LongId'])) $_GET['CollectionId'] = $uri_decoded['LongId']; // NOT SURE IF THIS MAPPING IS CORRECT!
+    if (isset($uri_decoded['CollectionId'])) $_GET['CollectionId'] = $uri_decoded['CollectionId'];
+    if (isset($uri_decoded['CollectionName'])) $_GET['CollectionName'] = $uri_decoded['CollectionName'];
+    if (isset($uri_decoded['ParentId'])) $_GET['ParentId'] = $uri_decoded['ParentId'];
+    if (isset($uri_decoded['LongId'])) $_GET['LongId'] = $uri_decoded['LongId'];
     if (isset($uri_decoded['Occurrence'])) $_GET['Occurrence'] = $uri_decoded['Occurrence'];
     if (isset($uri_decoded['Options'])) {
 		$uri_decoded['Options'] = bin2hex($uri_decoded['Options'])*1;
@@ -147,7 +150,7 @@ if (isset($_SERVER['HTTP_MS_ASPROTOCOLVERSION']) ||
     global $protocolversion;
     if (isset($_SERVER['HTTP_MS_ASPROTOCOLVERSION']))
 		$protocolversion = $_SERVER['HTTP_MS_ASPROTOCOLVERSION'];
-    else
+	else
 		$protocolversion = $uri_decoded['ProtVer']/10;
     debugLog("Client supports version " . $protocolversion);
 } else {
@@ -280,20 +283,23 @@ if($backend->Setup($user, $devid, $protocolversion) == false) {
 switch($_SERVER["REQUEST_METHOD"]) {
     case 'OPTIONS':
 		// dw2412 changed to support AS14 Protocol
-        header("MS-Server-ActiveSync: 14.00.048.018");
-        header("MS-ASProtocolVersions: 1.0,2.0,2.1,2.5,12.0,12.1,14.0");
-		header("MS-ASProtocolRevisions: 12.1r1");
-		header("X-MS-MV: 14.0.255");
+//		Beta E2K10 ID
+//      header("MS-Server-ActiveSync: 14.00.048.018");
+//      header("MS-ASProtocolVersions: 1.0,2.0,2.1,2.5,12.0,12.1,14.0");
+//  	header("MS-ASProtocolRevisions: 12.1r1");
+//		header("X-MS-MV: 14.0.255");
+        header("MS-Server-ActiveSync: 14.1");
+        header("MS-ASProtocolVersions: 1.0,2.0,2.1,2.5,12.0,12.1,14.0,14.1");
 		// START ADDED dw2412
 		// Compare and send X-MS-RP depending on Protocol Version string
 		// write the new Protocol Version string if update send
 		include_once ('statemachine.php');
-		$protstate = new StateMachine($devid);
+		$protstate = new StateMachine($devid,$user);
 		$protsupp = $protstate->getProtocolState();
-		if ($protsupp !== false && $protsupp != "2.0,2.1,2.5,12.0,12.1,14.0") {
-    	    header("X-MS-RP: 2.0,2.1,2.5,12.0,12.1,14.0");
+		if ($protsupp !== false && $protsupp != "2.0,2.1,2.5,12.0,12.1,14.0,14.1") {
+    	    header("X-MS-RP: 2.0,2.1,2.5,12.0,12.1,14.0,14.1");
 		    debugLog("Sending X-MS-RP to update Protocol Version on Device");
-    	    $protstate->setProtocolState("2.0,2.1,2.5,12.0,12.1,14.0");
+    	    $protstate->setProtocolState("2.0,2.1,2.5,12.0,12.1,14.0,14.1");
     	}
     	unset($protstate);
 		// END ADDED dw2412
@@ -303,7 +309,8 @@ switch($_SERVER["REQUEST_METHOD"]) {
         break;
     case 'POST':
 		// dw2412 changed to support AS14 Protocol
-		header("MS-Server-ActiveSync: 14.0");
+//		header("MS-Server-ActiveSync: 14.0");
+		header("MS-Server-ActiveSync: 14.1");
         debugLog("POST cmd: $cmd");
         // Do the actual request
         if(!HandleRequest($backend, $cmd, $devid, $protocolversion, $multipart)) {

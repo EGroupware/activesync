@@ -7,7 +7,7 @@
 *
 * Created   :   01.03.2008
 *
-* ï¿½ Zarafa Deutschland GmbH, www.zarafaserver.de
+* © Zarafa Deutschland GmbH, www.zarafaserver.de
 * This file is distributed under GPL v2.
 * Consult LICENSE file for details
 ************************************************/
@@ -25,8 +25,8 @@ class ExportHierarchyChangesCombined{
 		debugLog('ExportHierarchyChangesCombined constructed');
 		$this->_backend =& $backend;
 	}
-
-	function Config(&$importer, $folderid, $restrict, $syncstate, $flags, $truncation, $bodypreference) {
+	
+	function Config(&$importer, $folderid, $restrict, $syncstate, $flags, $truncation, $bodypreference, $optionbodypreference, $mimesupport=false) {
 		debugLog('ExportHierarchyChangesCombined::Config(...)');
 		if($folderid){
 			return false;
@@ -49,7 +49,7 @@ class ExportHierarchyChangesCombined{
 			}
 
 			$this->_exporters[$i] = $this->_backend->_backends[$i]->GetExporter();
-			$this->_exporters[$i]->Config($this->_importwraps[$i], $folderid, $restrict, $state, $flags, $truncation, $bodypreference);
+			$this->_exporters[$i]->Config($this->_importwraps[$i], $folderid, $restrict, $state, $flags, $truncation, $bodypreference, $optionbodypreference, $mimesupport);
 		}
 		debugLog('ExportHierarchyChangesCombined::Config complete');
 	}
@@ -73,7 +73,7 @@ class ExportHierarchyChangesCombined{
 				if (($fid = array_search($id,$this->_backend->_folders)) === false) {
 				    $fid = $this->_backend->_folderid();
 				    $this->_backend->_folders[$fid] = $id;
-				}
+				} 
 				$f->serverid = $fid;
 				$f->parentid = '0';
 				$f->displayname = $this->_backend->_config['backends'][$i]['subfolder'];
@@ -203,14 +203,14 @@ class ImportHierarchyChangesCombinedWrap {
 		if (($fid = array_search($id,$this->_backend->_folders)) === false) {
 		    $fid = $this->_backend->_folderid();
 		    $this->_backend->_folders[$fid] = $id;
-		}
+		} 
 		$folder->serverid = $fid;
 		if ($folder->parentid != '0' || !empty($this->_backend->_config['backends'][$this->_backendid]['subfolder'])) {
 			$pid = $this->_backendid.$this->_backend->_config['delimiter'].$folder->parentid;
 			if (($pfid = array_search($pid,$this->_backend->_folders)) === false) {
 			    $pfid = $this->_backend->_folderid();
 			    $this->_backend->_folders[$pfid] = $pid;
-	    	}
+	    	} 
 			$folder->parentid = $pfid;
 		}
 		if (isset($this->_backend->_config['folderbackend'][$folder->type]) && $this->_backend->_config['folderbackend'][$folder->type] != $this->_backendid) {
@@ -353,7 +353,7 @@ class BackendCombined {
 		$dir = opendir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid));
 	    if (!$dir) {
 		    debugLog("Combined Backend: created folder for device ".strtolower($this->_devid));
-		    if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false)
+		    if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false) 
 			debugLog("Combined Backend: failed to create folder ".strtolower($this->_devid));
 		}
 		$filename = STATE_DIR . '/' . strtolower($this->_devid). '/combined_folders_'. $this->_user;
@@ -413,7 +413,7 @@ class BackendCombined {
 				if (($fid = array_search($id,$this->_folders)) === false) {
 				    $fid = $this->_folderid();
 				    $this->_folders[$fid] = $id;
-				}
+				} 
 				$f->serverid = $fid;
 				$f->parentid = '0';
 				$f->displayname = $this->_config['backends'][$i]['subfolder'];
@@ -427,7 +427,7 @@ class BackendCombined {
 					if (($fid = array_search($id,$this->_folders)) === false) {
 					    $fid = $this->_folderid();
 					    $this->_folders[$fid] = $id;
-					}
+					} 
 					$h[$j]->serverid = $fid;
 					if($h[$j]->parentid != '0' || !empty($this->_config['backends'][$i]['subfolder'])){
 						$h[$j]->parentid = $i.$this->_config['delimiter'].$h[$j]->parentid;
@@ -488,12 +488,12 @@ class BackendCombined {
 //			    $msg = $backend->ItemOperationsGetAttachmentData($value["airsyncbasefilereference"]);
 
 	//forward to right backend
-	function Fetch($folderid, $id, $bodypreference = false){
+	function Fetch($folderid, $id, $bodypreference = false, $optionbodypreference = false, $mimesupport=0){
 		debugLog('Combined::Fetch('.$folderid.', '.$id.', '.serialize($bodypreference).')');
 		$backend = $this->GetBackend($folderid);
 		if ($backend == false)
 			return false;
-		return $backend->Fetch($this->GetBackendFolder($folderid), $id, $bodypreference);
+		return $backend->Fetch($this->GetBackendFolder($folderid), $id, $bodypreference, $optionbodypreference, $mimesupport);
 	}
 
 	//there is no way to tell which backend the attachment is from, so we try them all
@@ -507,10 +507,23 @@ class BackendCombined {
 		return false;
 	}
 
-	//send mail with the first backend returning true
-	function SendMail($rfc822, $forward = false, $reply = false, $parent = false) {
+	function ItemOperationsGetAttachmentData($attname){
+		debugLog('Combined::ItemOperationsGetAttachmentData('.$attname.')');
 		foreach ($this->_backends as $i => $b){
-			if($this->_backends[$i]->SendMail($rfc822, $forward, $reply, $parent) == true){
+			if($val = $this->_backends[$i]->ItemOperationsGetAttachmentData($attname)){
+				if (isset($val->_data) && $val->_data!="") return $val;
+			}
+		}
+		return false;
+	}
+	
+	//send mail with the first backend returning true
+//	function SendMail($rfc822, $forward = false, $reply = false, $parent = false) {
+    function SendMail($rfc822, $smartdata=array(), $protocolversion = false) {
+		$smartdata['folderid'] = $this->GetBackendFolder($smartdata['folderid']);
+		foreach ($this->_backends as $i => $b){
+//			if($this->_backends[$i]->SendMail($rfc822, $forward, $reply, $parent) == true){
+			if($this->_backends[$i]->SendMail($rfc822, $smartdata, $protocolversion) == true){
 				return true;
 			}
 		}
@@ -616,8 +629,8 @@ class BackendCombined {
      * @return unknown
      */
 	function generatePolicyKey() {
-//		AS14 transmit Policy Key in URI on MS Phones.
-//		In the base64 encoded binary string only 4 Bytes being reserved for
+//		AS14 transmit Policy Key in URI on MS Phones. 
+//		In the base64 encoded binary string only 4 Bytes being reserved for 
 //		policy key and works in signed mode... Thats why we need here the max...
 //		return mt_rand(1000000000, 9999999999);
 		return mt_rand(1000000000, 2147483647);
@@ -634,7 +647,7 @@ class BackendCombined {
 		$this->_device_filename = BASE_PATH . STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 
     	if($this->_loggedin !== false) {
-    		if (!$policykey)
+    		if (!$policykey) 
     			$policykey = $this->generatePolicyKey();
     		$this->_device_info['policy_key'] = $policykey;
     		file_put_contents($this->_device_filename,serialize($this->_device_info));
@@ -674,21 +687,21 @@ class BackendCombined {
 		if (isset($request["oof"])) {
 		    if ($request["oof"]["oofstate"] == 1) {
 				// in case oof should be switched on do it here
-				// store somehow your oofmessage in case your system supports.
-				// response["oof"]["status"] = true per default and should be false in case
+				// store somehow your oofmessage in case your system supports. 
+				// response["oof"]["status"] = true per default and should be false in case 
 				// the oof message could not be set
-				$response["oof"]["status"] = true;
+				$response["oof"]["status"] = true; 
 		    } else {
 				// in case oof should be switched off do it here
-				$response["oof"]["status"] = true;
+				$response["oof"]["status"] = true; 
 	    	}
 		}
 		if (isset($request["deviceinformation"])) {
-			// in case you'd like to store device informations do it here.
+			// in case you'd like to store device informations do it here. 
     	    $response["deviceinformation"]["status"] = true;
 		}
 		if (isset($request["devicepassword"])) {
-		    // in case you'd like to store device informations do it here.
+		    // in case you'd like to store device informations do it here. 
     	    $response["devicepassword"]["status"] = true;
 		}
 
@@ -722,6 +735,13 @@ class BackendCombined {
     // END ADDED dw2412 Settings Support
 
     function _folderid() {
+/*		ksort($this->_folders);
+		end($this->_folders);
+		if (key($this->_folders)+1 == 1) {
+			return sprintf("1%09d",key($this->_folders)+1);
+		}
+		return key($this->_folders)+1;
+*/
         return sprintf( '%04x%04x%04x%04x%04x%04x%04x%04x',
                     mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
                     mt_rand( 0, 0x0fff ) | 0x4000,

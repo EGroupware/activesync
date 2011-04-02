@@ -79,6 +79,9 @@ function hex2bin($data)
 
 function utf8_to_backendcharset($string, $option = "")
 {
+	// if the store supports unicode return the string without converting it
+	if (defined('STORE_SUPPORTS_UNICODE') && STORE_SUPPORTS_UNICODE == true) return $string;
+
     if (function_exists("iconv")){
         return @iconv("UTF-8", BACKEND_CHARSET . $option, $string);
     }else{
@@ -88,6 +91,9 @@ function utf8_to_backendcharset($string, $option = "")
 
 function backendcharset_to_utf8($string, $option = "")
 {
+	// if the store supports unicode return the string without converting it
+	if (defined('STORE_SUPPORTS_UNICODE') && STORE_SUPPORTS_UNICODE == true) return $string;
+
     if (function_exists("iconv")){
         return @iconv(BACKEND_CHARSET, "UTF-8" . $option, $string);
     }else{
@@ -412,6 +418,81 @@ function byte_substr(&$data,$offset,$len=null) {
 		return MBSTRING_OVERLOAD & 2 ? mb_substr($data,$offset,byte_strlen($data),'ascii') : substr($data,$offset);
 	return MBSTRING_OVERLOAD & 2 ? mb_substr($data,$offset,$len,'ascii') : substr($data,$offset,$len);
 }
+
+// START ADDED dw2412 just to find out if include file is available (didn't find a better place to have this 
+// nice function reachable to check if common classes not already integrated in Zarafa Server exists)
+function include_file_exists($filename) {
+     $path = explode(":", ini_get('include_path'));
+     foreach($path as $value) {
+        if (file_exists($value.$filename)) return true;
+     }
+     
+     return false;
+}
+// END ADDED dw2412 just to find out if include file is available
+
+// START ADDED dw2412 ResolveRecipient Support
+function generateMergedFB($starttime, $endtime, $entries) {
+	$mergedfb = '';
+	for ($i = 0; $i < ($endtime-$starttime)/60/30; $i++) {
+		$mergedfb .= '0';
+	}
+	if (isset($entries) && sizeof($entries) > 0) {
+		foreach ($entries as $entry) {
+			for ($i=(($entry['start'] - $starttime) / 60 / 30); $i<(($entry['end'] - $starttime) / 60 / 30); $i++) {
+				$mergedfb{$i} = $entry['status'];
+			}
+		}
+	}
+	return $mergedfb;
+}
+
+function parseVFB($lines, &$line_no) {
+	for (;$line_no<sizeof($lines);$line_no++) {
+		$line = $lines[$line_no];
+		if (($i = strpos($line,":"))) {
+			$field = substr($line,0,$i);
+			$value = substr($line,$i+1);
+			switch (strtolower($field)) {
+				case 'begin'	: 
+					$line_no++;
+					$vfb_loc[strtolower($value)] = parseVFB($lines,$line_no);
+					break;
+				case 'dtend' : 
+				case 'dtstart' : 
+				case 'dtstamp' : 
+					$vfb_loc[strtolower($field)] = parseVFB_date($value); 
+					break;
+				case 'freebusy' : 
+		           	if (($i = strpos($value,"/"))) {
+				        $val['starttime'] = parseVFB_date(substr($value,0,$i));
+				        $val['endtime']   = parseVFB_date(substr($value,$i+1));
+		           	}
+					$vfb_loc[strtolower($field)][] = $val; 
+					break;
+				case 'end'		: 
+					return $vfb_loc;
+				default			: 
+					$vfb_loc[strtolower($field)] = $value;
+			}
+		}
+	}
+	return $vfb_loc;
+}
+
+function parseVFB_date($tstring) {
+	if(preg_match("/(\d{4})[^0-9]*(\d{2})[^0-9]*(\d{2})T(\d{2})[^0-9]*(\d{2})[^0-9]*(\d{2})(.\d+)?Z/", $tstring, $matches)) {
+		if ($matches[1] >= 2038){
+			$matches[1] = 2038;
+			$matches[2] = 1;
+			$matches[3] = 18;
+			$matches[4] = $matches[5] = $matches[6] = 0;
+		}
+		return gmmktime($matches[4], $matches[5], $matches[6], $matches[2], $matches[3], $matches[1]);
+	}
+	return false;
+}
+// END ADDED dw2412 ResolveRecipient Support
 
 
 ?>

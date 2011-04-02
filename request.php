@@ -38,8 +38,9 @@ function GetObjectClassFromFolderClass($folderclass)
 function HandleMoveItems($backend, $devid, $protocolversion) {
     global $zpushdtd;
     global $input, $output;
+	global $user;
 
-    $statemachine = new StateMachine($devid);
+    $statemachine = new StateMachine($devid,$user);
 //    $SyncCache = unserialize($statemachine->getSyncCache());
 
     $decoder = new WBXMLDecoder($input, $zpushdtd);
@@ -197,6 +198,7 @@ function HandleFolderSync($backend, $devid, $protocolversion) {
     global $zpushdtd;
     global $input, $output;
     global $useragent;
+	global $user;
 
     // Maps serverid -> clientid for items that are received from the PIM
     $map = array();
@@ -218,7 +220,7 @@ function HandleFolderSync($backend, $devid, $protocolversion) {
         return false;
 
     // First, get the syncstate that is associated with this synckey
-    $statemachine = new StateMachine($devid);
+    $statemachine = new StateMachine($devid,$user);
 
     // The state machine will discard any sync states before this one, as they are no
     // longer required
@@ -360,7 +362,7 @@ function HandleFolderSync($backend, $devid, $protocolversion) {
     // argument, which stores them in $importer. Returns the new sync state for this exporter.
     $exporter = $backend->GetExporter();
 
-    $exporter->Config($importer, false, false, $syncstate, 0, 0, false);
+    $exporter->Config($importer, false, false, $syncstate, 0, 0, false, false);
 
     while(is_array($exporter->Synchronize()));
 
@@ -489,7 +491,7 @@ function HandleSync($backend, $protocolversion, $devid) {
     $decoder = new WBXMLDecoder($input, $zpushdtd);
 
     // Init state machine
-    $statemachine = new StateMachine($devid);
+    $statemachine = new StateMachine($devid,$user);
 
     // Start decode
     $shortsyncreq = false;
@@ -533,7 +535,6 @@ function HandleSync($backend, $protocolversion, $devid) {
 				$shortsyncreq = true;
 				$SyncCache['timestamp'] = time();
 				$statemachine->setSyncCache(serialize($SyncCache));
-				$msginfos = $statemachine->getMsgInfos($SyncCache['hierarchy']['synckey']);
 				debugLog("Empty Sync request and taken info from SyncCache.");
 				$collections = array();
 				foreach ($SyncCache['collections'] as $key=>$value) {
@@ -544,12 +545,13 @@ function HandleSync($backend, $protocolversion, $devid) {
         																	  			 	   !isset($collection["BodyPreference"][2]) &&
         																 		 			   !isset($collection["BodyPreference"][3]) &&
         																 		 			   !isset($collection["BodyPreference"][4]));
-						debugLog("During SyncInit 1 onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-						if($collection['onlyoptionbodypreference'] === false)
-							$collection['syncstate'] = $statemachine->getSyncState($collection['synckey']);
-						debugLog("strlen collection is ".(isset($collection['syncstate']) ? strlen($collection['syncstate']) : " no syncstate available"));
-			         	if (isset($collection["optionfoldertype"]))
-						    $collection[$collection["optionfoldertype"].'syncstate'] = $statemachine->getSyncState($collection["optionfoldertype"].$collection['synckey']);
+						$collection['syncstate'] = $statemachine->getSyncState($collection['synckey']);
+						if ($collection['synckey'] == "0") {
+							debugLog('Here1 : Setting $msginfos['.$key.'] to array()');
+							$msginfos[$key] = array();
+						} else {
+							$msginfos[$key] = unserialize($statemachine->getSyncState("mi".$collection['synckey']));
+						}
 						array_push($collections,$collection);
 					}
 				}
@@ -565,16 +567,9 @@ function HandleSync($backend, $protocolversion, $devid) {
     	    return true;
     	}
     } else {
-		if ($decoder->getElementStartTag(SYNC_MAXITEMS)) {
-	    	$default_maxitems = $decoder->getElementContent();
-	   		if(!$decoder->getElementEndTag())
-				return false;
-		}
-
 		if (!isset($SyncCache))
 			$SyncCache = unserialize($statemachine->getSyncCache());
 		// Just to update the timestamp...
-		$msginfos = $statemachine->getMsgInfos($SyncCache['hierarchy']['synckey']);
 		$SyncCache['timestamp'] = time();
 
 		// Check if time of last sync is too long ago (but only in case we don't expect a full request!)
@@ -589,558 +584,556 @@ function HandleSync($backend, $protocolversion, $devid) {
     	    return true;
 		}
 */		$statemachine->setSyncCache(serialize($SyncCache));
+		$SyncCache['wait'] = false;
+    	$SyncCache['hbinterval'] = false;
 
-		if($decoder->getElementStartTag(SYNC_FOLDERS)) {
-   		    $dataimported = false;
-
-		    while($decoder->getElementStartTag(SYNC_FOLDER)) {
-   				$collection = array();
-        		$collection["truncation"] = SYNC_TRUNCATION_ALL;
-           		$collection["clientids"] = array();
-	           	$collection["fetchids"] = array();
-
-	    		while (($type = ($decoder->getElementStartTag(SYNC_FOLDERTYPE)  		? SYNC_FOLDERTYPE	 	:
-	    		    			($decoder->getElementStartTag(SYNC_SYNCKEY)  			? SYNC_SYNCKEY 			:
-						    	($decoder->getElementStartTag(SYNC_FOLDERID)	  		? SYNC_FOLDERID 		:
-						    	($decoder->getElementStartTag(SYNC_MAXITEMS)	  		? SYNC_MAXITEMS 		:
-						    	($decoder->getElementStartTag(SYNC_SUPPORTED)	  		? SYNC_SUPPORTED	 	:
-						    	($decoder->getElementStartTag(SYNC_CONVERSATIONMODE)	? SYNC_CONVERSATIONMODE :
-						    	($decoder->getElementStartTag(SYNC_DELETESASMOVES)		? SYNC_DELETESASMOVES 	:
-						    	($decoder->getElementStartTag(SYNC_GETCHANGES)			? SYNC_GETCHANGES 		:
-				    	-1))))))))) != -1) {
-		    	    switch ($type) {
-				    	case SYNC_SYNCKEY :
-				    		$collection["synckey"] = $decoder->getElementContent();
-					        if(!$decoder->getElementEndTag())
-					            return false;
-					        break;
-		    			case SYNC_FOLDERID :
-							$collection["collectionid"] = $decoder->getElementContent();
-				    	    if(!$decoder->getElementEndTag())
-					            return false;
-					        break;
-				    	case SYNC_FOLDERTYPE :
-							$collection["class"] = $decoder->getElementContent();
-							debugLog("Sync folder:{$collection["class"]}");
-			        		if(!$decoder->getElementEndTag())
-				            	return false;
-					        break;
-				    	case SYNC_MAXITEMS :
-							$collection["maxitems"] = $decoder->getElementContent();
-					        if(!$decoder->getElementEndTag())
-				        		return false;
-				    	    break;
-				    	case SYNC_CONVERSATIONMODE :
-							if(($collection["conversationmode"] = $decoder->getElementContent()) !== false) {
-//							    if ($collection["conversationmode"] != "")
-							    if(!$decoder->getElementEndTag())
-						    	   	return false;
-						    } else {
-					  		    $collection["conversationmode"] = true;
-						    }
-						   	break;
-	    			    case SYNC_SUPPORTED :
-	    			        while(1) {
-		            			$el = $decoder->getElement();
-		            		    if($el[EN_TYPE] == EN_TYPE_ENDTAG)
-	    		            	   	break;
-	        				}
-		        			break;
-		    		    case SYNC_DELETESASMOVES :
-		    		    	if (($collection["deletesasmoves"] = $decoder->getElementContent()) !== false) {
-			    			    if(!$decoder->getElementEndTag()) {
-	        	    				return false;
-	            			    };
-							} else {
-		            		    $collection["deletesasmoves"] = true;
-							}
-							break;
-	    			    case SYNC_GETCHANGES :
-		        			if (($collection["getchanges"] = $decoder->getElementContent()) !== false) {
-	    		   			    if(!$decoder->getElementEndTag()) {
-		            				return false;
-		           			    };
-							} else {
-			    	  		    $collection["getchanges"] = true;
-							}
-							break;
-		   	    	};
-		   		};
-
-				if ($protocolversion >= 12.1 &&
-				   	!isset($collection["class"]) &&
-				   	isset($collection["collectionid"])) {
-		    		if (isset($SyncCache['folders'][$collection["collectionid"]]["class"])) {
-						$collection["class"] = $SyncCache['folders'][$collection["collectionid"]]["class"];
-						debugLog("Sync folder:{$collection["class"]}");
-				    } else {
-						_HandleSyncError("12");
-						debugLog("No Class even in cache, sending status 12 to recover from this");
-				       	return true;
-			    	}
-				};
-
-			    while($decoder->getElementStartTag(SYNC_OPTIONS)) {
-			        while(1) {
-				    	// dw2412 in as14 this is used to sent SMS type messages
-	    	           	if($decoder->getElementStartTag(SYNC_FOLDERTYPE)) {
-	    	       	   	    $collection["optionfoldertype"] = $decoder->getElementContent();
-    	    	       	    if(!$decoder->getElementEndTag())
-        	    	         	return false;
-	        	       	}
-			            if($decoder->getElementStartTag(SYNC_FILTERTYPE)) {
-			           	    if (isset($collection["optionfoldertype"]))
-        		       			$collection[$collection["optionfoldertype"]]["filtertype"] = $decoder->getElementContent();
-	    			    	else
-               					$collection["filtertype"] = $decoder->getElementContent();
-	                		if(!$decoder->getElementEndTag())
-			                   	return false;
-			            }
-
-		    	        if($decoder->getElementStartTag(SYNC_TRUNCATION)) {
-		        	  	    if (isset($collection["optionfoldertype"]))
-	    	       				$collection[$collection["optionfoldertype"]]["truncation"] = $decoder->getElementContent();
-				    	    else
-			            		$collection["truncation"] = $decoder->getElementContent();
-			          	    if(!$decoder->getElementEndTag())
-			                   	return false;
-	    		   		}
-
-		           		if($decoder->getElementStartTag(SYNC_RTFTRUNCATION)) {
-		           	    	if (isset($collection["optionfoldertype"]))
-	   		        			$collection[$collection["optionfoldertype"]]["rtftruncation"] = $decoder->getElementContent();
-		    			    else
-		        	       		$collection["rtftruncation"] = $decoder->getElementContent();
-        	        	    if(!$decoder->getElementEndTag())
-            	        	   	return false;
-	               		}
-
-		               	if($decoder->getElementStartTag(SYNC_MIMESUPPORT)) {
-    		        	    if (isset($collection["optionfoldertype"]))
-        		       			$collection[$collection["optionfoldertype"]]["mimesupport"] = $decoder->getElementContent();
-	    			    	else
-               					$collection["mimesupport"] = $decoder->getElementContent();
-	                   		if(!$decoder->getElementEndTag())
-		                       	return false;
-	    	           	}
-
-		               	if($decoder->getElementStartTag(SYNC_MIMETRUNCATION)) {
-    		        	    if (isset($collection["optionfoldertype"]))
-	    	           			$collection[$collection["optionfoldertype"]]["mimetruncation"] = $decoder->getElementContent();
-							else
-    	        	   			$collection["mimetruncation"] = $decoder->getElementContent();
-            	    	   	if(!$decoder->getElementEndTag())
-        	            	   	return false;
-    	           		}
-
-		               	if($decoder->getElementStartTag(SYNC_CONFLICT)) {
-    		        	    if (isset($collection["optionfoldertype"]))
-        		       			$collection[$collection["optionfoldertype"]]["conflict"] = $decoder->getElementContent();
-		    			    else
-   	            				$collection["conflict"] = $decoder->getElementContent();
-               	    		if(!$decoder->getElementEndTag())
-	                       		return false;
-	    	           	}
-
-						// START ADDED dw2412 V12.0 Sync Support
-						if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE)) {
-					        if (!isset($bodypreference)) $bodypreference=array();
-	       		    	    while(1) {
-    	       					if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TYPE)) {
-        	    		    		$bodypreference["Type"] = $decoder->getElementContent();
-    			        	    	if(!$decoder->getElementEndTag())
-   	            	        	    	return false;
-	  	    					}
-
-	    	        			if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TRUNCATIONSIZE)) {
-    		    	    	    	$bodypreference["TruncationSize"] = $decoder->getElementContent();
-					            	if(!$decoder->getElementEndTag())
-        		   	            		return false;
-   	    						}
-
-		            			if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_PREVIEW)) {
-			            	        $bodypreference["Preview"] = $decoder->getElementContent();
-   					                if(!$decoder->getElementEndTag())
-        		   	            		return false;
-   	    						}
-
-	            				if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_ALLORNONE)) {
-		            		        $bodypreference["AllOrNone"] = $decoder->getElementContent();
-   				            	    if(!$decoder->getElementEndTag())
-            	   	        			return false;
-	   	    					}
-
-	    	       				$e = $decoder->peek();
-    	    	   				if($e[EN_TYPE] == EN_TYPE_ENDTAG) {
-        	   			        	$decoder->getElementEndTag();
-						 			if (isset($collection["optionfoldertype"]))
-	            						$collection[$collection["optionfoldertype"]]["BodyPreference"][$bodypreference["Type"]] = $bodypreference;
-    	        		    		else
-										$collection["BodyPreference"][$bodypreference["Type"]] = $bodypreference;
-	  		    		    		break;
-	    	    				}
-		               		}
-			        	}
-						// END ADDED dw2412 V12.0 Sync Support
-    	            	$e = $decoder->peek();
-        		        if($e[EN_TYPE] == EN_TYPE_ENDTAG) {
-		                	$decoder->getElementEndTag();
-    		                break;
-        		        }
-		            }
-		        }
-
-		        // compatibility mode - get folderid from the state directory
-	    	    if (!isset($collection["collectionid"])) {
-    	    	    $collection["collectionid"] = _getFolderID($devid, $collection["class"]);
-	        	}
-
-		        // set default conflict behavior from config if the device doesn't send a conflict resolution parameter
-    		    if (!isset($collection["conflict"])) {
-        		    $collection["conflict"] = SYNC_CONFLICT_DEFAULT;
-		        }
-
-		        // Get our sync state for this collection
-				$filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
-	        	$collection['onlyoptionbodypreference'] = $protocolversion >= 14.0 && (!isset($collection["BodyPreference"][1]) &&
-    	    																		   !isset($collection["BodyPreference"][2]) &&
-	        													 		 			   !isset($collection["BodyPreference"][3]) &&
-    	    													 		 			   !isset($collection["BodyPreference"][4]) &&
-       																	 			   !isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][1]) &&
-       																	 			   !isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][2]) &&
-       																	 			   !isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][3]) &&
-       																	 			   !isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][4]));
-				debugLog("During Sync onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-				if ($collection['onlyoptionbodypreference'] === false ||
-					(isset($collection["synckey"]) &&
-					 $collection["synckey"] == '0')){
-					if (isset($collection["synckey"]) &&
-					    file_exists($filename)) {
-    	    	    	$collection["syncstate"] = $statemachine->getSyncState($collection["synckey"]);
-					    if (($delstatus = $statemachine->cleanOldSyncState($collection["synckey"])) !== true) {
-							_HandleSyncError(abs($delstatus));
-					        return true;
-					    };
-						if(isset($SyncCache['confirmed_synckeys'][$collection['synckey']])) {
-							debugLog('Removing '.$SyncCache['confirmed_synckeys'][$collection['synckey']].' from confirmed_synckeys array');
-							unset($SyncCache['confirmed_synckeys'][$collection['synckey']]);
-						}
-					} else {
-	    	    	    $collection["syncstate"] = $statemachine->getSyncState($collection["synckey"]);
-					};
-					debugLog("strlen collection is ".strlen($collection['syncstate']));
-					if (is_numeric($collection["syncstate"]) &&
-				    	$collection["syncstate"] < 0 && strlen($collection['syncstate']) < 8) {
-		    		    debugLog("GetSyncState: Got an error in HandleSync");
-						_HandleSyncError(3);
-					    return false;
-//			    	    $collection["syncstate"] = false;
+		while(($synctag = ($decoder->getElementStartTag(SYNC_MAXITEMS) ? SYNC_MAXITEMS :
+						  ($decoder->getElementStartTag(SYNC_FOLDERS) ? SYNC_FOLDERS :
+						  ($decoder->getElementStartTag(SYNC_PARTIAL) ? SYNC_PARTIAL :
+						  ($decoder->getElementStartTag(SYNC_WAIT) ? SYNC_WAIT :
+						  ($decoder->getElementStartTag(SYNC_HEARTBEATINTERVAL) ? SYNC_HEARTBEATINTERVAL :
+						  -1)))))) != -1 ) {
+			switch($synctag) {
+				case SYNC_HEARTBEATINTERVAL :
+			        if ($SyncCache['hbinterval'] = $decoder->getElementContent()) {
+    					$decoder->getElementEndTag();
+		    	    }
+				    debugLog('Got Heartbeat Interval Sync ('.$SyncCache['hbinterval'].' Seconds)');
+					if ($SyncCache['hbinterval'] > (REAL_SCRIPT_TIMEOUT-600)) {
+				    	_HandleSyncError('14',(REAL_SCRIPT_TIMEOUT-600));
+				   		debugLog('HeartbeatInterval larger than '.(REAL_SCRIPT_TIMEOUT-600).' Seconds. This violates the protocol spec. (STATUS = 14, LIMIT = '.(REAL_SCRIPT_TIMEOUT-600).')');
+					    return true;
 					}
-				};
+			    	break;
+				case SYNC_WAIT :
+		    	    if ($SyncCache['wait'] = $decoder->getElementContent()) {
+						$decoder->getElementEndTag();
+		    	    }
+			    	debugLog('Got Wait Sync ('.$SyncCache['wait'].' Minutes)');
+					if ($SyncCache['wait'] > ((REAL_SCRIPT_TIMEOUT-600)/60)) {
+					    _HandleSyncError('14',((REAL_SCRIPT_TIMEOUT-600)/60));
+					    debugLog('Wait larger than '.((REAL_SCRIPT_TIMEOUT-600)/60).' Minutes. This violates the protocol spec. (STATUS = 14, LIMIT = '.((REAL_SCRIPT_TIMEOUT-600)/60).')');
+					    return true;
+					}
+			    	break;
+				case SYNC_PARTIAL :
+			    	if($decoder->getElementContent(SYNC_PARTIAL))
+    					$decoder->getElementEndTag();
+					$partial = true;
+					break;
+				case SYNC_MAXITEMS :
+//					_HandleSyncError("12");
+//					return true;
+// Sending Max Items outside a collection is invalid according to specs...
+			    	$default_maxitems = $decoder->getElementContent();
+			   		if(!$decoder->getElementEndTag())
+						return false;
+					break;
+				case SYNC_FOLDERS :
+		   		    $dataimported = false;
 
+				    while($decoder->getElementStartTag(SYNC_FOLDER)) {
+		   				$collection = array();
+						// Intializing the collection
+		           		$collection['clientids'] = array();
+			           	$collection['fetchids'] = array();
+						$msginfo = array();
+						// set default truncation value
+		        		$collection['truncation'] = SYNC_TRUNCATION_ALL;
+				        // set default conflict behavior from config if the device doesn't send a conflict resolution parameter
+						$collection['conflict'] = SYNC_CONFLICT_DEFAULT;
+						$collection['onlyoptionbodypreference'] = false;
+						$filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
 
-				if (isset($collection["optionfoldertype"])) {
-				    $filename = STATE_DIR . "/". strtolower($devid) . '/HANDLESYNC_NO_SHORT_REQUEST';
-				    if (isset($collection["synckey"]) &&
-						file_exists($filename)) {
-		        		$collection[$collection["optionfoldertype"]."syncstate"] = $statemachine->getSyncState($collection["optionfoldertype"].$collection["synckey"]);
-						$statemachine->cleanOldSyncState($collection["optionfoldertype"].$collection["synckey"]);
-						if (isset($SyncCache['confirmed_synckeys'][$collection["optionfoldertype"].$collection['synckey']])) {
-							debugLog('Removed '.$SyncCache['confirmed_synckeys'][$collection["optionfoldertype"].$collection['synckey']].' from confirmed_synckeys array');
-							unset($SyncCache['confirmed_synckeys'][$collection["optionfoldertype"].$collection['synckey']]);
-						}
-				    } else {
-	    	    		$collection[$collection["optionfoldertype"]."syncstate"] = $statemachine->getSyncState($collection["optionfoldertype"].$collection["synckey"]);
-			    	}
-			    	if (is_numeric($collection[$collection["optionfoldertype"]."syncstate"]) &&
-	    				$collection[$collection["optionfoldertype"]."syncstate"] < 0 &&
-			    		strlen($collection[$collection["optionfoldertype"].'syncstate']) < 8) {
-			    		debugLog("GetSyncState: Got an error in HandleSync");
-						_HandleSyncError(3);
-				        return false;
-//			    		$collection[$collection["optionfoldertype"]."syncstate"] = false;
-	    			}
-				}
+			    		while (($foldertag = ($decoder->getElementStartTag(SYNC_FOLDERTYPE)  		? SYNC_FOLDERTYPE		:
+			    							 ($decoder->getElementStartTag(SYNC_SYNCKEY)  			? SYNC_SYNCKEY 			:
+			 								 ($decoder->getElementStartTag(SYNC_FOLDERID)	  		? SYNC_FOLDERID 		:
+			 								 ($decoder->getElementStartTag(SYNC_MAXITEMS)	  		? SYNC_MAXITEMS 		:
+			 								 ($decoder->getElementStartTag(SYNC_SUPPORTED)	  		? SYNC_SUPPORTED	 	:
+			 								 ($decoder->getElementStartTag(SYNC_CONVERSATIONMODE)	? SYNC_CONVERSATIONMODE :
+		 	 								 ($decoder->getElementStartTag(SYNC_DELETESASMOVES)		? SYNC_DELETESASMOVES 	:
+			 								 ($decoder->getElementStartTag(SYNC_GETCHANGES)			? SYNC_GETCHANGES 		:
+			 								 ($decoder->getElementStartTag(SYNC_OPTIONS)			? SYNC_OPTIONS	 		:
+			 								 ($decoder->getElementStartTag(SYNC_PERFORM)			? SYNC_PERFORM	 		:
+			 								 -1))))))))))) != -1) {
+				    	    switch ($foldertag) {
+						    	case SYNC_SYNCKEY :
+						    		$collection["synckey"] = $decoder->getElementContent();
+							        if(!$decoder->getElementEndTag())
+							            return false;
+							        // Get our sync state for this collection
+					    	    	$collection["syncstate"] = $statemachine->getSyncState($collection["synckey"]);
+									if($collection['synckey'] != "0") {
+										$msginfo = unserialize($statemachine->getSyncState("mi".$collection['synckey']));
+									}
+									if (($delstatus = $statemachine->cleanOldSyncState($collection["synckey"])) !== true) {
+										_HandleSyncError(abs($delstatus));
+									    return true;
+									};
+									$statemachine->cleanOldSyncState("mi".$collection["synckey"]);
+									if (is_numeric($collection['syncstate']) &&
+									   	$collection['syncstate'] < 0 && strlen($collection['syncstate']) < 8) {
+							    	    debugLog("GetSyncState: Got an error in HandleSync");
+										_HandleSyncError(3);
+									    return false;
+									}
+									// Reset the msginfos for the collectionid if set and synckey is 0
+									if ($collection['synckey'] == '0' &&
+										isset($msginfo)) {
+										debugLog("SyncKey 0 detected and msginfos contains information for the collection - resetting msginfos");
+										unset($msginfo);
+									}
+							        break;
+				    			case SYNC_FOLDERID :
+									$collection["collectionid"] = $decoder->getElementContent();
+						    	    if(!$decoder->getElementEndTag())
+							            return false;
+									if ($collection['onlyoptionbodypreference'] == false &&
+										isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"]))
+										$collection['onlyoptionbodypreference'] = $protocolversion >= 14.0 && ( !isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][1]) &&
+		       																	 			   					!isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][2]) &&
+		       																	 			   					!isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][3]) &&
+		       																	 			   					!isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"][4]) );
+							        break;
+						    	case SYNC_FOLDERTYPE :
+									$collection["class"] = $decoder->getElementContent();
+									debugLog("Sync folder:{$collection["class"]}");
+					        		if(!$decoder->getElementEndTag())
+						            	return false;
+							        break;
+						    	case SYNC_MAXITEMS :
+									$collection["maxitems"] = $decoder->getElementContent();
+							        if(!$decoder->getElementEndTag())
+						        		return false;
+						    	    break;
+						    	case SYNC_CONVERSATIONMODE :
+									if(($collection["conversationmode"] = $decoder->getElementContent()) !== false) {
+									    if(!$decoder->getElementEndTag())
+								    	   	return false;
+								    } else {
+							  		    $collection["conversationmode"] = true;
+								    }
+								   	break;
+			    			    case SYNC_SUPPORTED :
+			    			        while(1) {
+				            			$el = $decoder->getElement();
+				            		    if($el[EN_TYPE] == EN_TYPE_ENDTAG)
+			    		            	   	break;
+			        				}
+				        			break;
+				    		    case SYNC_DELETESASMOVES :
+				    		    	if (($collection["deletesasmoves"] = $decoder->getElementContent()) !== false) {
+					    			    if(!$decoder->getElementEndTag()) {
+			        	    				return false;
+			            			    };
+									} else {
+				            		    $collection["deletesasmoves"] = true;
+									}
+									break;
+			    			    case SYNC_GETCHANGES :
+				        			if (($collection["getchanges"] = $decoder->getElementContent()) !== false) {
+			    		   			    if(!$decoder->getElementEndTag()) {
+				            				return false;
+				           			    };
+									} else {
+					    	  		    $collection["getchanges"] = true;
+									}
+									break;
+					    		case SYNC_OPTIONS :
+							        while(($syncoptionstag = ($decoder->getElementStartTag(SYNC_FOLDERTYPE) ? SYNC_FOLDERTYPE :
+							        						 ($decoder->getElementStartTag(SYNC_FILTERTYPE) ? SYNC_FILTERTYPE :
+					    		    						 ($decoder->getElementStartTag(SYNC_TRUNCATION) ? SYNC_TRUNCATION :
+					        								 ($decoder->getElementStartTag(SYNC_RTFTRUNCATION) ? SYNC_RTFTRUNCATION :
+					        								 ($decoder->getElementStartTag(SYNC_MIMESUPPORT) ? SYNC_MIMESUPPORT :
+							        						 ($decoder->getElementStartTag(SYNC_MIMETRUNCATION) ? SYNC_MIMETRUNCATION :
+							        						 ($decoder->getElementStartTag(SYNC_CONFLICT) ? SYNC_CONFLICT :
+					    		    						 ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE) ? SYNC_AIRSYNCBASE_BODYPREFERENCE :
+					        								 -1))))))))) != -1) {
+								    	// dw2412 in as14 this is used to sent SMS type messages
+								    	switch ($syncoptionstag) {
+								    		case SYNC_FOLDERTYPE :
+						    	       	   	    $collection['optionfoldertype'] = $decoder->getElementContent();
+		    		    			       	    if(!$decoder->getElementEndTag())
+		    		    	    		   	    	return false;
+				    		    	       	    break;
+							            	case SYNC_FILTERTYPE :
+								           	    if (isset($collection['optionfoldertype']))
+				    	    		       			$collection[$collection['optionfoldertype']]["filtertype"] = $decoder->getElementContent();
+					    				    	else
+				            	   					$collection["filtertype"] = $decoder->getElementContent();
+					            	    		if(!$decoder->getElementEndTag())
+							        	           	return false;
+							            		break;
+							    	        case SYNC_TRUNCATION :
+							        	  	    if (isset($collection['optionfoldertype']))
+						    	       				$collection[$collection['optionfoldertype']]["truncation"] = $decoder->getElementContent();
+									    	    else
+								            		$collection["truncation"] = $decoder->getElementContent();
+							    	      	    if(!$decoder->getElementEndTag())
+							        	           	return false;
+					    		   				break;
+						                	case SYNC_RTFTRUNCATION :
+							           	    	if (isset($collection['optionfoldertype']))
+						   		        			$collection[$collection['optionfoldertype']]["rtftruncation"] = $decoder->getElementContent();
+							    			    else
+						    	    	       		$collection["rtftruncation"] = $decoder->getElementContent();
+				        	    	    	    if(!$decoder->getElementEndTag())
+				            	    	    	   	return false;
+					               				break;
+						               		case SYNC_MIMESUPPORT :
+					    		        	    if (isset($collection['optionfoldertype']))
+				    	    		       			$collection[$collection['optionfoldertype']]["mimesupport"] = $decoder->getElementContent();
+					    				    	else
+				            	   					$collection["mimesupport"] = $decoder->getElementContent();
+					            	       		if(!$decoder->getElementEndTag())
+						            	           	return false;
+					    	           			break;
+						               		case SYNC_MIMETRUNCATION :
+					    		        	    if (isset($collection['optionfoldertype']))
+						    	           			$collection[$collection['optionfoldertype']]["mimetruncation"] = $decoder->getElementContent();
+												else
+				    	    	    	   			$collection["mimetruncation"] = $decoder->getElementContent();
+				            		    	   	if(!$decoder->getElementEndTag())
+				        	        	    	   	return false;
+												break;
+								            case SYNC_CONFLICT :
+					    		        	    if (isset($collection['optionfoldertype']))
+				        		 	      			$collection[$collection['optionfoldertype']]["conflict"] = $decoder->getElementContent();
+						    				    else
+				   	            					$collection["conflict"] = $decoder->getElementContent();
+					               	    		if(!$decoder->getElementEndTag())
+						                       		return false;
+						                       	break;
+											// START ADDED dw2412 V12.0 Sync Support
+											case SYNC_AIRSYNCBASE_BODYPREFERENCE :
+										        if (!isset($bodypreference)) $bodypreference=array();
+						       		    	    while(($bodypreferencefield = ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TYPE) ? SYNC_AIRSYNCBASE_TYPE :
+						       		    	    							  ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TRUNCATIONSIZE) ? SYNC_AIRSYNCBASE_TRUNCATIONSIZE :
+						       		    	    							  ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_PREVIEW) ? SYNC_AIRSYNCBASE_PREVIEW :
+						       		    	    							  ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_ALLORNONE) ? SYNC_AIRSYNCBASE_ALLORNONE :
+						       		    	    							  -1))))) != -1) {
+				    		       					switch($bodypreferencefield) {
+				    		       						case SYNC_AIRSYNCBASE_TYPE :
+					        		    		    		$bodypreference["Type"] = $decoder->getElementContent();
+						    			        	    	if(!$decoder->getElementEndTag())
+				   			            	        	    	return false;
+				   			            	        	    break;
+						    	                    	case SYNC_AIRSYNCBASE_TRUNCATIONSIZE :
+						    		    	    	    	$bodypreference["TruncationSize"] = $decoder->getElementContent();
+											            	if(!$decoder->getElementEndTag())
+			        					   	            		return false;
+			        					   	            	break;
+					                    		    	case SYNC_AIRSYNCBASE_PREVIEW :
+							            	    		    $bodypreference["Preview"] = $decoder->getElementContent();
+						   					                if(!$decoder->getElementEndTag())
+			    			    		   	            		return false;
+			    	    				   	            	break;
+		                        		                case SYNC_AIRSYNCBASE_ALLORNONE :
+						            				        $bodypreference["AllOrNone"] = $decoder->getElementContent();
+				   				            			    if(!$decoder->getElementEndTag())
+					    	        	   	        			return false;
+						    	        	   	        	break;
+				    			        	   	    }
+												}
+				       	   			        	$decoder->getElementEndTag();
+									 			if (isset($collection['optionfoldertype']))
+					           						$collection[$collection['optionfoldertype']]["BodyPreference"][$bodypreference["Type"]] = $bodypreference;
+		   	    		    		    		else
+													$collection["BodyPreference"][$bodypreference["Type"]] = $bodypreference;
+												if ($collection['onlyoptionbodypreference'] == false)
+			        								$collection['onlyoptionbodypreference'] = $protocolversion >= 14.0 && (!isset($collection["BodyPreference"][1]) &&
+		    	    																			   						   !isset($collection["BodyPreference"][2]) &&
+		    	    																			   						   !isset($collection["BodyPreference"][3]) &&
+		    	    																			   						   !isset($collection["BodyPreference"][4]));
+							               		break;
+		    	   							// END ADDED dw2412 V12.0 Sync Support
+				       					}
+						            }
+					               	$decoder->getElementEndTag();
+			                      	break;
+								case SYNC_PERFORM :
+							        // compatibility mode - get folderid from the state directory
+						    	    if (!isset($collection["collectionid"])) {
+					    	    	    $collection["collectionid"] = _getFolderID($devid, $collection["class"]);
+						        	}
 
-		        if($decoder->getElementStartTag(SYNC_PERFORM)) {
-    		   	    // Configure importer with last state
-					debugLog("During Perform onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-					if($collection['onlyoptionbodypreference'] === false) {
-				        $importer[$collection["collectionid"]] = $backend->GetContentsImporter($collection["collectionid"]);
-						$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] :
-									 	 (isset($SyncCache['collections'][$collection["collectionid"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]]["filtertype"]:
-							    			0)
-							  			);
-						$mclass = (isset($collection["class"]) ? $collection["class"] :
-								    	(isset($SyncCache['collections'][$collection["collectionid"]]["class"]) ? $SyncCache['collections'][$collection["collectionid"]]["class"]:
-								    		false)
-									  		);
-			    		$bodypreference = (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] :
-								    (isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"]) ? $SyncCache['collections'][$collection["collectionid"]]["BodyPreference"]:
-									    false)
-										);
-	        	   		$importer[$collection["collectionid"]]->Config($collection["syncstate"], $collection["conflict"], $mclass, $filtertype, $bodypreference);
-			    	}
-				    if (isset($collection["optionfoldertype"])) {
-    		        	$optionimporter[$collection["collectionid"]][$collection["optionfoldertype"]] = $backend->GetContentsImporter($collection["collectionid"]);
-						$filtertype = (isset($collection[$collection["optionfoldertype"]]["filtertype"]) ? $collection[$collection["optionfoldertype"]]["filtertype"] :
-				    					(isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"]:
-											0)
-				    	  				);
-						$mclass = (isset($collection[$collection["optionfoldertype"]]["class"]) ? $collection[$collection["optionfoldertype"]]["class"] :
-				    				(isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["class"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["class"]:
-										'SMS')
-					      			);
-						$bodypreference = (isset($collection[$collection["optionfoldertype"]]["BodyPreference"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] :
-						 				   (isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["BodyPreference"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["BodyPreference"]:
-						    				false)
-					          				);
-        	    		$optionimporter[$collection["collectionid"]][$collection["optionfoldertype"]]->Config($collection[$collection["optionfoldertype"]."syncstate"], $collection["conflict"], $mclass, $filtertype, $bodypreference);
-			    	}
+									// Start error checking
+									// Since we're not working sequential with the fields we need to do error checking prior actual perform can take place.
+									// If needed elements are missing we will return error Status to the client
+									if ($collection["collectionid"] == "" ||
+										$collection["collectionid"] == false) {
+										_HandleSyncError("3");
+										debugLog("Should do a perform but don't have a collectionid, sending status 3 to recover from this");
+									    return true;
+									}
 
-	    	        $nchanges = 0;
-		            while(1) {
-	    	           	$element = $decoder->getElement(); // MODIFY or REMOVE or ADD or FETCH
+                                    if (!isset($collection["synckey"])) {
+										_HandleSyncError("4");
+										debugLog("Should do a perform in collection ".$collection["collectionid"]." without any synckey, sending status 4 to recover from this");
+									    return true;
+                                    }
 
-		               	if($element[EN_TYPE] != EN_TYPE_STARTTAG) {
-	    	           	    $decoder->ungetElement($element);
-	        	       	    break;
-    	          		}
+									if ($protocolversion >= 12.1 &&
+									   	!isset($collection["class"]) &&
+									   	isset($collection["collectionid"])) {
+							    		if (isset($SyncCache['folders'][$collection["collectionid"]]["class"])) {
+											$collection["class"] = $SyncCache['folders'][$collection["collectionid"]]["class"];
+											debugLog("Sync folder:{$collection["class"]}");
+									    } else {
+											_HandleSyncError("12");
+											debugLog("No Class even in cache, sending status 12 to recover from this");
+									       	return true;
+								    	}
+									};
+									// End error checking, everything seems to be ok until this point. Doing the requested SYNC_PERFORM
 
-		                $nchanges++;
+									// Configure importer with last state
+								    $importer[$collection["collectionid"]] = $backend->GetContentsImporter($collection["collectionid"]);
+									$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] :
+													 	 (isset($SyncCache['collections'][$collection["collectionid"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]]["filtertype"]:
+											    			(isset($collection["optionfoldertype"]) ?
+											    				(isset($collection[$collection["optionfoldertype"]]["filtertype"]) ? $collection[$collection["optionfoldertype"]]["filtertype"] :
+											    					(isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"] :
+											    															0)
+											    														) : 0)
+											    					)
+											  		);
+									$mclass = (isset($collection["class"]) ? $collection["class"] :
+											    	(isset($SyncCache['collections'][$collection["collectionid"]]["class"]) ? $SyncCache['collections'][$collection["collectionid"]]["class"]:
+											    		false)
+												  		);
+							    	$bodypreference = (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] :
+											    (isset($SyncCache['collections'][$collection["collectionid"]]["BodyPreference"]) ? $SyncCache['collections'][$collection["collectionid"]]["BodyPreference"]:
+												    false)
+													);
+									if (isset($collection["optionfoldertype"])) {
+							    		$optionbodypreference = (isset($collection[$collection["optionfoldertype"]]["BodyPreference"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] :
+											    (isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["BodyPreference"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["BodyPreference"]:
+												    false)
+													);
+									} else {
+										$optionbodypreference = false;
+									}
+					        	   	$importer[$collection["collectionid"]]->Config($collection['syncstate'], $collection["conflict"], $mclass, $filtertype, $bodypreference, $optionbodypreference);
 
-		    			// dw2412 in as14 this is used to sent SMS type messages
-	    	            if($decoder->getElementStartTag(SYNC_FOLDERTYPE)) {
-    	    	            $foldertype = $decoder->getElementContent();
-        	    	        if(!$decoder->getElementEndTag()) // end foldertype
-            	    	   		return false;
-	            	    } else {
-	    	        	    $foldertype = false;
-    	    	        }
+					    	        $nchanges = 0;
+						            while(($performtag = ($decoder->getElementStartTag(SYNC_ADD) ? SYNC_ADD :
+						            					 ($decoder->getElementStartTag(SYNC_MODIFY) ? SYNC_MODIFY :
+						            					 ($decoder->getElementStartTag(SYNC_REMOVE) ? SYNC_REMOVE :
+						            					 ($decoder->getElementStartTag(SYNC_FETCH) ? SYNC_FETCH :
+						            					 -1))))) != -1 ) {
+						                $nchanges++;
 
-	            	    if($decoder->getElementStartTag(SYNC_SERVERENTRYID)) {
-		                    $serverid = $decoder->getElementContent();
-
-	        	        	if(!$decoder->getElementEndTag()) // end serverid
-		                		return false;
-    		            } else {
-        			       	$serverid = false;
-            	    	}
-
-		            	if($decoder->getElementStartTag(SYNC_CLIENTENTRYID)) {
-    	                    $clientid = $decoder->getElementContent();
-
-                          	if(!$decoder->getElementEndTag()) // end clientid
-    		               		return false;
-	        		        } else {
-    	        	        $clientid = false;
-        	        	}
-
-		            	// Get application data if available
-			            if ($decoder->getElementStartTag(SYNC_DATA)) {
-							if (!isset($collection["class"])) {
-								debugLog("No Class found for collection ".$collection["collectionid"]);
-								if(isset($SyncCache["collections"][$collection["collectionid"]]["class"])) {
-									debugLog("SyncCache search results in ".$SyncCache["collections"][$collection["collectionid"]]["class"]);
-									$collection["class"] = $SyncCache["collections"][$collection["collectionid"]]["class"];
-								} else {
-									debugLog("SyncCache search results in nothing :-(");
-								}
-							}
-			                switch($collection["class"]) {
-		    	               	case "Email":
-		        	                $appdata = new SyncMail();
-		            	           	$appdata->decode($decoder);
-		                          	break;
-			                    case "Contacts":
-		    	                   	$appdata = new SyncContact($protocolversion);
-	    	    	               	$appdata->decode($decoder);
-	        	    	           	break;
-		            	        case "Calendar":
-		                          	$appdata = new SyncAppointment();
-	    	              	       	$appdata->decode($decoder);
-		    	                   	break;
-		        	            case "Tasks":
-	    	        	           	$appdata = new SyncTask();
-	        	        	       	$appdata->decode($decoder);
-	            	        	   	break;
-		                  	    case "Notes":
-		                          	$appdata = new SyncNotes();
-			                       	$appdata->decode($decoder);
-		    	                   	break;
-	    	    	        }
-			                if(!$decoder->getElementEndTag()) // end applicationdata
-			                   	return false;
-	    		        }
-
-	        		    switch($element[EN_TAG]) {
-		        	        case SYNC_MODIFY:
-	                	  		if(isset($appdata)) {
-	    	            	   		if ($foldertype) {
-		       	          				if ($appdata->_setchange == true ||
-	            	           		    	($appdata->_setread == false &&
-	                          	    	 	$appdata->_setflag == false)) {
-	                   	               		$optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageChange($serverid, $appdata);
-		    	                   		} else {
-		        	              	    	if ($appdata->_setflag == true) {
-			                       	    		$collection[$foldertype."flagids"][$serverid]['data'] = $appdata->poommailflag;
-				    							$collection[$foldertype."flagids"][$serverid]['status'] = $optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageFlag($serverid, $appdata->poommailflag);
-	    	    	               			}
-	        	    	          			if ($appdata->_setread == true) {
-	            	    	       	    		$collection[$foldertype."readids"][$serverid]['data'] = $appdata->read;
-	                	    	       			$collection[$foldertype."readids"][$serverid]['status'] = $optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageReadFlag($serverid, $appdata->read);
-						   					}
+						    			// dw2412 in as14 this is used to sent SMS type messages
+					    	        	$foldertype = false;
+				       			       	$serverid = false;
+				   	        	        $clientid = false;
+					    	            while (($addmodifyfetchtag = ($decoder->getElementStartTag(SYNC_FOLDERTYPE) ? SYNC_FOLDERTYPE :
+					    	            							 ($decoder->getElementStartTag(SYNC_SERVERENTRYID) ? SYNC_SERVERENTRYID :
+					    	            							 ($decoder->getElementStartTag(SYNC_CLIENTENTRYID) ? SYNC_CLIENTENTRYID :
+					    	            							 ($decoder->getElementStartTag(SYNC_DATA) ? SYNC_DATA :
+					    	            							 -1))))) != -1) {
+											switch($addmodifyfetchtag) {
+												case SYNC_FOLDERTYPE :
+						    	    	            $foldertype = $decoder->getElementContent();
+						        	    	        if(!$decoder->getElementEndTag()) // end foldertype
+						            	    	   		return false;
+						            	    	   	break;
+												case SYNC_SERVERENTRYID :
+								                    $serverid = $decoder->getElementContent();
+							        	        	if(!$decoder->getElementEndTag()) // end serverid
+								                		return false;
+													break;
+												case SYNC_CLIENTENTRYID :
+						    	                    $clientid = $decoder->getElementContent();
+						                          	if(!$decoder->getElementEndTag()) // end clientid
+						    		               		return false;
+													break;
+												case SYNC_DATA :
+									            	// Get application data if available
+													if (!isset($collection["class"])) {
+														debugLog("No Class found for collection ".$collection["collectionid"]);
+														if(isset($SyncCache["collections"][$collection["collectionid"]]["class"])) {
+															debugLog("SyncCache search results in ".$SyncCache["collections"][$collection["collectionid"]]["class"]);
+															$collection["class"] = $SyncCache["collections"][$collection["collectionid"]]["class"];
+														} else {
+															debugLog("SyncCache search results in nothing :-(");
+														}
+													}
+										            switch($collection["class"]) {
+									    	           	case "Email":
+									        	            if ($foldertype) {
+									        	             	$appdata = new SyncSMS();
+															} else {
+									        	              	$appdata = new SyncMail();
+									        	            }
+									            	       	$appdata->decode($decoder);
+									                      	break;
+										            	case "Contacts":
+									    	               	$appdata = new SyncContact($protocolversion);
+								    	    	           	$appdata->decode($decoder);
+								        	    	       	break;
+									            	    case "Calendar":
+									                      	$appdata = new SyncAppointment();
+								    	              	   	$appdata->decode($decoder);
+									    	               	break;
+									        	        case "Tasks":
+								    	        	       	$appdata = new SyncTask();
+								        	        	   	$appdata->decode($decoder);
+								            	         	break;
+									                  	case "Notes":
+									                      	$appdata = new SyncNote();
+										                   	$appdata->decode($decoder);
+									    	               	break;
+								    	    	    }
+										            if(!$decoder->getElementEndTag()) // end applicationdata
+										               	return false;
+													break;
+											}
 										}
-		                       		} else {
-			                       		if ($appdata->_setchange == true ||
-		                           	    	($appdata->_setread == false &&
-	    	                       	     	$appdata->_setflag == false)) {
-	        	                   	    	$importer[$collection["collectionid"]]->ImportMessageChange($serverid, $appdata);
-	            	               		} else {
-	                	           	   		if ($appdata->_setflag == true) {
-	                    	       	    		$collection["flagids"][$serverid]['data'] = $appdata->poommailflag;
-		    									$collection["flagids"][$serverid]['status'] = $importer[$collection["collectionid"]]->ImportMessageFlag($serverid, $appdata->poommailflag);
-	                           				}
-	                           				if ($appdata->_setread == true) {
-	                           	    			$collection["readids"][$serverid]['data'] = $appdata->read;
-		                               	   		$collection["readids"][$serverid]['status'] = $importer[$collection["collectionid"]]->ImportMessageReadFlag($serverid, $appdata->read);
-		                           			}
-	    	                       		}
-						    		}
-	            	               	$collection["importedchanges"] = true;
-	                	       	}
-	                    	   	break;
-			                case SYNC_ADD:
-		                    	if(isset($appdata)) {
-		    	                    if ($foldertype) {
-			    	               		$id = $optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageChange(false, $appdata);
-			                        } else {
-		    	                   		$id = $importer[$collection["collectionid"]]->ImportMessageChange(false, $appdata);
-								  	}
+									    switch($performtag) {
+										    case SYNC_MODIFY:
+									       		if(isset($appdata)) {
+										          	if ($appdata->_setchange == true ||
+										           	   	($appdata->_setread == false &&
+								    	          	   	$appdata->_setflag == false)) {
+								                   	   	$importer[$collection["collectionid"]]->ImportMessageChange($serverid, $appdata);
+								                   	} else {
+								                 		if ($appdata->_setflag == true) {
+								        	       	   		$collection["flagids"][$serverid]['data'] = $appdata->poommailflag;
+									    					$collection["flagids"][$serverid]['status'] = $importer[$collection["collectionid"]]->ImportMessageFlag($serverid, $appdata->poommailflag);
+								        	    		}
+									            		if ($appdata->_setread == true) {
+							    		               		$collection["readids"][$serverid]['data'] = $appdata->read;
+								        		       		$collection["readids"][$serverid]['status'] = $importer[$collection["collectionid"]]->ImportMessageReadFlag($serverid, $appdata->read);
+								                		}
+													}
+													$collection["importedchanges"] = true;
+									            }
+									            break;
+								            case SYNC_ADD:
+							                  	if(isset($appdata)) {
+					    			               	$id = $importer[$collection["collectionid"]]->ImportMessageChange(false, $appdata);
+							        	            if($clientid && $id) {
+						    	        	      		$collection["clientids"][$clientid]['serverid'] = $id;
+					    	    	              		if ($foldertype) {
+			        			    	           		    $collection["clientids"][$clientid]['optionfoldertype'] = $foldertype;
+															$md5msg = array('datereceived' 		=> (isset($appdata->datereceived) 			? strval($appdata->datereceived) 				: ''),
+											 								'importance' 		=> (isset($appdata->importance) 			? strval($appdata->importance) 					: ''),
+																			'messageclass' 		=> (isset($appdata->messageclass) 			? strval($appdata->messageclass) 				: ''),
+																			'to' 				=> (isset($appdata->to) 					? strval($appdata->to) 							: ''),
+																			'cc' 				=> (isset($appdata->cc) 					? strval($appdata->cc) 							: ''),
+																			'from' 				=> (isset($appdata->from) 					? strval($appdata->from) 						: ''),
+																			'internetcpid' 		=> (isset($appdata->internetcpid) 			? strval($appdata->internetcpid) 				: ''),
+												//							'conversationid' 	=> (isset($appdata->conversationid) 		? bin2hex($appdata->conversationid) 	: ''),
+												//							'conversationindex'	=> (isset($appdata->conversationindex) 		? bin2hex($appdata->conversationindex)	: ''),
+																			'body' 				=> (isset($appdata->airsyncbasebody->data) 	? strval($appdata->airsyncbasebody->data)		: ''),
+																			);
+															$md5flags = array('flagstatus' 		=> (isset($appdata->poommailflag->flagstatus) 		? strval($appdata->poommailflag->flagstatus) 		: ''),
+																			  'flagtype'		=> (isset($appdata->poommailflag->flagtype) 		? strval($appdata->poommailflag->flagtype) 			: ''),
+																			  'startdate'		=> (isset($appdata->poommailflag->startdate) 		? strval($appdata->poommailflag->startdate) 		: ''),
+																			  'utcstartdate'	=> (isset($appdata->poommailflag->utcstartdate) 	? strval($appdata->poommailflag->utcstartdate) 		: ''),
+																			  'duedate'			=> (isset($appdata->poommailflag->duedate) 			? strval($appdata->poommailflag->duedate) 			: ''),
+																			  'utcduedate'		=> (isset($appdata->poommailflag->utcduedate) 		? strval($appdata->poommailflag->utcduedate) 		: ''),
+																			  'datecomplete'	=> (isset($appdata->poommailflag->datecompleted) 	? strval($appdata->poommailflag->datecompleted) 	: ''),
+																			  'reminderset' 	=> (isset($appdata->poommailflag->reminderset) 		? strval($appdata->poommailflag->reminderset) 		: ''),
+																			  'subject'			=> (isset($appdata->poommailflag->subject) 			? strval($appdata->poommailflag->subject) 			: ''),
+																			  'ordinaldate'		=> (isset($appdata->poommailflag->ordinaldate) 		? strval($appdata->poommailflag->ordinaldate) 		: ''),
+																			  'subordinaldate'	=> (isset($appdata->poommailflag->subordinaldate) 	? strval($appdata->poommailflag->subordinaldate) 	: ''),
+																			  'completetime'	=> (isset($appdata->poommailflag->completetime) 	? strval($appdata->poommailflag->completetime) 		: ''),
+																			  );
+															$msginf['md5msg'] = md5(serialize($md5msg));
+															$msginf['md5flags'] = md5(serialize($md5flags));
+															$msginf['read'] = (isset($appdata->read) ? $appdata->read : '');
+															$msginf['class'] = "syncsms";
+															unset($md5msg);
+															unset($md5flags);
+															$msginfo[$id['sourcekey']] = $msginf;
+															debugLog("Generated msginfos for ".$id['sourcekey']." with following values: ".print_r($msginf,true));
+															unset($msginf);
+														}
+							            	          	$collection["importedchanges"] = true;
+													}
+							    	        	}
+							        	    	break;
+											case SYNC_REMOVE:
+					    	    	          	if(isset($collection["deletesasmoves"])) {
+						    		                $folderid = $backend->GetWasteBasket();
+				        	    		   	        if($folderid) {
+				    	                       	    	$importer[$collection["collectionid"]]->ImportMessageMove($serverid, $folderid);
+						                	           	$collection["importedchanges"] = true;
+			    			                           	break;
+			        			                    } else {
+			        			                    	debugLog("SYNC_REMOVE failed because there is no waste basket returned!");
+			        			                    }
+			                		        	}
+				            		            if (isset($importer[$collection["collectionid"]]))
+				            		                $importer[$collection["collectionid"]]->ImportMessageDeletion($serverid);
+				            		            else
+			        			                   	debugLog("SYNC_REMOVE failed because there is no importer for collection");
+					                    	    $collection["importedchanges"] = true;
+					   	                    	break;
+						                    case SYNC_FETCH:
+			    			                   	array_push($collection["fetchids"], $serverid);
+					                    	    $collection["importedchanges"] = true;
+				        		               	break;
+										}
 
-		        	                if($clientid && $id) {
-		            	           		$collection["clientids"][$clientid]['serverid'] = $id;
-	    	                     		if ($foldertype) {
-	        	           	       		    $collection["clientids"][$clientid]['optionfoldertype'] = $foldertype;
-											$md5msg = array('datereceived' 		=> (isset($appdata->datereceived) 			? strval($appdata->datereceived) 				: ''),
-						 									'importance' 		=> (isset($appdata->importance) 			? strval($appdata->importance) 					: ''),
-															'messageclass' 		=> (isset($appdata->messageclass) 			? strval($appdata->messageclass) 				: ''),
-															'to' 				=> (isset($appdata->to) 					? strval($appdata->to) 							: ''),
-															'cc' 				=> (isset($appdata->cc) 					? strval($appdata->cc) 							: ''),
-															'from' 				=> (isset($appdata->from) 					? strval($appdata->from) 						: ''),
-															'internetcpid' 		=> (isset($appdata->internetcpid) 			? strval($appdata->internetcpid) 				: ''),
-							//								'conversationid' 	=> (isset($appdata->conversationid) 		? bin2hex($appdata->conversationid) 	: ''),
-							//								'conversationindex'	=> (isset($appdata->conversationindex) 		? bin2hex($appdata->conversationindex)	: ''),
-															'body' 				=> (isset($appdata->airsyncbasebody->data) 	? strval($appdata->airsyncbasebody->data)		: ''),
-															);
-											$md5flags = array('flagstatus' 		=> (isset($appdata->poommailflag->flagstatus) 		? strval($appdata->poommailflag->flagstatus) 		: ''),
-															  'flagtype'		=> (isset($appdata->poommailflag->flagtype) 		? strval($appdata->poommailflag->flagtype) 			: ''),
-															  'startdate'		=> (isset($appdata->poommailflag->startdate) 		? strval($appdata->poommailflag->startdate) 		: ''),
-															  'utcstartdate'	=> (isset($appdata->poommailflag->utcstartdate) 	? strval($appdata->poommailflag->utcstartdate) 		: ''),
-															  'duedate'			=> (isset($appdata->poommailflag->duedate) 			? strval($appdata->poommailflag->duedate) 			: ''),
-															  'utcduedate'		=> (isset($appdata->poommailflag->utcduedate) 		? strval($appdata->poommailflag->utcduedate) 		: ''),
-															  'datecomplete'	=> (isset($appdata->poommailflag->datecompleted) 	? strval($appdata->poommailflag->datecompleted) 	: ''),
-															  'reminderset' 	=> (isset($appdata->poommailflag->reminderset) 		? strval($appdata->poommailflag->reminderset) 		: ''),
-															  'subject'			=> (isset($appdata->poommailflag->subject) 			? strval($appdata->poommailflag->subject) 			: ''),
-															  'ordinaldate'		=> (isset($appdata->poommailflag->ordinaldate) 		? strval($appdata->poommailflag->ordinaldate) 		: ''),
-															  'subordinaldate'	=> (isset($appdata->poommailflag->subordinaldate) 	? strval($appdata->poommailflag->subordinaldate) 	: ''),
-															  'completetime'	=> (isset($appdata->poommailflag->completetime) 	? strval($appdata->poommailflag->completetime) 		: ''),
-															  );
-											$msginfo['md5msg'] = md5(serialize($md5msg));
-											$msginfo['md5flags'] = md5(serialize($md5flags));
-											$msginfo['read'] = (isset($appdata->read) ? $appdata->read : '');
-											unset($md5msg);
-											unset($md5flags);
-											$msginfos[$collection["collectionid"]][$id['sourcekey']] = $msginfo;
-											unset($msginfo);
-	            	           	       	}
-		            	               	$collection["importedchanges"] = true;
-		                	        }
-		    	                }
-		        	            break;
-	    	        	    case SYNC_REMOVE:
-		    	              	if(isset($collection["deletesasmoves"])) {
-		    		                $folderid = $backend->GetWasteBasket();
+						                if(!$decoder->getElementEndTag()) // end add/remove/modify/fetch
+				    		                return false;
+				    	        	}
 
-        	    		   	        if($folderid) {
-        		   	   		          	if ($foldertype) {
-		        	        	            $optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageMove($serverid, $folderid);
-                    	        	    } else {
-    	                       	    		$importer[$collection["collectionid"]]->ImportMessageMove($serverid, $folderid);
-		                         		}
-		                	           	$collection["importedchanges"] = true;
-    		                           	break;
-        		                    }
-                	        	}
+					                debugLog("Processed $nchanges incoming changes");
 
-		                        if ($foldertype) {
-    		                        $optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageDeletion($serverid);
-        		            	} else {
-            		                if (isset($importer[$collection["collectionid"]]))
-            		                    $importer[$collection["collectionid"]]->ImportMessageDeletion($serverid);
-            		                else if (isset($optionimporter[$collection["collectionid"]][$foldertype]))
-    		                        	$optionimporter[$collection["collectionid"]][$foldertype]->ImportMessageDeletion($serverid);
-                		    	}
-	                    	    $collection["importedchanges"] = true;
-	   	                    	break;
-		                    case SYNC_FETCH:
-    		                   	array_push($collection["fetchids"], $serverid);
-	        	               	break;
-        	    		}
+				    	        	// Save the updated state, which is used for the exporter later
+									if (isset($importer[$collection["collectionid"]]))
+				            		   	$collection['syncstate'] = $importer[$collection["collectionid"]]->getState();
+						    		if (isset($collection["importedchanges"]) &&
+						    			$collection["importedchanges"] == true)
+					    				$dataimported = true;
 
-		                if(!$decoder->getElementEndTag()) // end change/delete/move
-    		                return false;
-    	        	}
+				        		    if(!$decoder->getElementEndTag()) // end SYNC_PERFORM
+				        	    		return false;
+									break;
+				   	    	};
+				   		};
 
-	                debugLog("Processed $nchanges incoming changes");
+		    			if(!$decoder->getElementEndTag()) // end collection
+		        	    	return false;
 
-    	        	// Save the updated state, which is used for the exporter later
-					debugLog("During Getstat after incoming changes onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-					if (isset($importer[$collection["collectionid"]]) &&
-						$collection['onlyoptionbodypreference'] === false)
-            		   	$collection["syncstate"] = $importer[$collection["collectionid"]]->getState();
-					if (isset($collection['optionfoldertype']))
-    	    	    	$collection[$collection['optionfoldertype']."syncstate"] = $optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->getState();
-		    		if ($collection["importedchanges"] == true)
-	    				$dataimported = true;
+			    		array_push($collections, $collection);
+						if (isset($collection['collectionid'])) {
+							$msginfos[$collection['collectionid']] = $msginfo;
+					    	if (isset($collection['class'])) 			$SyncCache['collections'][$collection['collectionid']]['class'] = $collection['class'];
+					    	if (isset($collection['maxitems'])) 		$SyncCache['collections'][$collection['collectionid']]['maxitems'] = $collection['maxitems'];
+					    	if (isset($collection['deletesasmoves'])) 	$SyncCache['collections'][$collection['collectionid']]['deletesasmoves'] = $collection['deletesasmoves'];
+					    	if (isset($collection['getchanges'])) 		$SyncCache['collections'][$collection['collectionid']]['getchanges'] = $collection['getchanges'];
+					    	else if(isset($SyncCache['collections'][$collection['collectionid']]['getchanges'])) unset($SyncCache['collections'][$collection['collectionid']]['getchanges']);
+					    	if (isset($collection['filtertype'])) 		$SyncCache['collections'][$collection['collectionid']]['filtertype'] = $collection['filtertype'];
+					    	if (isset($collection['truncation'])) 		$SyncCache['collections'][$collection['collectionid']]['truncation'] = $collection['truncation'];
+					    	if (isset($collection['rtftruncation']))  	$SyncCache['collections'][$collection['collectionid']]['rtftruncation'] = $collection['rtftruncation'];
+					   	 	if (isset($collection['mimesupport'])) 		$SyncCache['collections'][$collection['collectionid']]['mimesupport'] = $collection['mimesupport'];
+					    	if (isset($collection['mimetruncation'])) 	$SyncCache['collections'][$collection['collectionid']]['mimetruncation'] = $collection['mimetruncation'];
+					    	if (isset($collection['conflict']))	  		$SyncCache['collections'][$collection['collectionid']]['conflict'] = $collection['conflict'];
+				    		if (isset($collection['BodyPreference'])) 	$SyncCache['collections'][$collection['collectionid']]['BodyPreference'] = $collection['BodyPreference'];
+				    		if (isset($collection['optionfoldertype'])) {
+				    			if (isset($collection[$collection['optionfoldertype']]['filtertype'])) 		 $SyncCache['collections'][$collection['collectionid']][$collection['optionfoldertype']]['filtertype'] = $collection[$collection['optionfoldertype']]['filtertype'];
+				    			if (isset($collection[$collection['optionfoldertype']]['BodyPreference'])) 	 $SyncCache['collections'][$collection['collectionid']][$collection['optionfoldertype']]['BodyPreference'] = $collection[$collection['optionfoldertype']]['BodyPreference'];
+				    			$SyncCache['collections'][$collection['collectionid']]['optionfoldertype'] = $collection['optionfoldertype'];
+				    		}
+				    		elseif (isset($SyncCache['collections'][$collection['collectionid']]['optionfoldertype'])) {
+					    		unset($SyncCache['collections'][$collection['collectionid']][$collection['optionfoldertype']]);
+					    		unset($SyncCache['collections'][$collection['collectionid']]['optionfoldertype']);
+							}
+						};
+				   	}
+			    	if (!$decoder->getElementEndTag() ) // end collections
+						return false;
+					break;
+			}
+		}
 
-	    		    // if (isset($collection["synckey"])) $SyncCache['collections'][$collection["collectionid"]]["synckey"] = $collection["synckey"];
-
-        		    if(!$decoder->getElementEndTag()) // end commands
-        	    		return false;
-    			}
-
-    			if(!$decoder->getElementEndTag()) // end collection
-        	    	return false;
-
-	    		array_push($collections, $collection);
-				if (isset($collection["collectionid"])) {
-			    	if (isset($collection["class"])) 			$SyncCache['collections'][$collection["collectionid"]]["class"] = $collection["class"];
-			    	if (isset($collection["maxitems"])) 		$SyncCache['collections'][$collection["collectionid"]]["maxitems"] = $collection["maxitems"];
-			    	if (isset($collection["deletesasmoves"])) 	$SyncCache['collections'][$collection["collectionid"]]["deletesasmoves"] = $collection["deletesasmoves"];
-			    	if (isset($collection["getchanges"])) 		$SyncCache['collections'][$collection["collectionid"]]["getchanges"] = $collection["getchanges"];
-			    	else if(isset($SyncCache['collections'][$collection["collectionid"]]["getchanges"])) unset($SyncCache['collections'][$collection["collectionid"]]["getchanges"]);
-			    	if (isset($collection["filtertype"])) 		$SyncCache['collections'][$collection["collectionid"]]["filtertype"] = $collection["filtertype"];
-			    	if (isset($collection["truncation"])) 		$SyncCache['collections'][$collection["collectionid"]]["truncation"] = $collection["truncation"];
-			    	if (isset($collection["rtftruncation"]))  	$SyncCache['collections'][$collection["collectionid"]]["rtftruncation"] = $collection["rtftruncation"];
-			   	 	if (isset($collection["mimesupport"])) 		$SyncCache['collections'][$collection["collectionid"]]["mimesupport"] = $collection["mimesupport"];
-			    	if (isset($collection["mimetruncation"])) 	$SyncCache['collections'][$collection["collectionid"]]["mimetruncation"] = $collection["mimetruncation"];
-			    	if (isset($collection["conflict"]))	  		$SyncCache['collections'][$collection["collectionid"]]["conflict"] = $collection["conflict"];
-		    		if (isset($collection["BodyPreference"])) 	$SyncCache['collections'][$collection["collectionid"]]["BodyPreference"] = $collection["BodyPreference"];
-		    		if (isset($collection["optionfoldertype"])) {
-		    			if (isset($collection[$collection["optionfoldertype"]]["filtertype"])) 		 $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"] = $collection[$collection["optionfoldertype"]]["filtertype"];
-		    			if (isset($collection[$collection["optionfoldertype"]]["BodyPreference"])) 	 $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["BodyPreference"] = $collection[$collection["optionfoldertype"]]["BodyPreference"];
-		    			$SyncCache['collections'][$collection["collectionid"]]["optionfoldertype"] = $collection["optionfoldertype"];
-		    		}
-		    		elseif (isset($SyncCache['collections'][$collection["collectionid"]]["optionfoldertype"])) {
-			    		unset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]);
-			    		unset($SyncCache['collections'][$collection["collectionid"]]["optionfoldertype"]);
-					}
-				};
-		   	}
-	    	if (!$decoder->getElementEndTag() ) // end collections
-				return false;
-		} else {
+		if (!isset($collections)) {
 		   	debugLog(" HERE S ". (isset($SyncCache['lastuntil']) ? strftime("%x %X",$SyncCache['lastuntil']+$maxcacheage) : "NO LASTUNTIL!"));
 /*	    	if (!($SyncCache = unserialize($statemachine->getSyncCache())) ||
 				!isset($SyncCache['collections']) ||
@@ -1178,48 +1171,18 @@ function HandleSync($backend, $protocolversion, $devid) {
 				isset($SyncCache['collections'][$values["collectionid"]]["BodyPreference"]))
 				$collections[$key]["BodyPreference"] = $SyncCache['collections'][$values["collectionid"]]["BodyPreference"];
 			if (isset($value['optionfoldertype'])) {
-			if (!isset($values[$value['optionfoldertype']]["filtertype"]) &&
-				isset($SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["filtertype"]))
-				$collections[$key][$value['optionfoldertype']]["filtertype"] = $SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["filtertype"];
-			if (!isset($values[$value['optionfoldertype']]["BodyPreference"]) &&
-				isset($SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["BodyPreference"]))
-				$collections[$key][$value['optionfoldertype']]["BodyPreference"] = $SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["BodyPreference"];
+				if (!isset($values[$value['optionfoldertype']]["filtertype"]) &&
+					isset($SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["filtertype"]))
+					$collections[$key][$value['optionfoldertype']]["filtertype"] = $SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["filtertype"];
+				if (!isset($values[$value['optionfoldertype']]["BodyPreference"]) &&
+					isset($SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["BodyPreference"]))
+					$collections[$key][$value['optionfoldertype']]["BodyPreference"] = $SyncCache['collections'][$values["collectionid"]][$value['optionfoldertype']]["BodyPreference"];
 			}
 	        $collections[$key]['onlyoptionbodypreference'] = $protocolversion >= 14.0 && (!isset($SyncCache['collections'][$values["collectionid"]]["BodyPreference"][1]) &&
     	    																		   	  !isset($SyncCache['collections'][$values["collectionid"]]["BodyPreference"][2]) &&
 	        													 		 			   	  !isset($SyncCache['collections'][$values["collectionid"]]["BodyPreference"][3]) &&
     	    													 		 			   	  !isset($SyncCache['collections'][$values["collectionid"]]["BodyPreference"][4]));
-/*	    	// Lets go through the collections. AS12.1 does not send the folderclass.
-		    // This needs to be taken from cache. In case not found there we need to rebuild the cache and
-		    // therefor set status to
-	    	if (!isset($values["class"])) {
-				if (isset($SyncCache['folders'][$values["collectionid"]]["class"])) {
-			    	$collections[$key]["class"] = $SyncCache['folders'][$values["collectionid"]]["class"];
-				} else {
-		    		_HandleSyncError("12");
-			    	debugLog("No Class even in cache, sending status 12 to recover from this");
-		    	    return true;
-				}
-	    	};
-	    	if ($protocolversion >= 12.0) {
-				if (!isset($values["BodyPreference"]) && $values['synckey'] != '0') {
-		    		if (isset($SyncCache['collections'][$values["collectionid"]]['BodyPreference'])) {
-						$collections[$key]["BodyPreference"] = $SyncCache['collections'][$values["collectionid"]]['BodyPreference'];
-					} else {
-						_HandleSyncError("12");
-						debugLog("No BodyPreference even in cache, sending status 12 to recover from this (Folder = ". $values["collectionid"] . ")");
-	    				return true;
-		    		}
-				}
-	    	}
-    		if (!isset($values["filtertype"]) && $values['synckey'] != '0' && ($values['class'] == 'Email' || $values['class'] == 'Calendar' || $values['class'] == 'Tasks')) {
-					if (isset($SyncCache['collections'][$values["collectionid"]]['filtertype'])) {
-		    		$collections[$key]["filtertype"] = $SyncCache['collections'][$values["collectionid"]]['filtertype'];
-				} else {
-				    $collections[$key]["filtertype"] = 0;
-				}
-	    	}
-*/		    if (!isset($values["maxitems"]))
+		    if (!isset($values["maxitems"]))
 				$collections[$key]["maxitems"] = (isset($SyncCache['collections'][$values["collectionid"]]['maxitems']) ?
 						    $SyncCache['collections'][$values["collectionid"]]['maxitems'] :
 						    (isset($default_maxitems) ?
@@ -1232,7 +1195,8 @@ function HandleSync($backend, $protocolversion, $devid) {
 				$values['synckey'] == '0' &&
 				isset($SyncCache['collections'][$values["collectionid"]]['synckey']) &&
 				$SyncCache['collections'][$values["collectionid"]]['synckey'] != '0') {
-				debugLog("ERROR Synckey 0 and Cache has synckey... Invalidation disabled, check of maybe existing dups!");
+//				debugLog("ERROR Synckey 0 and Cache has synckey... Invalidation disabled, check of maybe existing dups!");
+				unset($SyncCache['collections'][$values["collectionid"]]['synckey']);
 		    }
 		}
 		if (!isset($SyncCache['hierarchy']['synckey'])) {
@@ -1241,73 +1205,74 @@ function HandleSync($backend, $protocolversion, $devid) {
 		    return true;
 		}
 
-		if($decoder->getElementStartTag(SYNC_WAIT)) {
-    	    if ($wait = $decoder->getElementContent()) {
-				$decoder->getElementEndTag();
-    	    }
-	    	debugLog("Got Wait Sync ($wait Minutes)");
-	    	$SyncCache['wait'] = $wait;
-		} else {
-		    $SyncCache['wait'] = false;
-		}
-
-		if($decoder->getElementStartTag(SYNC_HEARTBEATINTERVAL)) {
-	        if ($SyncCache['hbinterval'] = $decoder->getElementContent()) {
-    			$decoder->getElementEndTag();
-    	    }
-		    debugLog("Got Heartbeat Interval Sync (".$SyncCache['hbinterval']." Seconds)");
-		} else {
-	    	$SyncCache['hbinterval'] = false;
-        }
-
 		if ($SyncCache['hbinterval'] !== false &&
 		    $SyncCache['wait'] !== false) {
 		    _HandleSyncError("4");
 		    debugLog("HandleSync got Found HeartbeatInterval and Wait in request. This violates the protocol spec. (STATUS = 4)");
 		    return true;
 		}
-		if ($SyncCache['wait'] > ((REAL_SCRIPT_TIMEOUT-600)/60)) {
-		    _HandleSyncError("14",((REAL_SCRIPT_TIMEOUT-600)/60));
-		    debugLog("Wait larger than ".((REAL_SCRIPT_TIMEOUT-600)/60)." Minutes. This violates the protocol spec. (STATUS = 14, LIMIT = ".((REAL_SCRIPT_TIMEOUT-600)/60).")");
-		    return true;
+
+		// Remove all synckeys we got during sync from the confirmed_synckeys array.
+		foreach ($collections as $key=>$value) {
+			if (isset($value['synckey'])) {
+			    $foundsynckey = true;
+				if (isset($SyncCache['confirmed_synckeys'][$value['synckey']])) {
+					debugLog('Removed '.$SyncCache['confirmed_synckeys'][$value['synckey']].' from confirmed_synckeys array');
+					unset($SyncCache['confirmed_synckeys'][$value['synckey']]);
+				}
+			}
+			if (isset($TempSyncCache['collections'][$value['collectionid']])) {
+			    debugLog("Received collection info updating ".$TempSyncCache['folders'][$value['collectionid']]['displayname']);
+			    $collections[$key]['class'] = $TempSyncCache['collections'][$value['collectionid']]['class'];
+			    unset($TempSyncCache['collections'][$value['collectionid']]);
+			}
 		}
-		if ($SyncCache['hbinterval'] > (REAL_SCRIPT_TIMEOUT-600)) {
-	    	_HandleSyncError("14",(REAL_SCRIPT_TIMEOUT-600));
-	   		debugLog("HeartbeatInterval larger than ".(REAL_SCRIPT_TIMEOUT-600)." Seconds. This violates the protocol spec. (STATUS = 14, LIMIT = ".(REAL_SCRIPT_TIMEOUT-600).")");
-		    return true;
-		}
+
 		// Partial sync but with Folders and Options so we need to set collections
 		$foundsynckey = false;
-		if ($partial === true ||
-		    $decoder->getElementStartTag(SYNC_PARTIAL)) {
-	    	if($decoder->getElementContent(SYNC_PARTIAL))
-    			$decoder->getElementEndTag();
-		    $partial = true;
+		if ($partial === true) {
 		    debugLog("Partial Sync");
+
 
 		    $TempSyncCache = unserialize($statemachine->getSyncCache());
 
-		    foreach ($collections as $key=>$value) {
-				if (isset($value['synckey'])) {
-				    $foundsynckey = true;
-					if (isset($SyncCache['confirmed_synckeys'][$value['synckey']])) {
-						unset($SyncCache['confirmed_synckeys'][$value['synckey']]);
-						debugLog('Removed '.$SyncCache['confirmed_synckeys'][$value['synckey']].' from confirmed_synckeys array');
+			if ($dataimported === false) {
+				if((!isset($SyncCache['confirmed_synckeys']) ||
+			    	sizeof($SyncCache['confirmed_synckeys']) == 0)) {
+					foreach($collections as $key=>$value) {
+						if (!isset($SyncCache['collections'][$value['collectionid']]['optionfoldertype']) &&
+							$SyncCache['collections'][$value['collectionid']]['class'] == 'Email') {
+							debugLog("Got a partial sync with synckeys that are not optionfoldertype although there is no key to confirm in SyncCache. Enforce full Sync Request (STATUS=13)");
+//							debugLog("Got a partial sync with synckeys although there is no key to confirm in SyncCache. Enforce full Sync Request (STATUS=13)");
+				   			_HandleSyncError("13");
+							return true;
+						}
 					}
-					if (isset($value["optionfoldertype"]) &&
-						isset($SyncCache['confirmed_synckeys'][$value["optionfoldertype"].$value['synckey']])) {
-						unset($SyncCache['confirmed_synckeys'][$value["optionfoldertype"].$value['synckey']]);
-						debugLog('Removed '.$SyncCache['confirmed_synckeys'][$value["optionfoldertype"].$value['synckey']].' from confirmed_synckeys array');
+				} else {
+					foreach($collections as $key=>$value) {
+						if(isset($SyncCache['confirmed_synckeys'][$value['synckey']])) {
+							debugLog('Removing '.$SyncCache['confirmed_synckeys'][$value['synckey']].' from confirmed_synckeys array');
+							unset($SyncCache['confirmed_synckeys'][$value['synckey']]);
+						} else {
+							if (!isset($value['optionfoldertype'])) {
+								debugLog("Got a partial sync with synckeys and one does not need to be confirmed that has no optionfoldertype. (STATUS = 13)");
+						   		_HandleSyncError("13");
+								return true;
+							}
+						};
 					}
 				}
-				if (isset($TempSyncCache['collections'][$value['collectionid']])) {
-				    debugLog("Received collection info updating ".$TempSyncCache['folders'][$value['collectionid']]['displayname']);
-				    $collections[$key]['class'] = $TempSyncCache['collections'][$value['collectionid']]['class'];
-				    unset($TempSyncCache['collections'][$value['collectionid']]);
+            }
+
+			// Removing all from TempSyncCache that we already got information on
+			foreach ($collections as $key=>$value) {
+				if(isset($TempSyncCache['collections'][$value['collectionid']])) {
+					debugLog("Removing ".$value['collectionid']." from TempSyncCache");
+					unset($TempSyncCache['collections'][$value['collectionid']]);
 				}
-		    }
+			}
 
-
+			// Updating Collections with all necessary informations that we don't have informations for but with a synckey in foldercache
 		    foreach ($TempSyncCache['collections'] as $key=>$value) {
 				if (isset($value['synckey'])) {
 		    	    $collection = $value;
@@ -1317,26 +1282,22 @@ function HandleSync($backend, $protocolversion, $devid) {
         							  											 		   !isset($collection["BodyPreference"][2]) &&
         															 		 			   !isset($collection["BodyPreference"][3]) &&
         															 		 			   !isset($collection["BodyPreference"][4]));
-					debugLog("During TempSync and Collection upgrade onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-					if ($collection['onlyoptionbodypreference'] === false) {
-					    $collection['syncstate'] = $statemachine->getSyncState($collection["synckey"]);
-						debugLog("strlen collection is ".strlen($collection['syncstate']));
-					    if ($collection['syncstate'] < 0 && strlen($collection['syncstate']) < 8) {
-					        _HandleSyncError("3");
-							debugLog("GetSyncState ERROR (Syncstate: ".abs($collection['syncstate']).") strlen=".strlen($collection['syncstate']));
-							return true;
-					    }
+					$collection['syncstate'] = $statemachine->getSyncState($collection["synckey"]);
+					if ($collection['synckey'] == "0") {
+						debugLog('Here4 : Setting $msginfos['.$collection['collectionid'].'] to array()');
+						$msginfos[$collection['collectionid']] = array();
+					} else {
+						$msginfos[$collection['collectionid']] = unserialize($statemachine->getSyncState("mi".$collection['synckey']));
 					}
-					if (isset($collection["optionfoldertype"])) {
-					    if (isset($collection["synckey"])) {
-			        		$collection[$collection["optionfoldertype"]."syncstate"] = $statemachine->getSyncState($collection["optionfoldertype"].$collection["synckey"]);
-				    	}
-				    	if ($collection[$collection["optionfoldertype"]."syncstate"] < 0 &&
-				    		strlen($collection[$collection["optionfoldertype"].'syncstate']) < 8) {
-							_HandleSyncError(3);
-				    		debugLog("GetSyncState: Got an error in HandleSync");
-					        return true;
-			    		}
+					if (isset($SyncCache['confirmed_synckeys'][$collection["synckey"]]) &&
+						(strlen($collection['syncstate']) == 0 || bin2hex(substr($collection['syncstate'],4,4)) == "00000000")) {
+						debugLog("InitialSync determined for collection. No need to confirm this key! ".$collection["synckey"]);
+						unset($SyncCache['confirmed_synckeys'][$collection["synckey"]]);
+					}
+					if ($collection['syncstate'] < 0 && strlen($collection['syncstate']) < 8) {
+					    _HandleSyncError("3");
+						debugLog("GetSyncState ERROR (Syncstate: ".abs($collection['syncstate']).") strlen=".strlen($collection['syncstate']));
+						return true;
 					}
 
 				    debugLog("Using SyncCache State for ".$TempSyncCache['folders'][$key]['displayname']);
@@ -1345,15 +1306,21 @@ function HandleSync($backend, $protocolversion, $devid) {
 				}
 		    }
 		    unset($TempSyncCache);
+		} else {
+			// No Partial Sync so in this case we have to remove all synckeys to prevent syncs in these collections.
+			foreach($SyncCache['collections'] as $key=>$value) {
+				debugLog("Not a partial sync. Removing SyncCache[synckey] from collection ".$key);
+				unset($SyncCache['collections'][$key]['synckey']);
+			}
 		}
 
 		// Update the synckeys in SyncCache
-		foreach($SyncCache['collections'] as $key=>$value) {
-		    if (isset($SyncCache['collections'][$key]['synckey'])) {
-		        debugLog("Removing SyncCache[synckey] from collection ".$key);
-		        unset($SyncCache['collections'][$key]['synckey']);
-		    }
-		}
+//		foreach($SyncCache['collections'] as $key=>$value) {
+//		    if (isset($SyncCache['collections'][$key]['synckey'])) {
+//		        debugLog("Removing SyncCache[synckey] from collection ".$key);
+//		        unset($SyncCache['collections'][$key]['synckey']);
+//		    }
+//		}
 
 		foreach($collections as $key=>$value) {
 			if (isset($value['collectionid'])) {
@@ -1373,10 +1340,10 @@ function HandleSync($backend, $protocolversion, $devid) {
 				if (isset($value["mimetruncation"])) 	$SyncCache['collections'][$value["collectionid"]]["mimetruncation"] = $value["mimetruncation"];
 				if (isset($value["conflict"])) 			$SyncCache['collections'][$value["collectionid"]]["conflict"] = $value["conflict"];
 				if (isset($value["BodyPreference"])) 	$SyncCache['collections'][$value["collectionid"]]["BodyPreference"] = $value["BodyPreference"];
-			       	if (isset($value["optionfoldertype"])) {
-			       		if (isset($value[$value["optionfoldertype"]]["filtertype"]))  		$SyncCache['collections'][$value["collectionid"]][$value["optionfoldertype"]]["filtertype"] = $value[$value["optionfoldertype"]]["filtertype"];
-			       		if (isset($value[$value["optionfoldertype"]]["BodyPreference"]))  	$SyncCache['collections'][$value["collectionid"]][$value["optionfoldertype"]]["BodyPreference"] = $value[$value["optionfoldertype"]]["BodyPreference"];
-		    	   		$SyncCache['collections'][$value["collectionid"]]["optionfoldertype"] = $value["optionfoldertype"];
+			       	if (isset($value['optionfoldertype'])) {
+			       		if (isset($value[$value['optionfoldertype']]["filtertype"]))  		$SyncCache['collections'][$value["collectionid"]][$value['optionfoldertype']]["filtertype"] = $value[$value['optionfoldertype']]["filtertype"];
+			       		if (isset($value[$value['optionfoldertype']]["BodyPreference"]))  	$SyncCache['collections'][$value["collectionid"]][$value['optionfoldertype']]["BodyPreference"] = $value[$value['optionfoldertype']]["BodyPreference"];
+		    	   		$SyncCache['collections'][$value["collectionid"]]['optionfoldertype'] = $value['optionfoldertype'];
 		        }
 	/*		if ($protocolversion>=14.0 && (strlen($value['syncstate']) == 0 || bin2hex(substr($value['syncstate'],4,4)) == "00000000")) {
 			    if (isset($value['BodyPreference']))
@@ -1409,7 +1376,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 				}
 	    	} else {
 //		debugLog("File ". $filename ." exists and we didn't get an updated synckey. To ensure sync integrity we request a full request now (STATUS = 13)");
-				if (sizeof($SyncCache['confirmed_synckeys']) > 0) {
+				if (sizeof($SyncCache['confirmed_synckeys']) > 0 && $dataimported !== true) {
 					debugLog("1. Confirmed Synckeys contains: ".print_r($SyncCache['confirmed_synckeys'],true));
 			  		$SyncCache['confirmed_synckeys'] = array();
     				$statemachine->setSyncCache(serialize($SyncCache));
@@ -1437,6 +1404,17 @@ function HandleSync($backend, $protocolversion, $devid) {
 	    		$statemachine->setSyncCache(serialize($SyncCache));
 			}
 		}
+		$i=0;
+		foreach($collections as $key=>$value) {
+			if (isset($value['synckey'])) $i++;
+		}
+		if ($i==0) {
+			debugLog("We don't have any synckeys in collection. Request a full request now (STATUS = 0)");
+			_HandleSyncError("0");
+//			debugLog("We don't have any synckeys in collection. Request a full request now (STATUS = 13)");
+//			_HandleSyncError("13");
+			return true;
+		}
 	};
 
 // From Version 12.1 the sync is being used to wait for changes.
@@ -1460,48 +1438,24 @@ function HandleSync($backend, $protocolversion, $devid) {
 
 				debugLog("During DrySync onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
 				debugLog("strlen collection is ".strlen($collection['syncstate']));
-				if ($collection['onlyoptionbodypreference'] == false) {
-		    	    unset($exporter);
-	    		    $state = $collection["syncstate"];
-	        	    $filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] : 0);
-	        	    $waitimporter = false;
-	        	    $exporter = $backend->GetExporter($collection["collectionid"]);
-	        	    $ret = $exporter->Config($waitimporter, $collection["class"], $filtertype, $state, BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false));
+		    	unset($exporter);
+	    		$state = $collection['syncstate'];
+	        	$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] : 0);
+	        	$waitimporter = false;
+	        	$exporter = $backend->GetExporter($collection["collectionid"]);
+	        	$ret = $exporter->Config($waitimporter, $collection["class"], $filtertype, $state, BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false));
 
-	        	    $changecount = $exporter->GetChangeCount();
+                $changecount = $exporter->GetChangeCount();
 
-	        	    if($changecount > 0 ||
-		        		strlen($state) == 0 || bin2hex(substr($state,4,4)) == "00000000") {
-	            		debugLog("Found change in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
-						$importer[$collection["collectionid"]] = false;
-						$collections[$i]["getchanges"] = true;
-	        	    }
+	      	    if($changecount > 0 ||
+	        		strlen($state) == 0 || bin2hex(substr($state,4,4)) == "00000000") {
+	           		debugLog("Found change in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
+					$importer[$collection["collectionid"]] = false;
+					$collections[$i]["getchanges"] = true;
+	       	    }
 
-	        	    // Discard any data
-	        	    while(is_array($exporter->Synchronize()));
-				};
-
-				if (isset($collection["optionfoldertype"]) &&
-			    	$collection["optionfoldertype"] == "SMS") {
-			   		unset($exporter);
-	        	    $exporter = $backend->GetExporter($collection["collectionid"]);
-	        	    $state = $collection[$collection["optionfoldertype"]."syncstate"];
-	        	    $filtertype = (isset($collection[$collection["optionfoldertype"]]["filtertype"]) ? $collection[$collection["optionfoldertype"]]["filtertype"] : 0);
-	        	    $waitimporter = false;
-	        	    $ret = $exporter->Config($waitimporter, $collection["optionfoldertype"], $filtertype, $state, BACKEND_DISCARD_DATA, 0, (isset($collection[$collection["optionfoldertype"]]["BodyPreference"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false));
-
-	        	    $changecount = $exporter->GetChangeCount();
-
-	        	    if($changecount > 0 ||
-	        	       strlen($state) == 0 || bin2hex(substr($state,4,4)) == "00000000") {
-	            		debugLog("Option: Found change in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
-						$optionimporter[$collection["collectionid"]] = false;
-						$collections[$i]["getchanges"] = true;
-	        	    }
-
-	        	    // Discard any data
-    	    	    while(is_array($exporter->Synchronize()));
-				}
+	       	    // Discard any data
+	       	    while(is_array($exporter->Synchronize()));
     	    }
     	}
     }
@@ -1525,7 +1479,6 @@ function HandleSync($backend, $protocolversion, $devid) {
 		$SyncCache['lastuntil'] = $until;
 		// Reading current state of the hierarchy state for determining changes during heartbeat/wait
         $hierarchystate = $statemachine->getSyncState($SyncCache['hierarchy']['synckey']);
-		$smssynccount=0;
 		while (time()<$until) {
 	    	// we try to find changes as long as time is lower than wait time
 	    	// In case something changed in SyncCache regarding the folder hierarchy exit this function
@@ -1554,71 +1507,61 @@ function HandleSync($backend, $protocolversion, $devid) {
         		$collection = $collections[$i];
 
     			$class = $collection["class"];
+				$class = ($collection['onlyoptionbodypreference'] === false ? $collection["class"] : $collection["optionfoldertype"]);
 
-//				debugLog("During Heartbeat/wait onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
+				if ($class == "SMS" && !isset($collection['nextsmssync'])) $collection['nextsmssync'] = 0;
 				unset($state);
-				if ($collection['onlyoptionbodypreference'] === false) {
-		    		unset($exporter);
-//					debugLog(print_r($collection,true));
-    		    	$state = $collection["syncstate"];
-        	    	$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] : 0);
-        	    	$waitimporter = false;
-        	    	$exporter = $backend->GetExporter($collection["collectionid"]);
-        	    	$ret = $exporter->Config($waitimporter, $collection["class"], $filtertype, $state, BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false));
+		    	unset($exporter);
+				if ($class != "SMS" ||
+					($class == "SMS" && $collection['nextsmssync'] < time())) {
+					// Checking SMS Folders only once per 5 minutes for changes
+					if ($class == "SMS") {
+						$collections[$i]['nextsmssync'] = time()+300;
+						debugLog ("SMS Items now being synceed");
+					}
+	    		    $state = $collection['syncstate'];
+					$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] :
+									 	 (isset($SyncCache['collections'][$collection["collectionid"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]]["filtertype"]:
+							    			(isset($collection["optionfoldertype"]) ?
+							    				(isset($collection[$collection["optionfoldertype"]]["filtertype"]) ? $collection[$collection["optionfoldertype"]]["filtertype"] :
+							    					(isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"] :
+							    															0)
+							    														) : 0)
+							    					)
+							  		);
+        		    $waitimporter = false;
+//					debugLog("During Wait/Heartbeat filtertype is ".$filtertype);
+        		    $exporter = $backend->GetExporter($collection["collectionid"]);
 
-        	    	// stop ping if exporter can not be configured (e.g. after Zarafa-server restart)
-        	    	if ($ret === false ) {
-            			debugLog("Sync Wait/Heartbeat error: Exporter can not be configured. Waiting 30 seconds before sync is retried.");
+	        		$collection['onlyoptionbodypreference'] = $protocolversion >= 14.0 && (!isset($collection["BodyPreference"][1]) &&
+    	    						  											 		   !isset($collection["BodyPreference"][2]) &&
+        															 		 			   !isset($collection["BodyPreference"][3]) &&
+        															 		 			   !isset($collection["BodyPreference"][4]));
+
+//					debugLog("Messageclass for wait: ".($collection['onlyoptionbodypreference'] === false ? $collection["class"] : $collection["optionfoldertype"])." in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
+        	    	$ret = $exporter->Config($waitimporter, $class, $filtertype, $state, BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false),(isset($collection["optionfoldertype"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false));
+
+	                // stop ping if exporter can not be configured (e.g. after Zarafa-server restart)
+    	    	    if ($ret === false ) {
+        	    		debugLog("Sync Wait/Heartbeat error: Exporter can not be configured. Waiting 30 seconds before sync is retried.");
 						debugLog($collection["collectionid"]);
             			sleep(30);
-        	    	}
+	        	    }
 
-        	    	$changecount = $exporter->GetChangeCount();
+    	    	    $changecount = $exporter->GetChangeCount();
 
-        	    	if ($changecount > 0 ||
-        	       		(strlen($state) == 0) || (bin2hex(substr($state,4,4)) == "00000000")) {
-            			debugLog("Found change in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
-            			$dataavailable = true;
-        				$collections[$i]["getchanges"] = true;
-        	    	}
+// ||
+//	        	   	($collection['synckey'] != '0' && (strlen($state) == 0) || (bin2hex(substr($state,4,4)) == "00000000"))
+        	        if (($changecount > 0 && $collection['synckey'] != '0')) {
+            			debugLog("Found ".$changecount." change(s) in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
+	            		$dataavailable = true;
+    	    			$collections[$i]["getchanges"] = true;
+        		    }
 
-        	    // Discard any data
-        	    	while(is_array($exporter->Synchronize()));
-				} else {
-// dw2412 temporary disabled to lower the load. We get the changes in folders currently on a general base (no destinguish
-// between SMS and Mail items), furthermore we try to find changes in SMS Folders only every 10th attempt to search for
-// changes, this can change in case ICS with restriction on Message Class gets a bit more performance!
-                    if ($smssynccount % 10 == 0) {
-						debugLog("Sync/Heartbeat: Checking this time for new SMS items");
-//					if ((isset($collection["optionfoldertype"]) &&
-//		    			 $collection["optionfoldertype"] == "SMS")) {
-		   				unset($exporter);
-        				$exporter = $backend->GetExporter($collection["collectionid"]);
-        				$state = $collection[$collection["optionfoldertype"]."syncstate"];
-		        		$filtertype = (isset($collection[$collection["optionfoldertype"]]["filtertype"]) ? $collection[$collection["optionfoldertype"]]["filtertype"] : 0);
-        				$waitimporter = false;
-		        		$ret = $exporter->Config($waitimporter, $collection["optionfoldertype"], $filtertype, $state, BACKEND_DISCARD_DATA, 0, (isset($collection[$collection["optionfoldertype"]]["BodyPreference"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false));
-
-            	    	// stop ping if exporter can not be configured (e.g. after Zarafa-server restart)
-	        	    	if ($ret === false ) {
-    	        			debugLog("Sync Wait/Heartbeat error: Exporter can not be configured. Waiting 30 seconds before sync is retried.");
-							debugLog($collection["collectionid"]);
-            				sleep(30);
-        		    	}
-
-	        	    	$changecount = $exporter->GetChangeCount();
-
-    	    		    if ($changecount > 0 ||
-        			    	(strlen($state) == 0) || (bin2hex(substr($state,4,4)) == "00000000")) {
-        	    			debugLog("Option: Found change in folder ".$SyncCache['folders'][$collection["collectionid"]]['displayname']);
-    	        			$dataavailable = true;
-							$collections[$i]["getchanges"] = true;
-	    	    	    }
-
-		        	   	 // Discard any data
-     		   	    	while(is_array($exporter->Synchronize()));
-					}
-				}
+	        	    // Discard any data
+    	    	    while(is_array($exporter->Synchronize()));
+					usleep(500000);
+   				}
    			}
 
     	    if($dataavailable) {
@@ -1635,7 +1578,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 				unset($exporter);
 				$exporter = $backend->GetExporter();
 				$waitimporter = false;
-				$exporter->Config($waitimporter, false, false, $hierarchystate, BACKEND_DISCARD_DATA, 0, false);
+				$exporter->Config($waitimporter, false, false, $hierarchystate, BACKEND_DISCARD_DATA, 0, false, false);
 				if ($exporter->GetChangeCount() > 0) {
 				    $hierarchychanged = true;
 				}
@@ -1654,11 +1597,10 @@ function HandleSync($backend, $protocolversion, $devid) {
 		    }
 		    // 5 seconds sleep to keep the load low...
 		    sleep ($timeout);
-			$smssynccount++;
 		};
 
-	// Even in case we found a change, better check that no other Sync already started... If so,
-	// we exit here and let the other process do the export.
+		// Even in case we found a change, better check that no other Sync already started... If so,
+		// we exit here and let the other process do the export.
 		$TempSyncCache = unserialize($statemachine->getSyncCache());
     	if ($TempSyncCache['timestamp'] > $SyncCache['timestamp']) {
 	    	debugLog("HandleSync: Changes in cache determined during Sync Wait/Heartbeat, exiting here.");
@@ -1676,6 +1618,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 		($SyncCache['wait'] !== false ||
 		 $SyncCache['hbinterval'] !== false)) {
     	$statemachine->setSyncCache(serialize($SyncCache));
+
 		return true;
     }
 
@@ -1691,7 +1634,7 @@ function HandleSync($backend, $protocolversion, $devid) {
         {
             foreach($collections as $collection) {
                 // Get a new sync key to output to the client if any changes have been requested or have been sent
-                if (isset($collection["importedchanges"]) || isset($collection["getchanges"]) || $collection["synckey"] == "0") {
+                if (isset($collection["importedchanges"]) || (isset($collection["getchanges"]) && $collection["getchanges"] != 0) || $collection["synckey"] == "0") {
                     $collection["newsynckey"] = $statemachine->getNewSyncKey($collection["synckey"]);
 					debugLog("New Synckey generated because importedchanges: ".isset($collection["importedchanges"]). " getchanges: ". isset($collection["getchanges"]) . " initialsync: " . ($collection["synckey"] == "0"));
 				}
@@ -1700,13 +1643,14 @@ function HandleSync($backend, $protocolversion, $devid) {
 				// dw2412 ensure that no older exporter definition exists and could be used
 				// figthing against that some folder get content of another folder...
 				unset($exporter);
-		    	if (isset($collection['optionfoldertype']) &&
-		    		isset($optionexporter[$collection['optionfoldertype']]))
-		    		unset($optionexporter[$collection['optionfoldertype']]);
-                if(isset($collection["getchanges"])) {
+                if (isset($collection["getchanges"]) &&
+                	$collection["getchanges"] != 0) {
                     // Try to get the exporter. In case it is not possible (i.e. folder removed) set
                     // status according.
                     $exporter = $backend->GetExporter($collection["collectionid"]);
+		    		if (isset($collection['optionfoldertype'])){
+						$optionexporter[$collection['optionfoldertype']] = $backend->GetExporter($collection["collectionid"]);
+		    		}
 		    		debugLog("Exporter Value: ".is_object($exporter). " " .(isset($exporter->exporter) ? $exporter->exporter : ""));
             	    if (isset($exporter->exporter) && $exporter->exporter === false) {
             			$folderstatus = 8;
@@ -1748,9 +1692,9 @@ function HandleSync($backend, $protocolversion, $devid) {
                     $encoder->startTag(SYNC_REPLIES);
                     foreach($collection["clientids"] as $clientid => $servervals) {
                         $encoder->startTag(SYNC_ADD);
-						if (isset($clientid["optionfoldertype"]) && is_array($servervals['serverid'])) {
+						if (isset($clientid['optionfoldertype']) && is_array($servervals['serverid'])) {
 		              	    $encoder->startTag(SYNC_FOLDERTYPE);
-						    $encoder->content($collection["optionfoldertype"]);
+						    $encoder->content($collection['optionfoldertype']);
 			    			$encoder->endTag();
 						}
                         $encoder->startTag(SYNC_CLIENTENTRYID);
@@ -1782,7 +1726,7 @@ function HandleSync($backend, $protocolversion, $devid) {
                     }
                     foreach($collection["fetchids"] as $id) {
 						// CHANGED dw2412 to support bodypreference
-                        $data = $backend->Fetch($collection["collectionid"], $id, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false), $mimesupport);
+                        $data = $backend->Fetch($collection["collectionid"], $id, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false), (isset($collection["optionfoldertype"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false), $mimesupport);
                         if($data !== false) {
                             $encoder->startTag(SYNC_FETCH);
                             $encoder->startTag(SYNC_SERVERENTRYID);
@@ -1802,31 +1746,28 @@ function HandleSync($backend, $protocolversion, $devid) {
                     $encoder->endTag();
                 }
 
-                if (isset($collection["getchanges"]) ||
+                if ((isset($collection["getchanges"]) &&
+                	$collection["getchanges"] != 0) ||
                 	isset($collection["readids"]) ||
                 	isset($collection["flagids"])) {
                     // Use the state from the importer, as changes may have already happened
 
-                    $filtertype = isset($collection["filtertype"]) ? $collection["filtertype"] : false;
-                    debugLog("FilterType for getchanges ".$filtertype);
+					$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] :
+									 	 (isset($SyncCache['collections'][$collection["collectionid"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]]["filtertype"]:
+							    			(isset($collection["optionfoldertype"]) ?
+							    				(isset($collection[$collection["optionfoldertype"]]["filtertype"]) ? $collection[$collection["optionfoldertype"]]["filtertype"] :
+							    					(isset($SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"]) ? $SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"] :
+							    															0)
+							    														) : 0)
+							    					)
+							  		);
 
-					unset($exporter);
-					debugLog("During GetChangeCount onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-					debugLog("strlen collection is ".strlen($collection['syncstate']));
-                    if ($collection['onlyoptionbodypreference'] === false) {
-                		$exporter = $backend->GetExporter($collection["collectionid"]);
-            			$exporter->Config($importer[$collection["collectionid"]], $collection["class"], $filtertype, $collection["syncstate"], 0, $collection["truncation"], (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false));
+                	$exporter = $backend->GetExporter($collection["collectionid"]);
+					debugLog("Messageclass for Export: ".($collection['onlyoptionbodypreference'] === false ? $collection["class"] : $collection["optionfoldertype"]));
 
-                		$changecount = $exporter->GetChangeCount();
-		    		};
-		    		if (isset($collection['optionfoldertype']) &&
-						$collection['optionfoldertype'] == "SMS") {
-                    	$filtertype = isset($collection[$collection['optionfoldertype']]["filtertype"]) ? $collection[$collection['optionfoldertype']]["filtertype"] : false;
-    	    			$optionexporter[$collection['optionfoldertype']] = $backend->GetExporter($collection["collectionid"]);
-            			$optionexporter[$collection['optionfoldertype']]->Config($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']], $collection["optionfoldertype"], $filtertype, $collection[$collection['optionfoldertype']."syncstate"], 0, $collection["truncation"], (isset($collection[$collection["optionfoldertype"]]["BodyPreference"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false));
+            		$exporter->Config($importer[$collection["collectionid"]], ($collection['onlyoptionbodypreference'] === false ? $collection["class"] : $collection["optionfoldertype"]), $filtertype, $collection['syncstate'], 0, $collection["truncation"], (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false), (isset($collection["optionfoldertype"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false), (isset($collection["mimesupport"]) ? $collection['mimesupport'] : 0));
 
-                		$changecount = $changecount + $optionexporter[$collection['optionfoldertype']]->GetChangeCount();
-		    		}
+                	$changecount = $exporter->GetChangeCount();
                     debugLog("Changecount vs maxitems: ".$changecount." ".$collection["maxitems"]);
             		if($changecount > $collection["maxitems"]) {
                 		$encoder->startTag(SYNC_MOREAVAILABLE, false, true);
@@ -1836,43 +1777,40 @@ function HandleSync($backend, $protocolversion, $devid) {
             		$encoder->startTag(SYNC_PERFORM);
 
 	                $n = 0;
-					debugLog("During Synchronize onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-					debugLog("strlen collection is ".strlen($collection['syncstate']));
-                	if ($collection['onlyoptionbodypreference'] == false) {
 
-                		$filtertype = isset($collection["filtertype"]) ? $collection["filtertype"] : 0;
+                	$filtertype = isset($collection["filtertype"]) ? $collection["filtertype"] : 0;
 
-	                	// Stream the changes to the PDA
-						$ids = array("readids" => (isset($collection["readids"]) ? $collection["readids"]: array()),
-								     "flagids" => (isset($collection["flagids"]) ? $collection["flagids"]: array()));
-						$importer[$collection["collectionid"]] = new ImportContentsChangesStream($encoder, GetObjectClassFromFolderClass($collection["class"]), false, $ids, $msginfos[$collection["collectionid"]]);
+	                // Stream the changes to the PDA
+					$ids = array("readids" => (isset($collection["readids"]) ? $collection["readids"]: array()),
+							     "flagids" => (isset($collection["flagids"]) ? $collection["flagids"]: array()));
+					$importer[$collection["collectionid"]] = new ImportContentsChangesStream($encoder, GetObjectClassFromFolderClass($collection["class"]), (isset($collection["optionfoldertype"]) ? GetObjectClassFromFolderClass($collection["optionfoldertype"]) : false), $ids, $msginfos[$collection["collectionid"]]);
 
-	                	while(1) {
-    	                	$progress = $exporter->Synchronize();
-	                    	if(!is_array($progress))
-	                        	break;
-	                    	if ($importer[$collection["collectionid"]]->_lastObjectStatus == 1)
-	                    		$n++;
-							debugLog("_lastObjectStatus = ".$importer[$collection["collectionid"]]->_lastObjectStatus);
+	                while(1) {
+    	               	$progress = $exporter->Synchronize();
+	                   	if(!is_array($progress))
+	                       	break;
+	                   	if ($importer[$collection["collectionid"]]->_lastObjectStatus == 1)
+	                   		$n++;
+						debugLog("_lastObjectStatus = ".$importer[$collection["collectionid"]]->_lastObjectStatus);
 
-	                    	if ($n >= $collection["maxitems"]) {
-	                    		debugLog("Exported maxItems of messages: ". $collection["maxitems"] . " - more available");
-	                    		break;
-	                    	}
-	                	}
-						$msginfos[$collection["collectionid"]] = $importer[$collection["collectionid"]]->_msginfos;
+                       	if ($n >= $collection["maxitems"]) {
+	                   		debugLog("Exported maxItems of messages: ". $collection["maxitems"] . " - more available");
+	                   		break;
+	                   	}
+	                }
+					$msginfos[$collection["collectionid"]] = $importer[$collection["collectionid"]]->_msginfos;
 // START HACK: CURRENT ICS EXPORTER DOES NOT PROVIDE READ STATE AND FLAG UPDATES IF SEND FROM DEVICE. THIS WE DO HERE JUST BECAUSE OF THIS!
-						$array_rf = array_unique(array_merge(array_keys($importer[$collection["collectionid"]]->_readids),array_keys($importer[$collection["collectionid"]]->_flagids)));
-			    		debugLog("After Exporting Changes we still have following array_rf in importer: ".print_r($array_rf,true));
-						foreach ($array_rf as $rfid) {
-				    	    $encoder->startTag(SYNC_MODIFY);
+					$array_rf = array_unique(array_merge(array_keys($importer[$collection["collectionid"]]->_readids),array_keys($importer[$collection["collectionid"]]->_flagids)));
+			    	debugLog("After Exporting Changes we still have following array_rf in importer: ".print_r($array_rf,true));
+					foreach ($array_rf as $rfid) {
+				        $encoder->startTag(SYNC_MODIFY);
 
-						    $encoder->startTag(SYNC_SERVERENTRYID);
-					        $encoder->content($rfid);
-					        $encoder->endTag();
-					        $encoder->startTag(SYNC_DATA);
-				    	    if (isset($importer[$collection["collectionid"]]->_readids[$rfid]) &&
-				    	    	$importer[$collection["collectionid"]]->_readids[$rfid]['status'] == true) {
+					    $encoder->startTag(SYNC_SERVERENTRYID);
+					    	$encoder->content($rfid);
+					    $encoder->endTag();
+					    $encoder->startTag(SYNC_DATA);
+				    		if (isset($importer[$collection["collectionid"]]->_readids[$rfid]) &&
+				        		$importer[$collection["collectionid"]]->_readids[$rfid]['status'] == true) {
 								$encoder->startTag(SYNC_POOMMAIL_READ);
 				    			$encoder->content($importer[$collection["collectionid"]]->_readids[$rfid]['data']);
 					    		$encoder->endTag();
@@ -1880,7 +1818,8 @@ function HandleSync($backend, $protocolversion, $devid) {
 						    }
 						    if (isset($importer[$collection["collectionid"]]->_flagids[$rfid]) &&
 				    	    	$importer[$collection["collectionid"]]->_flagids[$rfid]['status'] == true) {
-								if ($importer[$collection["collectionid"]]->_flagids[$rfid]['data']->flagstatus == 0 ||
+								if (!isset($importer[$collection["collectionid"]]->_flagids[$rfid]['data']->flagstatus)||
+									$importer[$collection["collectionid"]]->_flagids[$rfid]['data']->flagstatus == 0 ||
 									$importer[$collection["collectionid"]]->_flagids[$rfid]['data']->flagstatus == "") {
 							    	$encoder->startTag(SYNC_POOMMAIL_FLAG,false,true);
 								} else {
@@ -1890,152 +1829,62 @@ function HandleSync($backend, $protocolversion, $devid) {
 								}
 								unset($importer[$collection["collectionid"]]->_flagids[$rfid]);
 						    }
-					    	$encoder->endTag();
-						    $encoder->endTag();
-						}
-						unset($array_rf);
-						$array_rf = array_keys(array_merge($importer[$collection["collectionid"]]->_readids,$importer[$collection["collectionid"]]->_flagids));
-			    		debugLog("After manual export of read and flag changes we still have following array_rf in importer: ".print_r($array_rf,true));
-						unset($array_rf);
+					    $encoder->endTag();
+				    	$encoder->endTag();
+					}
+					unset($array_rf);
+					$array_rf = array_keys(array_merge($importer[$collection["collectionid"]]->_readids,$importer[$collection["collectionid"]]->_flagids));
+				    debugLog("After manual export of read and flag changes we still have following array_rf in importer: ".print_r($array_rf,true));
+					unset($array_rf);
 // END HACK: CURRENT ICS EXPORTER DOES NOT PROVIDE READ STATE AND FLAG UPDATES IF SEND FROM DEVICE. THIS WE DO HERE JUST BECAUSE OF THIS!
-			    	}
-		    		if (isset($collection['optionfoldertype']) &&
-						$collection['optionfoldertype'] == "SMS" &&
-						$n < $collection["maxitems"]) {
-	                	$filtertype = isset($collection[$collection['optionfoldertype']]["filtertype"]) ? $collection[$collection['optionfoldertype']]["filtertype"] : 0;
-
-	                	// Stream the changes to the PDA
-						$ids = array("readids" => (isset($collection[$collection['optionfoldertype']."readids"]) ? $collection[$collection['optionfoldertype']."readids"]: array()),
-								     "flagids" => (isset($collection[$collection['optionfoldertype']."flagids"]) ? $collection[$collection['optionfoldertype']."flagids"]: array()));
-						$optionimporter[$collection["collectionid"]][$collection['optionfoldertype']] = new ImportContentsChangesStream($encoder, GetObjectClassFromFolderClass($collection["class"]), GetObjectClassFromFolderClass($collection["optionfoldertype"]), $ids, $msginfos[$collection["collectionid"]]);
-
-	                	$n = 0;
-	                	while(1) {
-	                    	$progress = $optionexporter[$collection['optionfoldertype']]->Synchronize();
-	                    	if(!is_array($progress))
-	                        	break;
-	                    	if ($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_lastObjectStatus == 1)
-	                    		$n++;
-				    		debugLog("_lastObjectStatus = ".$optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_lastObjectStatus);
-
-	                    	if ($n >= $collection["maxitems"]) {
-    	                		debugLog("Exported maxItems of messages: ". $collection["maxitems"] . " - more available");
-	    	            		break;
-	                    	}
-	                	}
-						$msginfos[$collection["collectionid"]] = $optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_msginfos;
-// START HACK: CURRENT ICS EXPORTER DOES NOT PROVIDE READ STATE AND FLAG UPDATES IF SEND FROM DEVICE. THIS WE DO HERE JUST BECAUSE OF THIS!
-						$array_rf = array_unique(array_merge(array_keys($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_readids),array_keys($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids)));
-//			    		debugLog("After Exporting Changes we still have following array_rf in importer: ".print_r($array_rf,true));
-						foreach ($array_rf as $rfid) {
-				    	    $encoder->startTag(SYNC_MODIFY);
-
-						    $encoder->startTag(SYNC_FOLDERTYPE);
-							$encoder->content("SMS");
-					    	$encoder->endTag();
-
-						    $encoder->startTag(SYNC_SERVERENTRYID);
-					        $encoder->content($rfid);
-					        $encoder->endTag();
-					        $encoder->startTag(SYNC_DATA);
-				    	    if (isset($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_readids[$rfid]) &&
-				    	    	$optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_readids[$rfid]['status'] == true) {
-								$encoder->startTag(SYNC_POOMMAIL_READ);
-				    			$encoder->content($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_readids[$rfid]['data']);
-					    		$encoder->endTag();
-								unset($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_readids[$rfid]);
-						    }
-						    if (isset($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids[$rfid]) &&
-				    	    	$optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids[$rfid]['status'] == true) {
-								if ($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids[$rfid]['data']->flagstatus == 0 ||
-									$optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids[$rfid]['data']->flagstatus == "") {
-							    	$encoder->startTag(SYNC_POOMMAIL_FLAG,false,true);
-								} else {
-								    $encoder->startTag(SYNC_POOMMAIL_FLAG);
-					        	    $optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids[$rfid]['data']->encode($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_encoder);
-						   		    $encoder->endTag();
-								}
-								unset($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids[$rfid]);
-						    }
-					    	$encoder->endTag();
-						    $encoder->endTag();
-						}
-						unset($array_rf);
-						$array_rf = array_keys(array_merge($optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_readids,$optionimporter[$collection["collectionid"]][$collection['optionfoldertype']]->_flagids));
-//			    		debugLog("After manual export of read and flag changes we still have following array_rf in importer: ".print_r($array_rf,true));
-						unset($array_rf);
-// END HACK: CURRENT ICS EXPORTER DOES NOT PROVIDE READ STATE AND FLAG UPDATES IF SEND FROM DEVICE. THIS WE DO HERE JUST BECAUSE OF THIS!
-			    	}
-	           	    $encoder->endTag();
-	            }
-	            $encoder->endTag();
-
+		           	$encoder->endTag();
+				}
+		        $encoder->endTag();
 	            // Save the sync state for the next time
     	        if(isset($collection["newsynckey"])) {
-					debugLog("During newsynckey onlyoptionbodypreference is ".($collection['onlyoptionbodypreference'] === false ? 'true' : 'false'));
-					if ($collection['onlyoptionbodypreference'] === false ||
-						$collection["synckey"] == "0") {
-						debugLog("strlen collection is ".strlen($collection['syncstate']));
-						unset($state);
-		                if (isset($exporter) && $exporter)
-	    	                $state = $exporter->GetState();
+					unset($state);
+		            if (isset($exporter) && $exporter)
+	    	            $state = $exporter->GetState();
 
-		                // nothing exported, but possible imported
-		                else if (isset($importer[$collection["collectionid"]]) && $importer[$collection["collectionid"]])
-	    	                $state = $importer[$collection["collectionid"]]->GetState();
+		            // nothing exported, but possible imported
+		            else if (isset($importer[$collection["collectionid"]]) && $importer[$collection["collectionid"]])
+	    	            $state = $importer[$collection["collectionid"]]->GetState();
 
-		                // if a new request without state information (hierarchy) save an empty state
-		                else if ($collection["synckey"] == "0")
-	    	                $state = "";
+		            // if a new request without state information (hierarchy) save an empty state
+		            else if ($collection["synckey"] == "0")
+	    	            $state = "";
 
-		                if (isset($state))
-		                	$statemachine->setSyncState($collection["newsynckey"], $state);
-	    	            else debugLog("error saving " . $collection["newsynckey"] . " - no state information available");
+		            if (isset($state))
+		              	$statemachine->setSyncState($collection["newsynckey"], $state);
+	    	        else debugLog("error saving " . $collection["newsynckey"] . " - no state information available");
 
-	    	        	if (trim($collection['newsynckey']) != trim($collection['synckey'])) {
-    		        		debugLog("Current Synckey: ".$collection['synckey']." New Synckey: ".$collection['newsynckey']);
-    		        		$SyncCache['confirmed_synckeys'][$collection['newsynckey']] = true;
-    	    	    	}
-					}
-	                if (isset($collection["optionfoldertype"])) {
-						debugLog("strlen collection for optionfoldertype is ".strlen($collection[$collection["optionfoldertype"].'syncstate']));
-						unset($state);
-	                	if (isset($optionexporter[$collection["optionfoldertype"]]) && $optionexporter[$collection["optionfoldertype"]])
-	                    	$state = $optionexporter[$collection["optionfoldertype"]]->GetState();
-
-	                	// nothing exported, but possible imported
-	                	else if (isset($optionimporter[$collection["collectionid"]][$collection["optionfoldertype"]]) && $optionimporter[$collection["collectionid"]][$collection["optionfoldertype"]])
-	                    	$state = $optionimporter[$collection["collectionid"]][$collection["optionfoldertype"]]->GetState();
-
-	                	// if a new request without state information (hierarchy) save an empty state
-	                	else if ($collection["synckey"] == "0")
-	                    	$state = "";
-
-	                	if (isset($state)) $statemachine->setSyncState($collection["optionfoldertype"].$collection["newsynckey"], $state);
-    	            	else debugLog("error saving " . $collection["optionfoldertype"].$collection["newsynckey"] . " - no state information available");
-	            	}
+	    	        if (trim($collection['newsynckey']) != trim($collection['synckey'])) {
+    		        	debugLog("Current Synckey: ".$collection['synckey']." New Synckey: ".$collection['newsynckey']);
+    		        	$SyncCache['confirmed_synckeys'][$collection['newsynckey']] = true;
+						$statemachine->setSyncState('mi'.$collection['newsynckey'],(isset($msginfos[$collection['collectionid']]) ? serialize($msginfos[$collection['collectionid']]) : serialize(array())));
+    	    	    }
 	            }
-	        	if (isset($collection["collectionid"])) {
-			    	if (isset($collection["newsynckey"]))
-						$SyncCache['collections'][$collection["collectionid"]]["synckey"] = $collection["newsynckey"];
+	        	if (isset($collection['collectionid'])) {
+			    	if (isset($collection['newsynckey']))
+						$SyncCache['collections'][$collection['collectionid']]['synckey'] = $collection['newsynckey'];
 				    else
-						$SyncCache['collections'][$collection["collectionid"]]["synckey"] = $collection["synckey"];
-				    if (isset($collection["class"])) 			$SyncCache['collections'][$collection["collectionid"]]["class"] 			= $collection["class"];
-				    if (isset($collection["maxitems"])) 		$SyncCache['collections'][$collection["collectionid"]]["maxitems"] 			= $collection["maxitems"];
-			    	if (isset($collection["deletesasmoves"]))	$SyncCache['collections'][$collection["collectionid"]]["deletesasmoves"] 	= $collection["deletesasmoves"];
-				    if (isset($collection["getchanges"])) 		$SyncCache['collections'][$collection["collectionid"]]["getchanges"] 		= $collection["getchanges"];
-			    	else if(isset($SyncCache['collections'][$collection["collectionid"]]["getchanges"])) unset($SyncCache['collections'][$collection["collectionid"]]["getchanges"]);
-				    if (isset($collection["filtertype"])) 		$SyncCache['collections'][$collection["collectionid"]]["filtertype"]		= $collection["filtertype"];
-				    if (isset($collection["truncation"])) 		$SyncCache['collections'][$collection["collectionid"]]["truncation"] 		= $collection["truncation"];
-				    if (isset($collection["rtftruncation"])) 	$SyncCache['collections'][$collection["collectionid"]]["rtftruncation"] 	= $collection["rtftruncation"];
-				    if (isset($collection["mimesupport"])) 		$SyncCache['collections'][$collection["collectionid"]]["mimesupport"] 		= $collection["mimesupport"];
-				    if (isset($collection["mimetruncation"])) 	$SyncCache['collections'][$collection["collectionid"]]["mimetruncation"] 	= $collection["mimetruncation"];
-				    if (isset($collection["conflict"])) 		$SyncCache['collections'][$collection["collectionid"]]["conflict"] 			= $collection["conflict"];
-				    if (isset($collection["BodyPreference"])) 	$SyncCache['collections'][$collection["collectionid"]]["BodyPreference"] 	= $collection["BodyPreference"];
-				    if (isset($collection["optionfoldertype"])) {
-				    	$SyncCache['collections'][$collection["collectionid"]]["optionfoldertype"] 	= $collection["optionfoldertype"];
-					    if (isset($collection[$collection["optionfoldertype"]]["filtertype"])) 			$SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["filtertype"]		= $collection[$collection["optionfoldertype"]]["filtertype"];
-					    if (isset($collection[$collection["optionfoldertype"]]["BodyPreference"])) 		$SyncCache['collections'][$collection["collectionid"]][$collection["optionfoldertype"]]["BodyPreference"]	= $collection[$collection["optionfoldertype"]]["BodyPreference"];
+						$SyncCache['collections'][$collection['collectionid']]['synckey'] = $collection['synckey'];
+				    if (isset($collection['class'])) 			$SyncCache['collections'][$collection['collectionid']]['class'] 			= $collection['class'];
+				    if (isset($collection['maxitems'])) 		$SyncCache['collections'][$collection['collectionid']]['maxitems'] 			= $collection['maxitems'];
+			    	if (isset($collection['deletesasmoves']))	$SyncCache['collections'][$collection['collectionid']]['deletesasmoves'] 	= $collection['deletesasmoves'];
+				    if (isset($collection['getchanges'])) 		$SyncCache['collections'][$collection['collectionid']]['getchanges'] 		= $collection['getchanges'];
+			    	else if(isset($SyncCache['collections'][$collection['collectionid']]['getchanges'])) unset($SyncCache['collections'][$collection['collectionid']]['getchanges']);
+				    if (isset($collection['filtertype'])) 		$SyncCache['collections'][$collection['collectionid']]['filtertype']		= $collection['filtertype'];
+				    if (isset($collection['truncation'])) 		$SyncCache['collections'][$collection['collectionid']]['truncation'] 		= $collection['truncation'];
+				    if (isset($collection['rtftruncation'])) 	$SyncCache['collections'][$collection['collectionid']]['rtftruncation'] 	= $collection['rtftruncation'];
+				    if (isset($collection['mimesupport'])) 		$SyncCache['collections'][$collection['collectionid']]['mimesupport'] 		= $collection['mimesupport'];
+				    if (isset($collection['mimetruncation'])) 	$SyncCache['collections'][$collection['collectionid']]['mimetruncation'] 	= $collection['mimetruncation'];
+				    if (isset($collection['conflict'])) 		$SyncCache['collections'][$collection['collectionid']]['conflict'] 			= $collection['conflict'];
+				    if (isset($collection['BodyPreference'])) 	$SyncCache['collections'][$collection['collectionid']]['BodyPreference'] 	= $collection['BodyPreference'];
+				    if (isset($collection['optionfoldertype'])) {
+				    	$SyncCache['collections'][$collection['collectionid']]['optionfoldertype'] 	= $collection['optionfoldertype'];
+					    if (isset($collection[$collection['optionfoldertype']]['filtertype'])) 			$SyncCache['collections'][$collection['collectionid']][$collection['optionfoldertype']]['filtertype']		= $collection[$collection['optionfoldertype']]['filtertype'];
+					    if (isset($collection[$collection['optionfoldertype']]['BodyPreference'])) 		$SyncCache['collections'][$collection['collectionid']][$collection['optionfoldertype']]['BodyPreference']	= $collection[$collection['optionfoldertype']]['BodyPreference'];
 				    }
 				};
 	        }
@@ -2050,7 +1899,6 @@ function HandleSync($backend, $protocolversion, $devid) {
     	return true;
     } else {
 		$statemachine->setSyncCache(serialize($SyncCache));
-		$statemachine->setMsgInfos($SyncCache['hierarchy']['synckey'], $msginfos);
     }
 
     return true;
@@ -2059,6 +1907,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 function HandleGetItemEstimate($backend, $protocolversion, $devid) {
     global $zpushdtd;
     global $input, $output;
+	global $user;
 
     $collections = array();
 
@@ -2066,7 +1915,7 @@ function HandleGetItemEstimate($backend, $protocolversion, $devid) {
     $encoder = new WBXMLEncoder($output, $zpushdtd);
 
     // Init state machine
-    $statemachine = new StateMachine($devid);
+    $statemachine = new StateMachine($devid,$user);
 
     $SyncCache = unserialize($statemachine->getSyncCache());
 
@@ -2200,9 +2049,11 @@ function HandleGetItemEstimate($backend, $protocolversion, $devid) {
             {
                 $importer = new ImportContentsChangesMem();
 
-                $statemachine = new StateMachine($devid);
-                $syncstate = $statemachine->getSyncState($collection["synckey"]);
+                $statemachine = new StateMachine($devid,$user);
+	            $syncstate = $statemachine->getSyncState($collection["synckey"]);
 				$statemachine->cleanOldSyncState($collection["synckey"]);
+				$statemachine->cleanOldSyncState("mi".$collection["synckey"]);
+
 				$syncstatus = 1;
 				if (is_numeric($syncstate) &&
 				    $syncstate < 0 &&
@@ -2210,10 +2061,11 @@ function HandleGetItemEstimate($backend, $protocolversion, $devid) {
 				    debugLog("GetSyncState: Got an error in HandleGetItemEstimate");
 				    $syncstate = false;
 				    if ($collection["synckey"] != '0') $syncstatus = 2;
+				    else $syncstatus=4;
 				}
 
                 $exporter = $backend->GetExporter($collection["collectionid"]);
-                $exporter->Config($importer, $collection["class"], $collection["filtertype"], $syncstate, 0, 0, false);
+                $exporter->Config($importer, $collection["class"], $collection["filtertype"], $syncstate, 0, 0, false, false);
 
 				$changecount = $exporter->GetChangeCount();
 				if ($changecount === false) {
@@ -2360,7 +2212,7 @@ function HandlePing($backend, $devid) {
                 // Create start state for this collection
                 $exporter = $backend->GetExporter($collection["serverid"]);
                 $importer = false;
-                $exporter->Config($importer, false, false, $collection["state"], BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false));
+                $exporter->Config($importer, false, false, $collection["state"], BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false), (isset($collection["optionfoldertype"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false));
                 while(is_array($exporter->Synchronize()));
                 $collection["state"] = $exporter->GetState();
                 array_push($collections, $collection);
@@ -2427,7 +2279,7 @@ function HandlePing($backend, $devid) {
             $exporter = $backend->GetExporter($collection["serverid"]);
             $state = $collection["state"];
             $importer = false;
-            $ret = $exporter->Config($importer, false, false, $state, BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false));
+            $ret = $exporter->Config($importer, false, false, $state, BACKEND_DISCARD_DATA, 0, (isset($collection["BodyPreference"]) ? $collection["BodyPreference"] : false), (isset($collection["optionfoldertype"]) ? $collection[$collection["optionfoldertype"]]["BodyPreference"] : false), false);
 
             // stop ping if exporter can not be configured (e.g. after Zarafa-server restart)
             if ($ret === false ) {
@@ -2486,7 +2338,7 @@ function HandlePing($backend, $devid) {
     $encoder->endTag();
 
     // Save the ping request state for this device
-    file_put_contents( STATE_DIR . "/" . strtolower($devid). "/" . $devid, serialize(array("lifetime" => $lifetime, "timestamp" => $timestamp, "collections" => $collections)));
+    file_put_contents(STATE_DIR . "/" . strtolower($devid). "/" . $devid, serialize(array("lifetime" => $lifetime, "timestamp" => $timestamp, "collections" => $collections)));
 
     return true;
 }
@@ -2500,51 +2352,60 @@ function HandleSendMail($backend, $protocolversion) {
 
     $data['task'] = 'new';
     $result = 1;
+	// With AS14.0 it is possible to get messages from device in WBXML encoded form.
     if($protocolversion >= 14.0) {
 		$decoder = new WBXMLDecoder($input, $zpushdtd);
-		$encoder = new WBXMLEncoder($output, $zpushdtd);
+		// Since HTC sends AS14.0 Protocol Version but behaves in sendmail as if it is <AS14.0 Protocol in use I compare WBXML Protocol Version and in case it is higher than 0x03 use the
+		// old sendmail protocol algorythm
+		if ($decoder->version > 0x03) {
+            $rfc822 = $decoder->_inputRaw.readStream($input);
+			$result = $backend->SendMail($rfc822, $data, $protocolversion);
+		} else {
+			$encoder = new WBXMLEncoder($output, $zpushdtd);
 
-		$mime=false;
-        if(!$decoder->getElementStartTag(SYNC_COMPOSEMAIL_SENDMAIL))
-		    $result = 102;
-		while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SAVEINSENTITEMS) 	? SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_CLIENTID) 		? SYNC_COMPOSEMAIL_CLIENTID :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_MIME)			? SYNC_COMPOSEMAIL_MIME :
-						-1)))) != -1 &&
-						$result == 1) {
-		    switch ($tag) {
-				case SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
-				    $data['saveinsentitems'] = true;
-				    break;
-				case SYNC_COMPOSEMAIL_CLIENTID :
-    			    $data['clientid'] = $decoder->getElementContent();
-    			    if(!$decoder->getElementEndTag())
-						$result = 102;
-    			    break;
-				case SYNC_COMPOSEMAIL_MIME :
-				    $mime = $decoder->getElementContent();
-                    if(!$decoder->getElementEndTag())
-				        $result = 102;
-	   			    break;
-		    }
+			$mime=false;
+    	    if(!$decoder->getElementStartTag(SYNC_COMPOSEMAIL_SENDMAIL))
+			    $result = 102;
+
+			while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SAVEINSENTITEMS) 	? SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_CLIENTID) 		? SYNC_COMPOSEMAIL_CLIENTID :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_MIME)			? SYNC_COMPOSEMAIL_MIME :
+							-1)))) != -1 &&
+							$result == 1) {
+			    switch ($tag) {
+					case SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
+					    $data['saveinsentitems'] = true;
+					    break;
+					case SYNC_COMPOSEMAIL_CLIENTID :
+    				    $data['clientid'] = $decoder->getElementContent();
+	    			    if(!$decoder->getElementEndTag())
+							$result = 102;
+    				    break;
+					case SYNC_COMPOSEMAIL_MIME :
+					    $mime = $decoder->getElementContent();
+	                    if(!$decoder->getElementEndTag())
+					        $result = 102;
+	   				    break;
+		    	}
+			}
+			if ($mime === false)
+		   	    $result = 102;
+			if (!isset($data['clientid']))
+			    $result = 103;
+
+	        if(!$decoder->getElementEndTag()) // End Sendmail
+			    $result = 102;
+
+			$rfc822 = $mime;
+			if ($result == 1)
+			    $result = $backend->SendMail($rfc822, $data, $protocolversion);
+		    $encoder->startWBXML();
+			$encoder->startTag(SYNC_COMPOSEMAIL_SENDMAIL);
+			$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
+	        $encoder->content(($result === true ? "1" : $result));
+	        $encoder->endTag();
+    	    $encoder->endTag();
 		}
-		if ($mime === false)
-	   	    $result = 102;
-		if (!isset($data['clientid']))
-		    $result = 103;
-
-        if(!$decoder->getElementEndTag()) // End Sendmail
-		    $result = 102;
-
-		$rfc822 = $mime;
-		if ($result == 1)
-		    $result = $backend->SendMail($rfc822, $data, $protocolversion);
-	    $encoder->startWBXML();
-		$encoder->startTag(SYNC_COMPOSEMAIL_SENDMAIL);
-		$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
-        $encoder->content(($result === true ? "1" : $result));
-        $encoder->endTag();
-        $encoder->endTag();
     } else {
         $rfc822 = readStream($input);
 		$result = $backend->SendMail($rfc822, $data, $protocolversion);
@@ -2563,91 +2424,109 @@ function HandleSmartForward($backend, $protocolversion) {
     $result = 1;
     if($protocolversion >= 14.0) {
 		$decoder = new WBXMLDecoder($input, $zpushdtd);
-		$encoder = new WBXMLEncoder($output, $zpushdtd);
+		// Since HTC sends AS14.0 Protocol Version but behaves in sendmail as if it is <AS14.0 Protocol in use I compare WBXML Protocol Version and in case it is higher than 0x03 use the
+		// old sendmail protocol algorythm
+		if ($decoder->version > 0x03) {
+            $rfc822 = $decoder->_inputRaw.readStream($input);
 
-		$mime = false;
-        if(!$decoder->getElementStartTag(SYNC_COMPOSEMAIL_SMARTFORWARD))
-		    $result = 102;
-		while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SAVEINSENTITEMS) 	? SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_CLIENTID) 		? SYNC_COMPOSEMAIL_CLIENTID :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_MIME)			? SYNC_COMPOSEMAIL_MIME :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_REPLACEMIME)		? SYNC_COMPOSEMAIL_REPLACEMIME :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SOURCE)			? SYNC_COMPOSEMAIL_SOURCE :
-						-1)))))) != -1 &&
-						$result == 1) {
-		    switch ($tag) {
-				case SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
-				    $data['saveinsentitems'] = true;
-				    break;
-				case SYNC_COMPOSEMAIL_CLIENTID :
-	    		    $data['clientid'] = $decoder->getElementContent();
-	    		    if(!$decoder->getElementEndTag())
-						$result = 102;
-	    		    break;
-				case SYNC_COMPOSEMAIL_MIME :
-				    $mime = $decoder->getElementContent();
-                       if(!$decoder->getElementEndTag())
-						$result = 102;
-	    		    break;
-				case SYNC_COMPOSEMAIL_SOURCE :
-				    while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_FOLDERID) 	? SYNC_COMPOSEMAIL_FOLDERID :
-									($decoder->getElementStartTag(SYNC_COMPOSEMAIL_ITEMID) 		? SYNC_COMPOSEMAIL_ITEMID :
-									($decoder->getElementStartTag(SYNC_COMPOSEMAIL_LONGID)		? SYNC_COMPOSEMAIL_LONGID :
-									($decoder->getElementStartTag(SYNC_COMPOSEMAIL_INSTANCEID)	? SYNC_COMPASEMAIL_INSTANCEID :
-									-1))))) != -1 &&
-								    $result == 1) {
-						switch ($tag) {
-						    case SYNC_COMPOSEMAIL_FOLDERID :
-							    $data['folderid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-									$result = 102;
-							    break;
-						    case SYNC_COMPOSEMAIL_ITEMID :
-							    $data['itemid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-									$result = 102;
-							    break;
-						    case SYNC_COMPOSEMAIL_LONGID :
-							    $data['longid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-									$result = 102;
-							    break;
-						    case SYNC_COMPOSEMAIL_INSTANCEID :
-							    $data['instanceid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-									$result = 102;
-							    break;
-						}
-		    		}
-					if ((isset($data['folderid']) && !isset($data['itemid'])) ||
-						(!isset($data['folderid']) && isset($data['itemid'])) ||
-						(isset($data['longid']) && (isset($data['folderid']) || isset($data['itemid']) || isset($data['instanceid']))))
-						$result = 103;
-	    		    if(!$decoder->getElementEndTag()) // End Source
-						$result = 102;
-				    break;
-				case SYNC_COMPOSEMAIL_REPLACEMIME :
-				    $data['replacemime'] = true;
-				    break;
-		    }
+			if(isset($_GET["ItemId"]))
+		   	    $data['itemid'] = $_GET["ItemId"];
+		    else
+			    $data['itemid'] = false;
+
+		    if(isset($_GET["CollectionId"]))
+			    $data['folderid'] = $_GET["CollectionId"];
+		    else
+			    $data['folderid'] = false;
+
+			$result = $backend->SendMail($rfc822, $data, $protocolversion);
+		} else {
+			$encoder = new WBXMLEncoder($output, $zpushdtd);
+
+			$mime = false;
+	        if(!$decoder->getElementStartTag(SYNC_COMPOSEMAIL_SMARTFORWARD))
+			    $result = 102;
+			while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SAVEINSENTITEMS) 	? SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_CLIENTID) 		? SYNC_COMPOSEMAIL_CLIENTID :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_MIME)			? SYNC_COMPOSEMAIL_MIME :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_REPLACEMIME)		? SYNC_COMPOSEMAIL_REPLACEMIME :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SOURCE)			? SYNC_COMPOSEMAIL_SOURCE :
+							-1)))))) != -1 &&
+							$result == 1) {
+			    switch ($tag) {
+					case SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
+					    $data['saveinsentitems'] = true;
+					    break;
+					case SYNC_COMPOSEMAIL_CLIENTID :
+		    		    $data['clientid'] = $decoder->getElementContent();
+		    		    if(!$decoder->getElementEndTag())
+							$result = 102;
+		    		    break;
+					case SYNC_COMPOSEMAIL_MIME :
+					    $mime = $decoder->getElementContent();
+	                       if(!$decoder->getElementEndTag())
+							$result = 102;
+		    		    break;
+					case SYNC_COMPOSEMAIL_SOURCE :
+					    while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_FOLDERID) 	? SYNC_COMPOSEMAIL_FOLDERID :
+										($decoder->getElementStartTag(SYNC_COMPOSEMAIL_ITEMID) 		? SYNC_COMPOSEMAIL_ITEMID :
+										($decoder->getElementStartTag(SYNC_COMPOSEMAIL_LONGID)		? SYNC_COMPOSEMAIL_LONGID :
+										($decoder->getElementStartTag(SYNC_COMPOSEMAIL_INSTANCEID)	? SYNC_COMPASEMAIL_INSTANCEID :
+										-1))))) != -1 &&
+									    $result == 1) {
+							switch ($tag) {
+							    case SYNC_COMPOSEMAIL_FOLDERID :
+								    $data['folderid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+										$result = 102;
+								    break;
+							    case SYNC_COMPOSEMAIL_ITEMID :
+								    $data['itemid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+										$result = 102;
+								    break;
+							    case SYNC_COMPOSEMAIL_LONGID :
+								    $data['longid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+										$result = 102;
+								    break;
+							    case SYNC_COMPOSEMAIL_INSTANCEID :
+								    $data['instanceid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+										$result = 102;
+								    break;
+							}
+			    		}
+						if ((isset($data['folderid']) && !isset($data['itemid'])) ||
+							(!isset($data['folderid']) && isset($data['itemid'])) ||
+							(isset($data['longid']) && (isset($data['folderid']) || isset($data['itemid']) || isset($data['instanceid']))))
+							$result = 103;
+	    			    if(!$decoder->getElementEndTag()) // End Source
+							$result = 102;
+					    break;
+					case SYNC_COMPOSEMAIL_REPLACEMIME :
+					    $data['replacemime'] = true;
+					    break;
+			    }
+			}
+			if ($mime === false)
+		        $result = 102;
+			if (!isset($data['clientid']))
+			    $result = 103;
+
+	        if(!$decoder->getElementEndTag()) // End SmartReply
+			    $result = 102;
+
+			$rfc822 = $mime;
+			if ($result == 1)
+			    $result = $backend->SendMail($rfc822, $data, $protocolversion);
+    	    $encoder->startWBXML();
+			$encoder->startTag(SYNC_COMPOSEMAIL_SMARTFORWARD);
+			$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
+	        $encoder->content(($result === true ? "1" : $result));
+	        $encoder->endTag();
+	        $encoder->endTag();
 		}
-		if ($mime === false)
-	        $result = 102;
-		if (!isset($data['clientid']))
-		    $result = 103;
-
-        if(!$decoder->getElementEndTag()) // End SmartReply
-		    $result = 102;
-
-		$rfc822 = $mime;
-		if ($result == 1)
-		    $result = $backend->SendMail($rfc822, $data, $protocolversion);
-        $encoder->startWBXML();
-		$encoder->startTag(SYNC_COMPOSEMAIL_SMARTFORWARD);
-		$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
-        $encoder->content(($result === true ? "1" : $result));
-        $encoder->endTag();
-        $encoder->endTag();
 	} else {
 		if(isset($_GET["ItemId"]))
 	   	    $data['itemid'] = $_GET["ItemId"];
@@ -2679,93 +2558,111 @@ function HandleSmartReply($backend, $protocolversion) {
     $result = 1;
     if($protocolversion >= 14.0) {
 		$decoder = new WBXMLDecoder($input, $zpushdtd);
-		$encoder = new WBXMLEncoder($output, $zpushdtd);
+		// Since HTC sends AS14.0 Protocol Version but behaves in sendmail as if it is <AS14.0 Protocol in use I compare WBXML Protocol Version and in case it is higher than 0x03 use the
+		// old sendmail protocol algorythm
+		if ($decoder->version > 0x03) {
+            $rfc822 = $decoder->_inputRaw.readStream($input);
 
-		$mime = false;
-        if(!$decoder->getElementStartTag(SYNC_COMPOSEMAIL_SMARTREPLY))
-		    $result = 102;
-		while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SAVEINSENTITEMS) 	? SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_CLIENTID) 		? SYNC_COMPOSEMAIL_CLIENTID :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_MIME)			? SYNC_COMPOSEMAIL_MIME :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_REPLACEMIME)		? SYNC_COMPOSEMAIL_REPLACEMIME :
-						($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SOURCE)			? SYNC_COMPOSEMAIL_SOURCE :
-						-1)))))) != -1 &&
-			$result == 1) {
-		    switch ($tag) {
-				case SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
-				    $data['saveinsentitems'] = true;
-				    break;
-				case SYNC_COMPOSEMAIL_CLIENTID :
-	    		    $data['clientid'] = $decoder->getElementContent();
-	    		    if(!$decoder->getElementEndTag())
-						$result = 102;
-	   			    break;
-				case SYNC_COMPOSEMAIL_MIME :
-				    $mime = $decoder->getElementContent();
-	                if(!$decoder->getElementEndTag())
-						$result = 102;
-	   			    break;
-				case SYNC_COMPOSEMAIL_SOURCE :
-				    while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_FOLDERID) 	? SYNC_COMPOSEMAIL_FOLDERID :
-									($decoder->getElementStartTag(SYNC_COMPOSEMAIL_ITEMID) 		? SYNC_COMPOSEMAIL_ITEMID :
-									($decoder->getElementStartTag(SYNC_COMPOSEMAIL_LONGID)		? SYNC_COMPOSEMAIL_LONGID :
-									($decoder->getElementStartTag(SYNC_COMPOSEMAIL_INSTANCEID)	? SYNC_COMPASEMAIL_INSTANCEID :
-									-1))))) != -1 &&
-								    $result == 1) {
-						switch ($tag) {
-						    case SYNC_COMPOSEMAIL_FOLDERID :
-							    $data['folderid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-		    						$result = 102;
-							    break;
-						    case SYNC_COMPOSEMAIL_ITEMID :
-							    $data['itemid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-		    						$result = 102;
-							    break;
-						    case SYNC_COMPOSEMAIL_LONGID :
-							    $data['longid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-		    						$result = 102;
-							    break;
-						    case SYNC_COMPOSEMAIL_INSTANCEID :
-							    $data['instanceid'] = $decoder->getElementContent();
-							    if(!$decoder->getElementEndTag())
-		    						$result = 102;
-							    break;
-						}
-				    }
-				    if ((isset($data['folderid']) && !isset($data['itemid'])) ||
-						(!isset($data['folderid']) && isset($data['itemid'])) ||
-						(isset($data['longid']) && (isset($data['folderid']) || isset($data['itemid']) || isset($data['instanceid']))))
-						$result = 103;
-	   			    if(!$decoder->getElementEndTag()) // End Source
-    					$result = 102;
-				    break;
-				case SYNC_COMPOSEMAIL_REPLACEMIME :
-				    $data['replacemime'] = true;
-				    break;
-		    }
+			if(isset($_GET["ItemId"]))
+	            $data['itemid'] = $_GET["ItemId"];
+	        else
+    	        $data['itemid'] = false;
+
+	        if(isset($_GET["CollectionId"]))
+		    $data['folderid'] = $_GET["CollectionId"];
+	        else
+		    $data['folderid'] = false;
+
+			$result = $backend->SendMail($rfc822, $data, $protocolversion);
+		} else {
+			$encoder = new WBXMLEncoder($output, $zpushdtd);
+
+			$mime = false;
+	        if(!$decoder->getElementStartTag(SYNC_COMPOSEMAIL_SMARTREPLY))
+			    $result = 102;
+			while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SAVEINSENTITEMS) 	? SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_CLIENTID) 		? SYNC_COMPOSEMAIL_CLIENTID :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_MIME)			? SYNC_COMPOSEMAIL_MIME :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_REPLACEMIME)		? SYNC_COMPOSEMAIL_REPLACEMIME :
+							($decoder->getElementStartTag(SYNC_COMPOSEMAIL_SOURCE)			? SYNC_COMPOSEMAIL_SOURCE :
+							-1)))))) != -1 &&
+				$result == 1) {
+			    switch ($tag) {
+					case SYNC_COMPOSEMAIL_SAVEINSENTITEMS :
+					    $data['saveinsentitems'] = true;
+					    break;
+					case SYNC_COMPOSEMAIL_CLIENTID :
+		    		    $data['clientid'] = $decoder->getElementContent();
+		    		    if(!$decoder->getElementEndTag())
+							$result = 102;
+		   			    break;
+					case SYNC_COMPOSEMAIL_MIME :
+					    $mime = $decoder->getElementContent();
+		                if(!$decoder->getElementEndTag())
+							$result = 102;
+		   			    break;
+					case SYNC_COMPOSEMAIL_SOURCE :
+					    while (($tag = 	($decoder->getElementStartTag(SYNC_COMPOSEMAIL_FOLDERID) 	? SYNC_COMPOSEMAIL_FOLDERID :
+										($decoder->getElementStartTag(SYNC_COMPOSEMAIL_ITEMID) 		? SYNC_COMPOSEMAIL_ITEMID :
+										($decoder->getElementStartTag(SYNC_COMPOSEMAIL_LONGID)		? SYNC_COMPOSEMAIL_LONGID :
+										($decoder->getElementStartTag(SYNC_COMPOSEMAIL_INSTANCEID)	? SYNC_COMPASEMAIL_INSTANCEID :
+										-1))))) != -1 &&
+									    $result == 1) {
+							switch ($tag) {
+							    case SYNC_COMPOSEMAIL_FOLDERID :
+								    $data['folderid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+			    						$result = 102;
+								    break;
+							    case SYNC_COMPOSEMAIL_ITEMID :
+								    $data['itemid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+			    						$result = 102;
+								    break;
+							    case SYNC_COMPOSEMAIL_LONGID :
+								    $data['longid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+			    						$result = 102;
+									    break;
+							    case SYNC_COMPOSEMAIL_INSTANCEID :
+								    $data['instanceid'] = $decoder->getElementContent();
+								    if(!$decoder->getElementEndTag())
+			    						$result = 102;
+								    break;
+							}
+					    }
+					    if ((isset($data['folderid']) && !isset($data['itemid'])) ||
+							(!isset($data['folderid']) && isset($data['itemid'])) ||
+							(isset($data['longid']) && (isset($data['folderid']) || isset($data['itemid']) || isset($data['instanceid']))))
+							$result = 103;
+		   			    if(!$decoder->getElementEndTag()) // End Source
+	    					$result = 102;
+					    break;
+					case SYNC_COMPOSEMAIL_REPLACEMIME :
+					    $data['replacemime'] = true;
+					    break;
+			    }
+			}
+			if ($mime === false)
+	    	    $result = 102;
+
+			if (!isset($data['clientid']))
+		    	$result = 103;
+
+	        if(!$decoder->getElementEndTag()) // End SmartReply
+			    $result = 102;
+
+			$rfc822 = $mime;
+			if ($result == 1)
+		    	$result = $backend->SendMail($rfc822, $data, $protocolversion);
+	    	$encoder->startWBXML();
+			$encoder->startTag(SYNC_COMPOSEMAIL_SMARTREPLY);
+			$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
+		    $encoder->content(($result === true ? "1" : $result));
+	        $encoder->endTag();
+	        $encoder->endTag();
 		}
-		if ($mime === false)
-    	    $result = 102;
-
-		if (!isset($data['clientid']))
-	    	$result = 103;
-
-        if(!$decoder->getElementEndTag()) // End SmartReply
-		    $result = 102;
-
-		$rfc822 = $mime;
-		if ($result == 1)
-	    	$result = $backend->SendMail($rfc822, $data, $protocolversion);
-    	$encoder->startWBXML();
-		$encoder->startTag(SYNC_COMPOSEMAIL_SMARTREPLY);
-		$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
-	    $encoder->content(($result === true ? "1" : $result));
-        $encoder->endTag();
-        $encoder->endTag();
-    } else {
+	} else {
 		if(isset($_GET["ItemId"]))
             $data['itemid'] = $_GET["ItemId"];
         else
@@ -2786,6 +2683,7 @@ function HandleSmartReply($backend, $protocolversion) {
 function HandleFolderCreate($backend, $devid, $protocolversion) {
     global $zpushdtd;
     global $input, $output;
+	global $user;
 
     $decoder = new WBXMLDecoder($input, $zpushdtd);
     $encoder = new WBXMLEncoder($output, $zpushdtd);
@@ -2852,7 +2750,7 @@ function HandleFolderCreate($backend, $devid, $protocolversion) {
         return false;
 
     // Get state of hierarchy
-    $statemachine = new StateMachine($devid);
+    $statemachine = new StateMachine($devid,$user);
     $syncstate = $statemachine->getSyncState($synckey);
     if (is_numeric($syncstate) &&
 		$syncstate < 0 &&
@@ -3264,7 +3162,7 @@ function HandleProvision($backend, $devid, $protocolversion) {
 						$encoder->startTag('Provision:AllowPOPIMAPEmail');$encoder->content('1');$encoder->endTag();
 						$encoder->startTag('Provision:AllowBluetooth');$encoder->content('2');$encoder->endTag();
 						$encoder->startTag('Provision:AllowIrDA');$encoder->content('1');$encoder->endTag();
-						$encoder->startTag('Provision:RequireManualSyncWhenRoaming');$encoder->content('0');$encoder->endTag(); // Set to one in case you'd like to save money...
+						$encoder->startTag('Provision:RequireManualSyncWhenRoaming');$encoder->content('0');$encoder->endTag(); // Set to zero in case you'd like to save money...
 						$encoder->startTag('Provision:AllowDesktopSync');$encoder->content('1');$encoder->endTag();
 						$encoder->startTag('Provision:MaxCalendarAgeFilter');$encoder->content('0');$encoder->endTag();
 						$encoder->startTag('Provision:AllowHTMLEmail');$encoder->content('1');$encoder->endTag();
@@ -3917,54 +3815,62 @@ function HandleItemOperations($backend, $devid, $protocolversion, $multipart) {
         return false;
 
     $request = array();
-    while (($reqtype = ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_FETCH)       		?   SYNC_ITEMOPERATIONS_FETCH      	  	:
+	$mimesupport = 0;
+    while (($reqtype = ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_FETCH)       			?   SYNC_ITEMOPERATIONS_FETCH      	  		:
 				       ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_EMPTYFOLDERCONTENT) 	?   SYNC_ITEMOPERATIONS_EMPTYFOLDERCONTENT	:
 				       -1))) != -1) {
 		if ($reqtype == SYNC_ITEMOPERATIONS_FETCH) {
 		    $thisio["type"] = "fetch";
-		    while (($reqtag = ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_STORE)       		?   SYNC_ITEMOPERATIONS_STORE  	  	:
-						      ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_OPTIONS)	 	?   SYNC_ITEMOPERATIONS_OPTIONS		:
-						      ($decoder->getElementStartTag(SYNC_SERVERENTRYID)			 	?   SYNC_SERVERENTRYID			:
-						      ($decoder->getElementStartTag(SYNC_FOLDERID)			 	?   SYNC_FOLDERID			:
-						      ($decoder->getElementStartTag(SYNC_DOCUMENTLIBRARY_LINKID)	 	?   SYNC_DOCUMENTLIBRARY_LINKID		:
-						      ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_FILEREFERENCE)	 	?   SYNC_AIRSYNCBASE_FILEREFERENCE	:
-						      ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_USERNAME)	 	?   SYNC_ITEMOPERATIONS_USERNAME	:
-						      ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_PASSWORD)	 	?   SYNC_ITEMOPERATIONS_PASSWORD	:
-						      ($decoder->getElementStartTag(SYNC_SEARCH_LONGID)			 	?   SYNC_SEARCH_LONGID			:
+		    while (($reqtag = ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_STORE)      ?   SYNC_ITEMOPERATIONS_STORE  	  	:
+						      ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_OPTIONS)	?   SYNC_ITEMOPERATIONS_OPTIONS		:
+						      ($decoder->getElementStartTag(SYNC_SERVERENTRYID)			 	?   SYNC_SERVERENTRYID				:
+						      ($decoder->getElementStartTag(SYNC_FOLDERID)			 		?   SYNC_FOLDERID					:
+						      ($decoder->getElementStartTag(SYNC_DOCUMENTLIBRARY_LINKID)	?   SYNC_DOCUMENTLIBRARY_LINKID		:
+						      ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_FILEREFERENCE)	?   SYNC_AIRSYNCBASE_FILEREFERENCE	:
+						      ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_USERNAME)	?   SYNC_ITEMOPERATIONS_USERNAME	:
+						      ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_PASSWORD)	?   SYNC_ITEMOPERATIONS_PASSWORD	:
+						      ($decoder->getElementStartTag(SYNC_SEARCH_LONGID)			 	?   SYNC_SEARCH_LONGID				:
 				    	      -1)))))))))) != -1) {
 	    		if ($reqtag == SYNC_ITEMOPERATIONS_OPTIONS) {
-				    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE)) {
-				        $bodypreference=array();
-	        	        while(1) {
-            	    	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TYPE)) {
-		                        $bodypreference["Type"] = $decoder->getElementContent();
-    			                if(!$decoder->getElementEndTag())
-                            	    return false;
-    	    	    	    }
+	    		    while (($thisoption = ($decoder->getElementStartTag(SYNC_MIMESUPPORT)					? SYNC_MIMESUPPORT 					:
+	    		    					  ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE) 	? SYNC_AIRSYNCBASE_BODYPREFERENCE 	:
+	    		    					  -1))) != -1) {
+						if ($thisoption == SYNC_MIMESUPPORT) {
+			        	    $mimesupport = $decoder->getElementContent();
+	    			    	$decoder->getElementEndTag();
+						} elseif ($thisoption == SYNC_AIRSYNCBASE_BODYPREFERENCE) {
+				    	    $bodypreference=array();
+	        	        	while(1) {
+            	    	    	if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TYPE)) {
+			                        $bodypreference["Type"] = $decoder->getElementContent();
+    				                if(!$decoder->getElementEndTag())
+        	                    	    return false;
+    	    		    	    }
 
-            	    	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TRUNCATIONSIZE)) {
-		        	        	$bodypreference["TruncationSize"] = $decoder->getElementContent();
-		        		        if(!$decoder->getElementEndTag())
-                            	    return false;
-	        	    	    }
+	            	    	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TRUNCATIONSIZE)) {
+			        	        	$bodypreference["TruncationSize"] = $decoder->getElementContent();
+			        		        if(!$decoder->getElementEndTag())
+            	                	    return false;
+	        		    	    }
 
-	                	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_ALLORNONE)) {
-    	    	                $bodypreference["AllOrNone"] = $decoder->getElementContent();
-		        		        if(!$decoder->getElementEndTag())
-	                    		    return false;
-	    	    		    }
+		                	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_ALLORNONE)) {
+    		    	                $bodypreference["AllOrNone"] = $decoder->getElementContent();
+			        		        if(!$decoder->getElementEndTag())
+	        	            		    return false;
+	    	    			    }
 
-            	    	    $e = $decoder->peek();
-	            		    if($e[EN_TYPE] == EN_TYPE_ENDTAG) {
-    		        			$decoder->getElementEndTag();
-								if (!isset($thisio["bodypreference"]["wanted"]))
-								    $thisio["bodypreference"]["wanted"] = $bodypreference["Type"];
-								if (isset($bodypreference["Type"]))
-								    $thisio["bodypreference"][$bodypreference["Type"]] = $bodypreference;
-		    		    		break;
-	    		    	    }
-                		}
-				    }
+	            	    	    $e = $decoder->peek();
+		            		    if($e[EN_TYPE] == EN_TYPE_ENDTAG) {
+    			        			$decoder->getElementEndTag();
+									if (!isset($thisio["bodypreference"]["wanted"]))
+									    $thisio["bodypreference"]["wanted"] = $bodypreference["Type"];
+									if (isset($bodypreference["Type"]))
+									    $thisio["bodypreference"][$bodypreference["Type"]] = $bodypreference;
+		    		    			break;
+	    		    	    	}
+                			}
+				    	}
+					}
 				} elseif ($reqtag == SYNC_ITEMOPERATIONS_STORE) {
     	    	    $thisio["store"] = $decoder->getElementContent();
 				} elseif ($reqtag == SYNC_ITEMOPERATIONS_USERNAME) {
@@ -4043,11 +3949,11 @@ function HandleItemOperations($backend, $devid, $protocolversion, $multipart) {
 		            	$encoder->startTag(SYNC_ITEMOPERATIONS_PROPERTIES);
 		//				if (isset($value['bodypreference'])) $encoder->_bodypreference = $value['bodypreference'];
 						if (isset($value["searchlongid"])) {
-						    $msg = $backend->ItemOperationsFetchMailbox($value['searchlongid'], $value['bodypreference']);
+						    $msg = $backend->ItemOperationsFetchMailbox($value['searchlongid'], $value['bodypreference'], $mimesupport);
 						} else if(isset($value["airsyncbasefilereference"])) {
 					    	$msg = $backend->ItemOperationsGetAttachmentData($value["airsyncbasefilereference"]);
 						} else {
-						    $msg = $backend->Fetch($value['folderid'], $value['serverentryid'], $value['bodypreference']);
+						    $msg = $backend->Fetch($value['folderid'], $value['serverentryid'], $value['bodypreference'], false, $mimesupport);
 		//			    $msg->airsyncbasebody->estimateddatasize=0;
 		//			    $msg->airsyncbasebody->data=0;
 						};
@@ -4115,6 +4021,367 @@ function HandleItemOperations($backend, $devid, $protocolversion, $multipart) {
 }
 
 // END ADDED dw2412 ItemOperations Support
+
+// START ADDED dw2412 ValidateCert Support
+function HandleValidateCert($backend, $devid, $protocolversion) {
+    global $zpushdtd;
+    global $input, $output;
+
+    $decoder = new WBXMLDecoder($input, $zpushdtd);
+    $encoder = new WBXMLEncoder($output, $zpushdtd);
+
+    if(!$decoder->getElementStartTag(SYNC_VALIDATECERT_VALIDATECERT))
+        return false;
+
+    while (($field	 = ($decoder->getElementStartTag(SYNC_VALIDATECERT_CERTIFICATES)       			?   SYNC_VALIDATECERT_CERTIFICATES     	:
+				       ($decoder->getElementStartTag(SYNC_VALIDATECERT_CERTIFICATECHAIN) 			?   SYNC_VALIDATECERT_CERTIFICATECHAIN	:
+				       ($decoder->getElementStartTag(SYNC_VALIDATECERT_CHECKCRL) 					?   SYNC_VALIDATECERT_CHECKCRL			:
+				       -1)))) != -1) {
+		if ($field == SYNC_VALIDATECERT_CERTIFICATES) {
+			while ($decoder->getElementStartTag(SYNC_VALIDATECERT_CERTIFICATE)) {
+				$certificates[] = $decoder->getElementContent();
+				if (!$decoder->getElementEndTag()) return false;
+			}
+			if (!$decoder->getElementEndTag()) return false;
+		} else if($field == SYNC_VALIDATECERT_CERTIFICATECHAIN) {
+			while ($decoder->getElementStartTag(SYNC_VALIDATECERT_CERTIFICATE)) {
+				$chain_certificates[] = $decoder->getElementContent();
+				if (!$decoder->getElementEndTag()) return false;
+			}
+			if (!$decoder->getElementEndTag()) return false;
+		} else if($field == SYNC_VALIDATECERT_CHECKCRL) {
+			$checkcrl = $decoder->getElementContent();
+			if (!$decoder->getElementEndTag()) return false;
+		}
+	}
+
+	if (isset($checkcrl)) debugLog ("validatecert: checkcrl: ".$checkcrl);
+	if (isset($chain_certificates)) {
+		foreach($chain_certificates as $certificate) {
+			debugLog ("validatecert: certificatechain: ".print_r($certificate,true));
+		}
+	}
+
+	foreach ($certificates as $certificate) {
+		$cert_der = base64_decode($certificate);
+		$cert_pem = "-----BEGIN CERTIFICATE-----\n".chunk_split(base64_encode($cert_der), 64, "\n")."-----END CERTIFICATE-----\n";
+		$cert_fn = VERIFYCERT_TEMP."validatecert".rand(1000,99999).".pem";
+		file_put_contents($cert_fn,$cert_pem);
+		$now = time();
+		if (!($cert_content = openssl_x509_parse($cert_pem)))
+			$status = 10;
+		else if ($cert_content['validFrom_time_t'] >= $now ||
+			$cert_content['validTo_time_t'] <= $now)
+			$status = 7;
+		else if (openssl_x509_checkpurpose($cert_pem,X509_PURPOSE_SMIME_SIGN,array(VERIFYCERT_CERTSTORE)) != 1)
+			$status = 9;
+		else if ($checkcrl == 1) {
+			if (isset($cert_content['extensions']['crlDistributionPoints'])) {
+				$crlDistributionPoints = explode ("\n",str_replace("\r",'',$cert_content['extensions']['crlDistributionPoints']));
+				foreach ($crlDistributionPoints as $entry) {
+					$line = explode("URI:",$entry);
+					if (isset($line[1]) && substr($line[1],0,5) == "http:")
+						$crl_urls[] = $line[1];
+				}
+			}
+			if (isset($cert_content['extensions']['authorityInfoAccess'])) {
+				$authorityInfoAccess = explode ("\n",str_replace("\r",'',$cert_content['extensions']['authorityInfoAccess']));
+				foreach ($authorityInfoAccess as $entry) {
+					$line = explode(" - URI:",$entry);
+					if (strtolower(trim($line[0])) == 'ocsp')
+						$ocsp_urls[] = $line[1];
+					if (strtolower(trim($line[0])) == 'ca issuers')
+						$ca_issuers[] = $line[1];
+				}
+			}
+			$result = preg_split('/[\r\n]/',shell_exec(VERIFYCERT_SSLBIN." x509 -in ".$cert_fn." -issuer_hash -noout") );
+			$issuer_cer_name = $result[0].'.0';
+			$issuer_crl_name = $result[0].'.r0';
+			if (!file_exists(VERIFYCERT_CERTSTORE.$issuer_cer_name)) {
+				if (isset($ca_issuers)) {
+					foreach($ca_issuers as $ca_issuer) {
+						$ca_cert = file_get_contents($ca_issuer);
+						if (strpos($ca_cert,'----BEGIN CERTIFICATE-----') == false) {
+							$ca_cert = der2pem($ca_cert);
+						}
+						if (!openssl_x509_parse($ca_cert)) {
+							$status=5;
+						} else {
+							file_put_contents(VERIFYCERT_CERTSTORE.$issuer_cer_name, $ca_cert);
+						}
+					}
+				} else {
+					$status = 4;
+				}
+			}
+			if (isset($ocsp_urls)) {
+				$command = VERIFYCERT_SSLBIN." ocsp -VAfile ".VERIFYCERT_CERTSTORE.$issuer_cer_name."  -issuer ".VERIFYCERT_CERTSTORE.$issuer_cer_name." -CApath ".VERIFYCERT_CERTSTORE." -no_nonce -cert ".$cert_fn." -url ".$ocsp_urls[0];
+				$result = preg_split('/[\r\n]/',shell_exec($command));
+				$status = 14;
+				foreach ($result as $line) {
+					$values = explode(":",$line);
+					if (trim($values[0]) == $cert_fn) {
+						switch (strtolower(trim($values[1]))) {
+							case 'good' :
+								$status = 1; break;
+							default :
+								$status = 13;
+						};
+					}
+				}
+			} else if (isset($crl_urls)) {
+				echo "Verfication using crl!<br>\n";
+				$nextupdate = time()-1;
+				if (file_exists(VERIFYCERT_CERTSTORE.$issuer_crl_name)) {
+					$command = VERIFYCERT_SSLBIN." crl -in ".VERIFYCERT_CERTSTORE.$issuer_crl_name." -nextupdate -noout";
+					$result = preg_split('/[\r\n]/',shell_exec($command));
+					foreach ($result as $line) {
+						$values = explode("=",$line);
+						if (strtolower(trim($values[0])) == 'nextupdate') $nextupdate = strtotime($values[1]);
+					}
+				}
+				if (!file_exists(VERIFYCERT_CERTSTORE.$issuer_crl_name) ||
+					$nextupdate < time()) {
+					if ($nextupdate < time()) echo "CRL File needs update!\n";
+					foreach($crl_urls as $crl_url) {
+						if (($crl_cert = file_get_contents($crl_url))) {
+							if (strstr($crl_cert,'----BEGIN X509 CRL-----') == false) {
+								file_put_contents(VERIFYCERT_TEMP.$issuer_crl_name, $crl_cert);
+								$command = VERIFYCERT_SSLBIN." crl -in ".VERIFYCERT_TEMP.$issuer_crl_name." -inform der -out ".VERIFYCERT_CERTSTORE.$issuer_crl_name." -outform pem";
+								$result = preg_split('/[\r\n]/',shell_exec($command));
+								foreach ($result as $line) {
+									echo $line."\n";
+								}
+							} else {
+								file_put_contents(VERIFYCERT_CERTSTORE.$issuer_crl_name, $crl_cert);
+							}
+						} else {
+							$status = 14;
+						}
+					}
+				}
+				if (file_exists(VERIFYCERT_CERTSTORE.$issuer_crl_name)) {
+					$command = VERIFYCERT_SSLBIN." verify -verbose -CApath ".VERIFYCERT_CERTSTORE." -crl_check ".$cert_fn;
+					$result = preg_split('/[\r\n]/',shell_exec($command));
+					foreach ($result as $line) {
+						$values = explode(":",$line);
+						if (trim($values[0]) == $cert_fn) {
+							switch (strtolower(trim($values[1]))) {
+								case 'ok' :
+									$status = 1; break;
+								default :
+									$status = 13;
+							};
+						}
+					}
+				} else {
+					$status = 16;
+				}
+			} else {
+				$status = 16;
+			}
+		} else {
+			$status = 1;
+		}
+		unlink($cert_fn);
+	}
+
+    $encoder->startWBXML();
+    $encoder->startTag(SYNC_VALIDATECERT_VALIDATECERT);
+    $encoder->startTag(SYNC_VALIDATECERT_STATUS);
+    $encoder->content(1);
+    $encoder->endTag(); // end SYNC_VALIDATECERT_STATUS
+	$encoder->startTag(SYNC_VALIDATECERT_CERTIFICATE);
+    $encoder->startTag(SYNC_VALIDATECERT_STATUS);
+    $encoder->content($status);
+    $encoder->endTag(); // end SYNC_VALIDATECERT_STATUS
+    $encoder->endTag(); // end SYNC_VALIDATECERT_CERTIFICATE
+    $encoder->endTag(); // end SYNC_VALIDATECERT_VALIDATECERT
+
+	return true;
+}
+// END ADDED dw2412 ValidateCert Support
+
+// START ADDED dw2412 ResolveRecipient Support
+function HandleResolveRecipients($backend, $devid, $protocolversion) {
+    global $zpushdtd;
+    global $input, $output;
+
+//	define ('OVERRIDE_GZIP',true);
+
+    $decoder = new WBXMLDecoder($input, $zpushdtd);
+    $encoder = new WBXMLEncoder($output, $zpushdtd);
+
+    if(!$decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_RESOLVERECIPIENTS))
+        return false;
+
+	$status = 1;
+    while ($status == 1 &&
+    	   ($field	 = ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_TO)       			?   SYNC_RESOLVERECIPIENTS_TO     	:
+				       ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_OPTIONS) 			?   SYNC_RESOLVERECIPIENTS_OPTIONS	:
+				       -1))) != -1) {
+		if ($field == SYNC_RESOLVERECIPIENTS_OPTIONS) {
+    		while ($status == 1 &&
+    			   ($option	= ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL)    ?   SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL     	:
+				       		  ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_MAXCERTIFICATES) 		?	SYNC_RESOLVERECIPIENTS_MAXCERTIFICATES				:
+				       		  ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_MAXAMBIGUOUSRECIPIENTS)	?	SYNC_RESOLVERECIPIENTS_MAXAMBIGUOUSRECIPIENTS		:
+				       		  ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_AVAILABILITY)			?	SYNC_RESOLVERECIPIENTS_AVAILABILITY					:
+				       		  ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_PICTURE)					?	SYNC_RESOLVERECIPIENTS_PICTURE						:
+				       -1)))))) != -1) {
+				switch ($option) {
+					case SYNC_RESOLVERECIPIENTS_AVAILABILITY :
+    					while (($suboption	= ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_STARTTIME)   ?   SYNC_RESOLVERECIPIENTS_STARTTIME     	:
+				       						  ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_ENDTIME)		?	SYNC_RESOLVERECIPIENTS_ENDTIME			:
+				       				-1))) != -1) {
+							$ts = $decoder->getElementContent();
+					        if(preg_match("/(\d{4})[^0-9]*(\d{2})[^0-9]*(\d{2})T(\d{2})[^0-9]*(\d{2})[^0-9]*(\d{2})(.\d+)?Z/", $ts, $matches)) {
+					            if ($matches[1] >= 2038){
+					                $matches[1] = 2038;
+					                $matches[2] = 1;
+					                $matches[3] = 18;
+					                $matches[4] = $matches[5] = $matches[6] = 0;
+					            }
+					            $ts = gmmktime($matches[4], $matches[5], $matches[6], $matches[2], $matches[3], $matches[1]);
+					        } else {
+					        	$ts = 0;
+					        }
+					        $options[$option][$suboption] = $ts;
+							if (!$decoder->getElementEndTag())
+								$status = 5;
+						}
+						if (!$decoder->getElementEndTag())
+							$status = 5;
+						break;
+					case SYNC_RESOLVERECIPIENTS_PICTURE :
+    					while (($suboption	= ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_MAXSIZE)   	?   SYNC_RESOLVERECIPIENTS_MAXSIZE     	:
+				       						  ($decoder->getElementStartTag(SYNC_RESOLVERECIPIENTS_MAXPICTURES)	?	SYNC_RESOLVERECIPIENTS_MAXPICTURES	:
+				       				-1))) != -1) {
+							$options[$option][$suboption] = $decoder->getElementContent();
+							if (!$decoder->getElementEndTag())
+								$status = 5;
+						}
+						if (!$decoder->getElementEndTag())
+							$status = 5;
+						break;
+					default :
+						$options[$option] = $decoder->getElementContent();
+						if (!$decoder->getElementEndTag())
+							$status = 5;
+				}
+			}
+			if (!$decoder->getElementEndTag())
+				$status = 5;
+		} else if($field == SYNC_RESOLVERECIPIENTS_TO) {
+			$to[] = $decoder->getElementContent();
+			if (!$decoder->getElementEndTag())
+				$status = 5;
+		}
+	}
+
+	$results = '';
+	foreach($to as $item) {
+		if (isset($options[SYNC_RESOLVERECIPIENTS_AVAILABILITY])) {
+			$result = $backend->resolveRecipient('availability',$item,array('starttime' => $options[SYNC_RESOLVERECIPIENTS_AVAILABILITY][SYNC_RESOLVERECIPIENTS_STARTTIME],
+																  			'endtime' => $options[SYNC_RESOLVERECIPIENTS_AVAILABILITY][SYNC_RESOLVERECIPIENTS_ENDTIME]));
+			$results[$item] = $result[$item];
+		}
+		if (isset($options[SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL])) {
+			$result = $backend->resolveRecipient('certificate',$item,array('maxcerts' => $options[SYNC_RESOLVERECIPIENTS_MAXCERTIFICATES],
+																		   'maxambigious' => $options[SYNC_RESOLVERECIPIENTS_MAXAMBIGUOUSRECIPIENTS],
+																		   )
+												);
+			$results[$item] = $result[$item];
+		}
+	}
+	debugLog("Results returned".print_r($results,true));
+
+    $encoder->startWBXML();
+    $encoder->startTag(SYNC_RESOLVERECIPIENTS_RESOLVERECIPIENTS);
+    $encoder->startTag(SYNC_RESOLVERECIPIENTS_STATUS);
+    $encoder->content($status);
+    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_STATUS
+	foreach ($to as $item) {
+		$encoder->startTag(SYNC_RESOLVERECIPIENTS_RESPONSE);
+	    $encoder->startTag(SYNC_RESOLVERECIPIENTS_TO);
+	    $encoder->content($item);
+	    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_TO
+	    $encoder->startTag(SYNC_RESOLVERECIPIENTS_STATUS);
+	    $encoder->content((sizeof($results[$item]) > 1 ? 2 : (sizeof($results[$item]) == 0 ? 4 : (sizeof($results[$item]) == 1 ? 1 : 3))));
+	    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_STATUS
+	    $encoder->startTag(SYNC_RESOLVERECIPIENTS_RECIPIENTCOUNT);
+	    $encoder->content(sizeof($results[$item]));
+	    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_RECIPIENTCOUNT
+		foreach ($results[$item] as $value) {
+		    $encoder->startTag(SYNC_RESOLVERECIPIENTS_RECIPIENT);
+			$encoder->startTag(SYNC_RESOLVERECIPIENTS_TYPE);
+		    $encoder->content($value['type']);
+		    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_TYPE
+			$encoder->startTag(SYNC_RESOLVERECIPIENTS_DISPLAYNAME);
+		    $encoder->content($value['displayname']);
+		    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_DISPLAYNAME
+			$encoder->startTag(SYNC_RESOLVERECIPIENTS_EMAILADDRESS);
+		    $encoder->content($value['emailaddress']);
+		    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_EMAILADDRESS
+			if (isset($options[SYNC_RESOLVERECIPIENTS_AVAILABILITY])) {
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_AVAILABILITY);
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_STATUS);
+			    $encoder->content(1);
+			 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_STATUS
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_MERGEDFREEBUSY);
+			    $encoder->content($value['mergedfb']);
+			 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_MERGEDFREEBUSY
+			    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_AVAILABILITY
+			}
+			if (isset($options[SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL]) &&
+				$options[SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL] > 1) {
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_CERTIFICATES);
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_STATUS);
+			    $encoder->content((sizeof($value['entries']) == 0 ? 7 : 1));
+			 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_STATUS
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_CERTIFICATECOUNT);
+			    $encoder->content(sizeof($value['entries']));
+			 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_CERTIFICATECOUNT
+				$encoder->startTag(SYNC_RESOLVERECIPIENTS_RECIPIENTCOUNT);
+			    $encoder->content(sizeof($results[$item]));
+			 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_RECIPIENTCOUNT
+				switch ($options[SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL]) {
+					case '2' :
+						foreach($value['entries'] as $cert) {
+							$encoder->startTag(SYNC_RESOLVERECIPIENTS_CERTIFICATE);
+						    $encoder->content($cert);
+						 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_CERTIFICATE
+						}
+						break;
+					case '3' :
+						foreach($value['entries'] as $cert) {
+							$encoder->startTag(SYNC_RESOLVERECIPIENTS_MINICERTIFICATE);
+						    $encoder->content($cert);
+						 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_MINICERTIFICATE
+						}
+						break;
+				}
+				$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_CERTIFICATERETRIEVAL
+			}
+/*		if (isset($item['options'][SYNC_RESOLVERECIPIENTS_PICTURE])) {
+			$encoder->startTag(SYNC_RESOLVERECIPIENTS_PICTURE);
+			$encoder->startTag(SYNC_RESOLVERECIPIENTS_STATUS);
+		    $encoder->content();
+		 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_STATUS
+			$encoder->startTag(SYNC_RESOLVERECIPIENTS_DATA);
+		    $encoder->content();
+		 	$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_DATA
+		    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_PICTURE
+		}
+*/
+		    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_RECIPIENT
+		}
+   		$encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_RESPONSE
+	}
+    $encoder->endTag(); // end SYNC_RESOLVERECIPIENTS_RESOLVERECIPIENTS
+
+	return true;
+}
+// END ADDED dw2412 ResolveRecipient Support
 
 // START ADDED dw2412 Notify Support (Yeah, AS 2.0 and for Motorola A1200 necessary)
 function HandleNotify2($backend, $devid, $protocolverison) {
@@ -4197,7 +4464,13 @@ function HandleRequest($backend, $cmd, $devid, $protocolversion, $multipart) {
             break;
 		case 'Notify':
 		    $status = HandleNotify2($backend, $devid, $protocolversion);
-
+		    break;
+		case 'ValidateCert':
+			$status = HandleValidateCert($backend, $devid, $protocolversion);
+            break;
+		case 'ResolveRecipients':
+			$status = HandleResolveRecipients($backend, $devid, $protocolversion);
+			break;
         default:
             debugLog("unknown command - not implemented");
             $status = false;

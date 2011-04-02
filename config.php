@@ -6,7 +6,7 @@
 *
 * Created   :   01.10.2007
 *
-* ï¿½ Zarafa Deutschland GmbH, www.zarafaserver.de
+* © Zarafa Deutschland GmbH, www.zarafaserver.de
 * This file is distributed under GPL v2.
 * Consult LICENSE file for details
 ************************************************/
@@ -79,9 +79,16 @@
     //   SYNC_CONFLICT_OVERWRITE_PIM    - PIM is overwritten, Server wins (default)
     define('SYNC_CONFLICT_DEFAULT', SYNC_CONFLICT_OVERWRITE_PIM);
 
-    // In case Function Overload is being detect for mbstring functions we set the define
-    // to the overload level so that we can handle binary data propper...
-    define('MBSTRING_OVERLOAD', (extension_loaded('mbstring') ? ini_get('mbstring.func_overload') : 0));
+	// In case Function Overload is being detect for mbstring functions we set the define
+	// to the overload level so that we can handle binary data propper...
+	define('MBSTRING_OVERLOAD', (extension_loaded('mbstring') ? ini_get('mbstring.func_overload') : false));
+
+	// For verification of SSL Certificates please define where to call the openssl binary
+	//define("VERIFYCERT_SSLBIN","/usr/bin/openssl");
+	// For verification of SSL Certificates please define where the Certificate Store is being located
+	// define("VERIFYCERT_CERTSTORE","crtstore/");
+	// For verification of SSL Certificates please define where to store temporary files
+	// define("VERIFYCERT_TEMP","tmp/");
 
     // The data providers that we are using (see configuration below)
     $BACKEND_PROVIDER = "BackendEGW";
@@ -111,8 +118,11 @@
     //        '@mydomain.com' - the username is used and the given string will be appended
     define('IMAP_DEFAULTFROM', '');
     // copy outgoing mail to this folder. If not set z-push will try the default folders
+	// Additionally you have to have a Sent Items folder in case you plan to sync with Nokia MfE Built in client / certain HTC Adnroid devices!
     define('IMAP_SENTFOLDER', '');
+	// You have to have a Deleted Items folder in case you plan to sync with Nokia MfE Built in client / certain HTC Adnroid devices!
     define('IMAP_DELETEDITEMSFOLDER', '');
+	// You have to have a Draft folder in case you plan to sync with Nokia MfE Built in client / certain HTC Adnroid devices!
     define('IMAP_DRAFTSFOLDER', '');
     // forward messages inline (default off - as attachment)
     define('IMAP_INLINE_FORWARD', false);

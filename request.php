@@ -2360,6 +2360,11 @@ function HandleSendMail($backend, $protocolversion) {
 		if ($decoder->version > 0x03) {
             $rfc822 = $decoder->_inputRaw.readStream($input);
 			$result = $backend->SendMail($rfc822, $data, $protocolversion);
+			 if ($result !== true) 
+			 {
+                    		header("HTTP/1.1 400 Bad Request");
+                	 }
+
 		} else {
 			$encoder = new WBXMLEncoder($output, $zpushdtd);
 
@@ -2398,7 +2403,8 @@ function HandleSendMail($backend, $protocolversion) {
 
 			$rfc822 = $mime;
 			if ($result == 1)
-			    $result = $backend->SendMail($rfc822, $data, $protocolversion);
+		   	 $result = $backend->SendMail($rfc822, $data, $protocolversion);
+				
 		    $encoder->startWBXML();
 			$encoder->startTag(SYNC_COMPOSEMAIL_SENDMAIL);
 			$encoder->startTag(SYNC_COMPOSEMAIL_STATUS);
@@ -2409,9 +2415,12 @@ function HandleSendMail($backend, $protocolversion) {
     } else {
         $rfc822 = readStream($input);
 		$result = $backend->SendMail($rfc822, $data, $protocolversion);
-    };
+		if ($result !== true) {
+		    header("HTTP/1.1 400 Bad Request");
+    		}
 
-    return $result;
+    };
+    return true;
 }
 
 function HandleSmartForward($backend, $protocolversion) {
@@ -2440,6 +2449,10 @@ function HandleSmartForward($backend, $protocolversion) {
 			    $data['folderid'] = false;
 
 			$result = $backend->SendMail($rfc822, $data, $protocolversion);
+			if ($result !== true) 
+			{
+                 	 	header("HTTP/1.1 400 Bad Request");
+               		}
 		} else {
 			$encoder = new WBXMLEncoder($output, $zpushdtd);
 
@@ -2540,9 +2553,12 @@ function HandleSmartForward($backend, $protocolversion) {
 
         $rfc822 = readStream($input);
 		$result = $backend->SendMail($rfc822, $data, $protocolversion);
+		if ($result !== true) {
+		    header("HTTP/1.1 400 Bad Request");
+    		}
 	};
 
-    return $result;
+    return true;
 }
 
 function HandleSmartReply($backend, $protocolversion) {
@@ -2574,6 +2590,10 @@ function HandleSmartReply($backend, $protocolversion) {
 		    $data['folderid'] = false;
 
 			$result = $backend->SendMail($rfc822, $data, $protocolversion);
+			if ($result !== true) 
+			{
+                    		header("HTTP/1.1 400 Bad Request");
+			}
 		} else {
 			$encoder = new WBXMLEncoder($output, $zpushdtd);
 
@@ -2675,9 +2695,13 @@ function HandleSmartReply($backend, $protocolversion) {
 
 		$rfc822 = readStream($input);
 		$result = $backend->SendMail($rfc822, $data, $protocolversion);
+		if ($result !== true) {
+		    header("HTTP/1.1 400 Bad Request");
+   		}
+
     }
 
-    return $result;
+    return true;
 }
 
 function HandleFolderCreate($backend, $devid, $protocolversion) {

@@ -147,13 +147,12 @@ class Streamer {
                                     return false;
                             } else {
                                 $subdecoder = new $map[STREAMER_TYPE]();
-                                if($subdecoder->decode($decoder) === false) {
+                                if($subdecoder->decode($decoder) === false)
                                     return false;
-                                }
+
                                 $decoded = $subdecoder;
 
                                 if(!$decoder->getElementEndTag()) {
-                                	debug("HERE");
                                     debug("No end tag for " . $entity[EN_TAG]);
                                     return false;
                                 }
@@ -171,10 +170,6 @@ class Streamer {
                             }
 
                             if(!$decoder->getElementEndTag()) {
-								while($decoder->getByte()) {
-									debug("Getting Bytes since no ElementEndTag was found");
-								}
-                                debugLog("inputRaw: ".bin2hex($decoder->_inputRaw));
                                 debug("Unable to get end tag for " . $entity[EN_TAG]);
                                 return false;
                             }
@@ -294,6 +289,14 @@ class Streamer {
                 $matches[3] = 18;
                 $matches[4] = $matches[5] = $matches[6] = 0;
             }
+            return gmmktime($matches[4], $matches[5], $matches[6], $matches[2], $matches[3], $matches[1]);
+        } else if (preg_match("/(\d{4})[^0-9]*(\d{2})[^0-9]*(\d{2})/", $ts, $matches)) { // Fixes SAMSUNG Date Problem. Samsung send in Contacts dates only the date without time information... unfortunately...
+            if ($matches[1] >= 2038){
+                $matches[1] = 2038;
+                $matches[2] = 1;
+                $matches[3] = 18;
+            }
+            $matches[4] = $matches[5] = $matches[6] = 0;
             return gmmktime($matches[4], $matches[5], $matches[6], $matches[2], $matches[3], $matches[1]);
         }
         return 0;

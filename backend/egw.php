@@ -291,7 +291,7 @@ class BackendEGW extends BackendDiff
 
 		if (is_numeric($type)) $type = 'felamimail';
 
-		$ret = false;
+		$ret = array();		// so unsupported or not enabled/installed backends return "no change"
 		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], __FUNCTION__))
 		{
 			$ret = call_user_func_array(array($this->plugins[$type], __FUNCTION__), array($folderid, &$syncstate));

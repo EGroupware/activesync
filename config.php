@@ -11,6 +11,10 @@
 * Consult LICENSE file for details
 ************************************************/
 
+	// disable globally enabled compression, as this causes issues with some devices
+	// z-push handles output compression 
+	ini_set("zlib.output_compression",0);
+
 	$GLOBALS['egw_info'] = array(
 		'flags' => array(
 			'disable_Template_class'  => true,
@@ -22,11 +26,12 @@
 
 	include('../header.inc.php');
 
+	// no need to set default_timezone here, this is done during eGroupware header include.
 
     // Defines the default time zone
-    if (function_exists("date_default_timezone_set")){
-        date_default_timezone_set("Europe/Berlin");
-    }
+    // if (function_exists("date_default_timezone_set")){
+    //    date_default_timezone_set("Europe/Berlin");
+    // }
 
     // Defines the base path on the server, terminated by a slash
     define('BASE_PATH', dirname($_SERVER['SCRIPT_FILENAME']) . "/");

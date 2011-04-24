@@ -227,6 +227,9 @@ define("SYNC_POOMCAL_STARTTIME","POOMCAL:StartTime");
 define("SYNC_POOMCAL_UID","POOMCAL:UID");
 define("SYNC_POOMCAL_ATTENDEE_STATUS","POOMCAL:Attendee_Status");
 define("SYNC_POOMCAL_ATTENDEE_TYPE","POOMCAL:Attendee_Type");
+// AS>=14.0
+define("SYNC_POOMCAL_RESPONSEREQUESTED","POOMCAL:ResponseRequested");
+define("SYNC_POOMCAL_DISALLOWNEWTIMEPROPOSAL","POOMCAL:DisallowNewTimeProposal");
 
 // Move
 define("SYNC_MOVE_MOVES","Move:Moves");

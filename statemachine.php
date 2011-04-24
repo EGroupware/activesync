@@ -44,7 +44,7 @@ class StateMachine {
     var $_devid;
     var $oldsynccache;
     var $newsynccache;
-
+    
     // Gets the sync state for a specified sync key. Requesting a sync key also implies
     // that previous sync states for this sync key series are no longer needed, and the
     // state machine will tidy up these files.
@@ -52,10 +52,10 @@ class StateMachine {
 		$this->_devid = strtolower($devid);
 		$this->_user = strtolower($user);
 		debugLog ("Statemachine _devid initialized with ".$this->_devid." for user ".$user);
-        $dir = opendir(STATE_DIR. "/" .$this->_devid);
+        $dir = opendir(STATE_PATH. "/" .$this->_devid);
         if(!$dir) {
 	    	debugLog("StateMachine: created folder for device ".$this->_devid);
-	 		if (mkdir(STATE_DIR. "/" .$this->_devid, 0744) === false)
+	 		if (mkdir(STATE_PATH. "/" .$this->_devid, 0744) === false) 
 				debugLog("StateMachine: failed to create folder ".$this->_devid);
 		}
     }
@@ -80,11 +80,11 @@ class StateMachine {
         $n = $matches[3];
 
         // Cleanup all older syncstates
-        // dw2412 removed. Doing this in request.php depending on synckeys we get from device (by this we know device
+        // dw2412 removed. Doing this in request.php depending on synckeys we get from device (by this we know device 
         // has got a cretain key!)
 
         // Read current sync state
-        $filename = STATE_DIR . "/". $this->_devid . "/$synckey";
+        $filename = STATE_PATH . "/". $this->_devid . "/$synckey";
 
 	// For SMS Sync take on first sync the Main Sync Key from the folder in question
         if (!file_exists($filename) &&
@@ -92,7 +92,7 @@ class StateMachine {
             debugLog("GetSyncState: Initial SMS Sync since sms state not existing");
             return "";
 //          debugLog("GetSyncState: Initial SMS Sync, take state from the main folder file");
-//          $filename = STATE_DIR . "/" .$this->_devid . '/{'.$guid.'}'.$n;
+//          $filename = STATE_PATH . "/" .$this->_devid . '/{'.$guid.'}'.$n;
         }
 
         if(file_exists($filename)) {
@@ -129,7 +129,7 @@ class StateMachine {
         $guid = $matches[2];
         $n = $matches[3];
 
-        $dir = opendir(STATE_DIR."/".$this->_devid);
+        $dir = opendir(STATE_PATH."/".$this->_devid);
         if(!$dir) {
 		    debugLog("cleanOldSyncState: Sync key folder not existing");
             return -12;
@@ -139,14 +139,52 @@ class StateMachine {
     	while($entry = readdir($dir)) {
     	    if(preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $entry, $matches)) {
                 if($matches[1] == $key && $matches[2] == $guid && $matches[3] < ($n-1)) {
-	    	    debugLog("GetSyncState: Removing old Sync Key ".STATE_DIR . "/". $this->_devid . "/$entry");
-            	    unlink(STATE_DIR . "/".$this->_devid . "/$entry");
+	    	    debugLog("GetSyncState: Removing old Sync Key ".STATE_PATH . "/". $this->_devid . "/$entry");
+            	    unlink(STATE_PATH . "/".$this->_devid . "/$entry");
             	}
     	    }
 		}
 
 		return true;
     }
+
+	// Function is used to remove SMS Sync State files in case SMS sync is disabled again on client
+    function removeSyncState($synckey) {
+        if($synckey == "0" || $synckey == "SMS0" || $synckey == "s0" || $synckey == "mi0" ) {
+	    	debugLog("removeSyncState: Sync key 0 detected");
+            return true;
+		}
+
+        // Check if synckey is allowed
+        if(!preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $synckey, $matches)) {
+		    debugLog("removeSyncState: Sync key invalid formatted");
+            return -9;
+        }
+
+        // Remember synckey GUID and ID
+		$key = $matches[1];
+        $guid = $matches[2];
+        $n = $matches[3];
+
+        $dir = opendir(STATE_PATH."/".$this->_devid);
+        if(!$dir) {
+		    debugLog("removeSMSSyncState: Sync key folder not existing");
+            return -12;
+		}
+
+        // Cleanup all older syncstates
+    	while($entry = readdir($dir)) {
+    	    if(preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $entry, $matches)) {
+                if($matches[1] == $key && $matches[2] == $guid) {
+	    	    debugLog("removeSyncState: Removing old Sync Key ".STATE_PATH . "/". $this->_devid . "/$entry");
+            	    unlink(STATE_PATH . "/".$this->_devid . "/$entry");
+            	}
+    	    }
+		}
+
+		return true;
+    }
+
 
     // Gets the new sync key for a specified sync key. You must save the new sync state
     // under this sync key when done sync'ing (by calling setSyncState);
@@ -165,17 +203,17 @@ class StateMachine {
     // Writes the sync state to a new synckey
     function setSyncState($synckey, $syncstate) {
         // Check if synckey is allowed
-		debugLog("setSyncState: Try writing to file ".STATE_DIR . "/". $this->_devid . "/$synckey");
+		debugLog("setSyncState: Try writing to file ".STATE_PATH . "/". $this->_devid . "/$synckey");
 		debugLog("setSyncState: Size of syncstate is ".strlen($syncstate));
 //		if (strlen($syncstate) > 8) {
 //			debugLog("SetSyncState: Size of syncstate is > 8, create backup.");
-//			file_put_contents(STATE_DIR . "/". $this->_devid . "/$synckey"."set.bak", $syncstate);
+//			file_put_contents(STATE_PATH . "/". $this->_devid . "/$synckey"."set.bak", $syncstate);
 //            if(preg_match('/^(s|SMS){0,1}\{([a-zA-Z0-9-]+)\}([0-9]+)$/', $synckey, $matches)) {
 //                $n = $matches[3];
 //                $n--;
 //                $oldkey="{" . $matches[2] . "}" . $n;
-//                file_put_contents(STATE_DIR . "/". $this->_devid . "/$oldkey"."set.bak",
-//                	file_get_contents(STATE_DIR . "/". $this->_devid . "/$oldkey"));
+//                file_put_contents(STATE_PATH . "/". $this->_devid . "/$oldkey"."set.bak",
+//                	file_get_contents(STATE_PATH . "/". $this->_devid . "/$oldkey"));
 //        	};
 //		}
 
@@ -184,7 +222,7 @@ class StateMachine {
             return false;
         }
 
-        return file_put_contents(STATE_DIR . "/". $this->_devid . "/$synckey", $syncstate);
+        return file_put_contents(STATE_PATH . "/". $this->_devid . "/$synckey", $syncstate);
     }
 
     // Writes the sync state to a new synckey
@@ -199,7 +237,7 @@ class StateMachine {
 				$this->_compareCacheRecursive($this->newsynccache["collections"],$this->oldsynccache["collections"],$cachestatus);
 		    } else $cachestatus = SYNCCACHE_CHANGED;
 		} else $cachestatus = SYNCCACHE_CHANGED;
-		return file_put_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $cachestate);
+		return file_put_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $cachestate);
     }
 
     function _compareCacheRecursive($old, $new, &$cachestatus) {
@@ -223,16 +261,16 @@ class StateMachine {
     }
 
     function getSyncCache() {
-
-        if(file_exists(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
-    	    $content = file_get_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
+        
+        if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
+    	    $content = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
     	    $this->oldsynccache=unserialize($content);
             return $content;
-        } else if(file_exists(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid)) {
+        } else if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid)) {
 // just for compatibility to take old cache and apply it for new format
-    	    $content = file_get_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid);
-			if (file_put_contents(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $content))
-				unlink(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid);
+    	    $content = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
+			if (file_put_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $content)) 
+				unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
     	    $this->oldsynccache=unserialize($content);
             return $content;
         } else return false;
@@ -240,9 +278,9 @@ class StateMachine {
 
 
     function deleteSyncCache() {
-    	// Remove the cache in case full sync is requested with a synckey 0.
-    	if(file_exists(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid))
-    	    unlink(STATE_DIR . "/". $this->_devid . "/cache_".$this->_devid);
+    	// Remove the cache in case full sync is requested with a synckey 0. 
+    	if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid))
+    	    unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
     }
 
     function updateSyncCacheFolder(&$cache, $serverid, $parentid, $displayname, $type) {
@@ -256,18 +294,18 @@ class StateMachine {
 		    case 13	: $cache['folders'][$serverid]['class'] = "Calendar"; break;
 		    case 9	: // These are contact classes
 		    case 14	: $cache['folders'][$serverid]['class'] = "Contacts"; break;
-		    case 17	:
+		    case 17	: 
 		    case 10	: $cache['folders'][$serverid]['class'] = "Notes"; break;
 		    case 1	: // All other types map to Email
-		    case 2	:
-		    case 3	:
-		    case 4	:
-		    case 5	:
-		    case 6	:
-		    case 11	:
-		    case 12	:
-		    case 16	:
-		    case 18	:
+		    case 2	: 
+		    case 3	: 
+		    case 4	: 
+		    case 5	: 
+		    case 6	: 
+		    case 11	: 
+		    case 12	: 
+		    case 16	: 
+		    case 18	: 
 		    default	: $cache['folders'][$serverid]['class'] = "Email";
 		}
 		$cache['folders'][$serverid]['type'] = $type;
@@ -281,19 +319,19 @@ class StateMachine {
 		unset($cache['collections'][$serverid]);
 		$cache['timestamp'] = time();
     }
-
+    
     function getProtocolState() {
 		if ($this->_devid == "") return false;
-	        if (file_exists(STATE_DIR . "/". $this->_devid . "/prot_".$this->_devid))
-    	        return file_get_contents(STATE_DIR . "/". $this->_devid . "/prot_".$this->_devid);
+	        if (file_exists(STATE_PATH . "/". $this->_devid . "/prot_".$this->_devid))
+    	        return file_get_contents(STATE_PATH . "/". $this->_devid . "/prot_".$this->_devid);
 	        else return "";
 	}
-
+    
     function setProtocolState($protstate) {
 		if ($this->_devid == "") return false;
-        	return file_put_contents(STATE_DIR . "/". $this->_devid . "/prot_".$this->_devid,$protstate);
+        	return file_put_contents(STATE_PATH . "/". $this->_devid . "/prot_".$this->_devid,$protstate);
 	}
-
+    
 	function getMsgInfos($hierarchysynckey) {
         if(!isset($hierarchysynckey) || $hierarchysynckey == "0") {
             return array();
@@ -302,7 +340,7 @@ class StateMachine {
                 $filename = "mi{" . $matches[2] . "}";
             } else array();
         }
-		$filename = STATE_DIR . "/". $this->_devid . "/". $filename;
+		$filename = STATE_PATH . "/". $this->_devid . "/". $filename;
 		$res = unserialize(file_get_contents($filename));
 		if ($res === false) return array();
 		debugLog("getMsgInfos called with synckey ".$hierarchysynckey);
@@ -317,7 +355,7 @@ class StateMachine {
                 $filename = "mi{" . $matches[2] . "}";
             } else array();
         }
-		$filename = STATE_DIR . "/". $this->_devid . "/". $filename;
+		$filename = STATE_PATH . "/". $this->_devid . "/". $filename;
 		debugLog("setMsgInfos called with synckey ".$hierarchysynckey);
 		return file_put_contents($filename,serialize($msginfos));
 	}

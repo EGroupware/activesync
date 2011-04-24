@@ -662,7 +662,6 @@ class ImportContentsChangesICS extends MAPIMapping {
         $exporter->Config($memImporter, $mclass, $restrict, $state, 0, 0, $bodypreference, $optionbodypreference);
         while(is_array($exporter->Synchronize()));
         $this->_memChanges = $memImporter;
-		debugLog(print_r($this->_memChanges->_md5tosrvid,true));
     }
 
     function ImportMessageChange($id, &$message) {
@@ -697,6 +696,62 @@ class ImportContentsChangesICS extends MAPIMapping {
 
 		$class = strtolower(get_class($message));
 		debugLog("Class is ".$class." Flags ".($flags != SYNC_NEW_MESSAGE ? " not SYNC_NEW_MESSAGE " : " SYNC_NEW_MESSAGE"));
+
+		// SMS Initial Sync deduplication of items
+        if($class == "syncsms") {
+			debugLog("Class is SMS and _md5tosrvid contains values. Deduplication routine starting");
+			if (preg_match('/(\"(.*)\" ){0,1}\[(.*):(.*)\]$/',$message->to,$addrparts)) {
+    		    $name = ($addrparts[2] == "" ? $addrparts[4] : $addrparts[2]);
+    		    $addrtype = $addrparts[3];
+	    	    $email_address = $addrparts[4];
+  	  		    $message->to = "\"" . $name . "\" [MOBILE:" . $email_address . "]"; 
+			}
+			if (preg_match('/(\"(.*)\" ){0,1}\[(.*):(.*)\]$/',$message->from,$addrparts)) {
+    		    $name = ($addrparts[2] == "" ? $addrparts[4] : $addrparts[2]);
+    		    $addrtype = $addrparts[3];
+	    	    $email_address = $addrparts[4];
+  	  		    $message->from = "\"" . $name . "\" [MOBILE:" . $email_address . "]"; 
+			}
+			if (preg_match('/(\"(.*)\" ){0,1}\[(.*):(.*)\]$/',$message->cc,$addrparts)) {
+    		    $name = ($addrparts[2] == "" ? $addrparts[4] : $addrparts[2]);
+    		    $addrtype = $addrparts[3];
+	    	    $email_address = $addrparts[4];
+  	  		    $message->cc = "\"" . $name . "\" [MOBILE:" . $email_address . "]"; 
+			}
+    		debugLog(bin2hex(str_replace("\n","\r\n",str_replace("\r\n","\n",strval($message->airsyncbasebody->data)))));
+    		debugLog(bin2hex(strval($message->from)));
+    		debugLog(bin2hex(strval($message->cc)));
+    		debugLog(bin2hex(strval($message->to)));
+
+	//		debugLog("ImportMessageChange Message: ".print_r($message,true));
+
+			$md5msg = array('datereceived' 		=> (isset($message->datereceived) 			? strval($message->datereceived) 			: ''),
+							'importance' 		=> (isset($message->importance) 			? strval($message->importance) 				: ''),
+							'messageclass' 		=> (isset($message->messageclass) 			? strval($message->messageclass) 			: 'IPM.Note.Mobile.SMS'),
+							'to' 				=> (isset($message->to) 					? strval($message->to)						: ''),
+							'cc' 				=> (isset($message->cc) 					? strval($message->cc)						: ''),
+							'from' 				=> (isset($message->from) 					? strval($message->from)					: ''),
+							'internetcpid' 		=> (isset($message->internetcpid) 			? strval($message->internetcpid) 			: '1252'),
+	//						'conversationid' 	=> (isset($appdata->conversationid) 		? bin2hex($appdata->conversationid) 	: ''),  
+	//						'conversationindex'	=> (isset($appdata->conversationindex) 		? bin2hex($appdata->conversationindex)	: ''),
+							'body' 				=> (isset($message->airsyncbasebody->data)	? str_replace("\n","\r\n",str_replace("\r\n","\n",strval($message->airsyncbasebody->data)))	: ''),
+			);
+			$msgmd5 = md5(serialize($md5msg));
+			unset($md5msg);
+			debugLog("MD5 SMS Message is $msgmd5");
+			debugLog(print_r($this->_memChanges->_md5tosrvid,true));
+
+			if(($dupcheck = $this->_memChanges->isDuplicate($msgmd5)) !== false) {
+				debugLog ("Possible message duplicate found!");
+			   	$ret['sourcekey'] = $dupcheck['serverid'];
+			    $ret['convid'] = $dupcheck['conversationid'];
+			    $ret['convidx'] = $dupcheck['conversationindex'];
+	    	    return $ret;
+			} else {
+				debugLog ("isDuplicate returned false!");
+			} 
+		}
+
 		if ($class != "syncsms" ||
 			($class == "syncsms" && $flags != SYNC_NEW_MESSAGE)) {
 			debugLog("Update Item using mapi_importcontentschanges_importmessagechange.");
@@ -1109,6 +1164,7 @@ class ImportContentsChangesICS extends MAPIMapping {
 
 //    	    mapi_savechanges($mapimessage);
     	}
+		$email->body = str_replace("\n","\r\n",$email->body);
     	mapi_setprops($mapimessage, array(	PR_SUBJECT => u2w($email->body), 
     										PR_BODY => u2w($email->body), 
     										PR_MESSAGE_TO_ME => true, 
@@ -1117,6 +1173,7 @@ class ImportContentsChangesICS extends MAPIMapping {
     										mapi_prop_tag(PT_SYSTIME,     0x6786) => (int)($email->datereceived/86400)*86400, 
     										mapi_prop_tag(PT_SYSTIME,     0x6787) => (int)($email->datereceived/86400)*86400, 
     										));
+
 //		$email->airsyncbasebody->data = w2u(mapi_openproperty($mapimessage, PR_BODY));
 //    	mapi_savechanges($mapimessage);
     }
@@ -1783,6 +1840,8 @@ class PHPContentsImportProxy extends MAPIMapping {
 
 		// CHANGED dw2412 Support Protocol Version 12 (added $this->_bodypreference)
         $message = $this->_getMessage($mapimessage, $this->getTruncSize($this->_truncation), $this->_bodypreference, $this->_optionbodypreference, $this->_mimesupport);
+		if ($message === false) 
+			return SYNC_E_IGNORE;
 
         // substitute the MAPI SYNC_NEW_MESSAGE flag by a z-push proprietary flag
         if ($flags == SYNC_NEW_MESSAGE) $message->flags = SYNC_NEWMESSAGE;
@@ -1804,7 +1863,7 @@ class PHPContentsImportProxy extends MAPIMapping {
 		debugLog("Import Message Deletion for ".count($sourcekeys) . " Items in folder ".bin2hex($this->_folderid) . " flags " .$flags);
 		$i=0;
         foreach($sourcekeys as $sourcekey) {
-			debugLog("Item ".bin2hex($sourcekey)." should be deleted!");
+//			debugLog("Item ".bin2hex($sourcekey)." should be deleted!");
 /*        	$entryid = mapi_msgstore_entryidfromsourcekey($this->_store, $this->_folderid, $sourcekey);
         	$mapimessage = mapi_msgstore_openentry($this->_store, $entryid);
 			if ($mapimessage === false) {
@@ -1849,6 +1908,7 @@ class PHPContentsImportProxy extends MAPIMapping {
 	    if (isset($props[PR_MESSAGE_CLASS])) {
 	        $messageclass = $props[PR_MESSAGE_CLASS];
 	    	if (($this->_mclass == "SMS" && $messageclass != 'IPM.Note.Mobile.SMS')) return false;
+	    	if (($this->_mclass != "SMS" && $messageclass == 'IPM.Note.Mobile.SMS')) return false;
         } else
             $messageclass = "IPM";
 //		debugLog("_getMessage");
@@ -2309,6 +2369,7 @@ class PHPContentsImportProxy extends MAPIMapping {
 				$bodypreference = $optionbodypreference;
 		} else 
 	   	    $message = new SyncMail();
+
 		if (isset($messageprops[PR_LAST_VERB_EXECUTED])) {
 	    	switch($messageprops[PR_LAST_VERB_EXECUTED]) {
 				case 0x66	: $message->lastverbexecuted = 1; break;
@@ -2397,7 +2458,7 @@ class PHPContentsImportProxy extends MAPIMapping {
 			$rtf = mapi_openproperty($mapimessage, PR_RTF_COMPRESSED);
 			$message->airsyncbasebody->data = base64_encode($rtf);
 			$message->airsyncbasebody->estimateddatasize = strlen($rtf);
-			debugLog("RTFL Body!");
+			debugLog("RTF Body!");
         } elseif (isset($bodypreference[2])) {
 			$message->airsyncbasebody->type = 2;
 			if ($message->airsyncbasenativebodytype==2) {
@@ -2575,10 +2636,10 @@ class PHPContentsImportProxy extends MAPIMapping {
 		    $message->reply_to = substr($message->reply_to,0,strlen($message->reply_to)-1);
 		}
 		// END ADDED dw2412 to honor reply to address
-	
+
 		// START ADDED dw2412 conversation index
     	$messageprops = mapi_getprops($mapimessage, array(PR_CONVERSATION_INDEX));
-	
+
 		if (CONVERSATIONINDEX == true) {
 		    if (isset($messageprops[PR_CONVERSATION_INDEX]) &&
 				strlen($messageprops[PR_CONVERSATION_INDEX]) >= 22) {
@@ -3043,6 +3104,8 @@ class ExportChangesICS  {
     var $_folderid;
     var $_store;
     var $_session;
+	var $_smsoutboxsync;
+	var $_smsoutboxinitialsync;
 
     function ExportChangesICS($session, $store, $folderid = false) {
         // Open a hierarchy or a contents exporter depending on whether a folderid was specified
@@ -3100,10 +3163,17 @@ class ExportChangesICS  {
             }
 			$msgstore_props = mapi_getprops($this->_store, array(PR_IPM_OUTBOX_ENTRYID));
 	        $folder_entryid = mapi_msgstore_entryidfromsourcekey($this->_store, $this->_folderid);
-			if ($folder_entryid == $msgstore_props[PR_IPM_OUTBOX_ENTRYID] && 
-				(strlen($syncstate) != 0 && bin2hex(substr($syncstate,4,4)) != "00000000")) {
-				debugLog("ExportICS->Config: Ignoring deletions in Outbox.");
-				$exporterflags |= SYNC_NO_SOFT_DELETIONS | SYNC_NO_DELETIONS;
+			if ($folder_entryid == $msgstore_props[PR_IPM_OUTBOX_ENTRYID]) {
+				if (strlen($syncstate) != 0 && bin2hex(substr($syncstate,4,4)) != "00000000") {
+					debugLog("ExportICS->Config: Ignoring deletions in Outbox.");
+					$exporterflags |= SYNC_NO_SOFT_DELETIONS | SYNC_NO_DELETIONS;
+					$this->_smsoutboxinitialsync = false;
+				} else {
+					$this->_smsoutboxinitialsync = true;
+				}
+				$this->_smsoutboxsync = true;
+			} else {
+				$this->_smsoutboxsync = false;
 			}
         } else {
             $phpimportproxy = new PHPHierarchyImportProxy($this->_store, $importer);
@@ -3125,8 +3195,8 @@ class ExportChangesICS  {
 //	debugLog("ExportChangesICS->Config: ".($this->_folderid ? "Have Folder" : "No Folder"). " " . $mclass . " state: ". bin2hex($syncstate) . " restriction " . $restrict);
         switch($mclass) {
 	    	case "SMS" :
-                $restriction = $this->_getSMSRestriction($this->_getCutOffDate($restrict));
-				break;
+//                $restriction = $this->_getSMSRestriction($this->_getCutOffDate($restrict));
+//				break;
             case "Email":
                 $restriction = $this->_getEmailRestriction($this->_getCutOffDate($restrict));
                 break;
@@ -3190,12 +3260,14 @@ class ExportChangesICS  {
         return $state;
     }
 
-     function GetChangeCount() {
-        if ($this->exporter)
-            return mapi_exportchanges_getchangecount($this->exporter);
-        else
-            return 0;
-    }
+	function GetChangeCount() {
+		if ($this->exporter) {
+			$changes =  mapi_exportchanges_getchangecount($this->exporter);
+			if ($this->_smsoutboxsync && $this->_smsoutboxinitialsync && $changes == 0) return 1;
+			return $changes;
+		} else
+			return 0;
+	}
 
     function Synchronize() {
         if ($this->exporter) {
@@ -3249,31 +3321,31 @@ class ExportChangesICS  {
                       );
 */
         $restriction = array ( RES_AND,
-    			 array (
-    			 array ( RES_OR,
-    			   array (
-    			   array ( RES_PROPERTY,
-                             array (    RELOP => RELOP_EQ,
-                                    ULPROPTAG => PR_MESSAGE_CLASS,
-                                    VALUE => "IPM.Note.Mobile.SMS"
-                             ),
-    			   ),
-    			   array ( RES_PROPERTY,
-                             array (    RELOP => RELOP_EQ,
-                                    ULPROPTAG => PR_MESSAGE_CLASS,
-                                    VALUE => "IPM.Note.Mobile.MMS"
-                             ),
-                    	   ),
-                    	   ),
-    			),    
-    			array ( RES_PROPERTY,
-                          array (   RELOP => RELOP_GE,
-                                    ULPROPTAG => PR_MESSAGE_DELIVERY_TIME,
-                                    VALUE => $timestamp
-                          )
-                        )
-                        )
-                      );
+				array (
+					array ( RES_OR,
+						array (
+    						array ( RES_PROPERTY,
+                            	array ( 	RELOP => RELOP_EQ,
+		                        		ULPROPTAG => PR_MESSAGE_CLASS,
+											VALUE => "IPM.Note.Mobile.SMS"
+								),
+							),
+							array ( RES_PROPERTY,
+								array (		RELOP => RELOP_EQ,
+										ULPROPTAG => PR_MESSAGE_CLASS,
+											VALUE => "IPM.Note.Mobile.MMS"
+								),
+							),
+						),
+					),
+					array ( RES_PROPERTY,
+						array (		RELOP => RELOP_GE,
+								ULPROPTAG => PR_MESSAGE_DELIVERY_TIME,
+									VALUE => $timestamp
+						)
+					)
+				)
+                		);
 
         return $restriction;
     }
@@ -4252,7 +4324,12 @@ class BackendICS {
             $ccaddr = $Mail_RFC822->parseAddressList($message->headers["cc"]);
         if(isset($message->headers["bcc"]))
             $bccaddr = $Mail_RFC822->parseAddressList($message->headers["bcc"]);
-
+		if (count($toaddr) == 0 &&
+			count($ccaddr) == 0 &&
+			count($bccaddr) == 0) {
+			debugLog("Sendmail: Message has got no recipients (no to, no cc and no bcc!)");
+			return 119;
+		}
         // Add recipients
         $recips = array();
 
@@ -4423,7 +4500,13 @@ class BackendICS {
         if(isset($smartdata['itemid']) && $smartdata['itemid']) {
             // Append the original text body for reply/forward
             $entryid = mapi_msgstore_entryidfromsourcekey($this->_defaultstore, hex2bin($smartdata['folderid']), hex2bin($smartdata['itemid']));
-            $fwmessage = mapi_msgstore_openentry($this->_defaultstore, $entryid);
+            if (($fwmessage = mapi_msgstore_openentry($this->_defaultstore, $entryid)) === false) {
+				debugLog("Sendmail: Provided EntryID cannot be opened. Return error code 150.");
+				switch ($smartdata['task']) {
+					case 'forward'	: return 150;
+					case 'reply'	: return 150;
+				}
+            };
 
             if($fwmessage) {
 				// START CHANGED dw2412 LAST Verb Exec Props included
@@ -4580,8 +4663,17 @@ class BackendICS {
         if(strlen($body_html) > 0){
             mapi_setprops($mapimessage, array(PR_HTML => $body_html));
         }
-        mapi_savechanges($mapimessage);
-        mapi_message_submitmessage($mapimessage);
+        if (mapi_savechanges($mapimessage) === false ||
+        	mapi_message_submitmessage($mapimessage) === false) {
+			switch ($smartdata['task']) {
+				case 'reply' : 
+					debugLog("Sendmail: Message reply failed, sending failed at all");
+					return 121;
+				default 	 : 
+					debugLog("Sendmail: Message failed to be saved/submitted, sending failed at all");
+					return 120;
+			}
+        }
 
         return true;
     }

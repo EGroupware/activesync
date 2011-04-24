@@ -17,13 +17,9 @@ include_once('diffbackend.php');
 
 // get this from http://www.chuggnutt.com/phpcode/class.html2text.inc.gz
 // extract it to include folder and rename the file to class.html2text.inc.php
-
-
 if (include_file_exists('class.html2text.inc.php') == true) {
     include_once 'class.html2text.inc.php';
 }
-
-
 
 // The is an improved version of mimeDecode from PEAR that correctly
 // handles charsets and charset conversion
@@ -102,10 +98,10 @@ class BackendIMAP extends BackendDiff {
         $this->_protocolversion = $protocolversion;
 
 		// FolderID Cache
-    	$dir = opendir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid));
+    	$dir = opendir(STATE_PATH. "/" .strtolower($this->_devid));
         if(!$dir) {
 	    	debugLog("IMAP Backend: creating folder for device ".strtolower($this->_devid));
-	    	if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false) 
+	    	if (mkdir(STATE_PATH. "/" .strtolower($this->_devid), 0744) === false) 
 				debugLog("IMAP Backend: failed to create folder ".strtolower($this->_devid));
 		}
 		$filename = STATE_DIR . '/' . strtolower($this->_devid). '/imap_folders_'. $this->_user;
@@ -204,6 +200,11 @@ class BackendIMAP extends BackendDiff {
 
                 // save the original content-type header for the body part when forwarding
                 if ($smartdata['task'] == 'forward' && $smartdata['itemid'] && !$use_orgbody) {
+                    $forward_h_ct = $v;
+                    continue;
+                }
+
+                if ($smartdata['task'] == 'reply' && $smartdata['itemid'] && !$use_orgbody) {
                     $forward_h_ct = $v;
                     continue;
                 }
@@ -486,6 +487,7 @@ class BackendIMAP extends BackendDiff {
         // email sent?
         if (!$send) {
             debugLog("The email could not be sent. Last-IMAP-error: ". imap_last_error());
+            return 120;
         }
 
         // add message to the sent folder
@@ -630,6 +632,7 @@ class BackendIMAP extends BackendDiff {
                 $box = array();
 
                 // cut off serverstring
+				debugLog("Real Server folder name (b64) : ".base64_encode($val->name));
                 $box["id"] = imap_utf7_decode(substr($val->name, strlen($this->_server)));
 
                 // always use "." as folder delimiter
@@ -1002,8 +1005,16 @@ class BackendIMAP extends BackendDiff {
 // Return in case any errors occured...
             $errors = imap_errors();
             if (is_array($errors)) {
-                foreach ($errors as $e)    debugLog("IMAP-errors: $e");
-            	return false;
+                foreach ($errors as $e) {
+                    debugLog("IMAP-errors: $e");
+        		    $fields = explode(':', $e);
+					switch (strtolower(trim($fields[0]))) {
+						case 'security problem' : // don't care about security problems!
+							break;
+						default : 
+							return false;
+					}
+				}
             }
 //	    $mail = file_get_contents(BASE_PATH."/1000000035");
 //	    file_put_contents(BASE_PATH."/mail.dmp/".$id,$mail);

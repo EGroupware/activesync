@@ -419,7 +419,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function getSearchResults($searchquery,$searchname)
 	{
-		// debugLog("EGW:getSearchResults : query: ". $searchquery . " : searchname : ". $searchname);
+		debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
 				$rows = self::run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
@@ -464,8 +464,6 @@ class BackendEGW extends BackendDiff
 	 */
 	const TYPE_ADDRESSBOOK = 0x1000;
 	const TYPE_CALENDAR = 0x1001;
-	const TYPE_TASKS = 0x1002;
-	const TYPE_NOTES = 0x1003;
 	const TYPE_MAIL = 0x1010;
 
 	/**

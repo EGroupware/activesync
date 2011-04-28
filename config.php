@@ -42,11 +42,9 @@
 		BASE_PATH. PATH_SEPARATOR .
 		ini_get('include_path'));
 
-  // DEPRECIATED USE STATE_PATH! only defined for compatibility
+   	// state dir for active sync as "activesync" subdir EGw's files directory
 	define('STATE_DIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync');
-	// state dir for active sync as "activesync" subdir EGw's files directory
-	define('STATE_PATH', $GLOBALS['egw_info']['server']['files_dir'].'/activesync');
- 	if (!file_exists(STATE_PATH))
+ 	if (!file_exists(STATE_DIR))
  	{
  		mkdir(STATE_DIR,0700,true);
  	}

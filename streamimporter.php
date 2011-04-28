@@ -24,9 +24,10 @@ class ImportContentsChangesStream {
     var $_flagids;
 	var $_msginfos;
 
-    function ImportContentsChangesStream(&$encoder, $type, $ids, &$msginfos) {
+    function ImportContentsChangesStream(&$encoder, $type, $optiontype, $ids, &$msginfos) {
         $this->_encoder = &$encoder;
         $this->_type = $type;
+        $this->_optiontype = $optiontype;
         $this->_seenObjects = array();
         $this->_deletedObjects = array();
         $this->_readids = $ids['readids'];
@@ -40,7 +41,7 @@ class ImportContentsChangesStream {
 //	debugLog("HERE ImportMessageChange ".$this->_optiontype);
 
 		$class = strtolower(get_class($message));
-        if( $class != $this->_type) {
+        if( $class != $this->_type && $class != $this->_optiontype) {
 	    	$this->_lastObjectStatus = -1;
     	    return true; // ignore other types
 		}
@@ -181,20 +182,16 @@ class ImportContentsChangesStream {
 				$md5flags = array();
 				break;
 			case 'syncsms' 			:
-				debugLog(bin2hex($message->to));
-				debugLog(bin2hex($message->from));
-				debugLog(bin2hex($message->cc));
-				debugLog(bin2hex($message->airsyncbasebody->data));
-				$md5msg = array('datereceived' 				=> (isset($message->datereceived) 			? strval($message->datereceived) 				: ''),
-								'importance' 				=> (isset($message->importance) 			? strval($message->importance) 					: ''),
-								'messageclass' 				=> (isset($message->messageclass) 			? strval($message->messageclass) 				: ''),
-								'to' 						=> (isset($message->to) 					? strval($message->to) 							: ''),
-								'cc' 						=> (isset($message->cc) 					? strval($message->cc) 							: ''),
-								'from' 						=> (isset($message->from) 					? strval($message->from) 						: ''),
-								'internetcpid' 				=> (isset($message->internetcpid) 			? strval($message->internetcpid) 				: ''),
+				$md5msg = array('datereceived' 				=> (isset($message->datereceived) 			? $message->datereceived 				: ''),
+								'importance' 				=> (isset($message->importance) 			? $message->importance 					: ''),
+								'messageclass' 				=> (isset($message->messageclass) 			? $message->messageclass 				: ''),
+								'to' 						=> (isset($message->to) 					? $message->to 							: ''),
+								'cc' 						=> (isset($message->cc) 					? $message->cc 							: ''),
+								'from' 						=> (isset($message->from) 					? $message->from 						: ''),
+								'internetcpid' 				=> (isset($message->internetcpid) 			? $message->internetcpid 				: ''),
 //								'conversationid' 			=> (isset($message->conversationid) 		? bin2hex($message->conversationid) 	: ''),
 //								'conversationindex' 		=> (isset($message->conversationindex) 		? bin2hex($message->conversationindex) 	: ''),
-								'body' 						=> (isset($message->airsyncbasebody->data)	? strval($message->airsyncbasebody->data) 		: ''),
+								'body' 						=> (isset($message->airsyncbasebody->data)	? $message->airsyncbasebody->data 		: ''),
 								);
 				$md5flags = array('flagstatus' 		=> (isset($message->poommailflag->flagstatus) 		? $message->poommailflag->flagstatus 		: ''),
 								  'flagtype'		=> (isset($message->poommailflag->flagtype) 		? $message->poommailflag->flagtype 			: ''),
@@ -285,7 +282,7 @@ class ImportContentsChangesStream {
 
 		if (isset($this->_msginfos[$id])) {
 			if ($this->_msginfos[$id]['md5msg'] != $msginfo['md5msg']) debugLog("ImportMessageChange: Whole message changed");
-			if ($this->_msginfos[$id]['md5flags'] != $msginfo['md5flags']) debugLog("ImportMessageChange: MD5 Flags changes ".$msginfo['md5flags']." vs ".$this->_msginfos[$id]['md5flags']);
+			if ($this->_msginfos[$id]['md5flags'] != $msginfo['md5flags']) debugLog("ImportMessageChange: MD5 Flags changes");
 			if ($this->_msginfos[$id]['read'] != $msginfo['read']) debugLog("ImportMessageChange: Read change");
 		} else {
 			debugLog("ImportMessageChange: Seems to be new message, no entry in msginfos");
@@ -361,15 +358,16 @@ class ImportContentsChangesStream {
     	    return true;
         } 
         $this->_deletedObjects[] = $id;
-		if (isset($this->_msginfos[$id])) {
-			if (isset($this->_msginfos[$id]['class']) &&
-				$this->_type != $this->_msginfos[$id]['class']) {
-            	debugLog("Object $id Optiontype and type not matching class stored in msginfo, discarding");
-	    		$this->_lastObjectStatus = -1;
-            	return true;
-			}
-		} else {
-        	debugLog("Delete for Object $id should be exported but object is not in sync with client, discarding");
+//		if (isset($this->_msginfos[$id])) {
+		if (!isset($this->_msginfos[$id])) {
+//			if (isset($this->_msginfos[$id]['class']) &&
+//				$this->_optiontype != $this->_msginfos[$id]['class'] && $this->_type != $this->_msginfos[$id]['class']) {
+//            	debugLog("Object $id Optiontype and type not matching class stored in msginfo, discarding");
+//	    		$this->_lastObjectStatus = -1;
+//            	return true;
+//			}
+//		} else {
+        	debugLog("Object $id is not in sync with client, discarding");
 	    	$this->_lastObjectStatus = -1;
         	return true;
         }
@@ -390,7 +388,7 @@ class ImportContentsChangesStream {
     }
 
     function ImportMessageReadFlag($id, $flags) {
-		debugLog("HERE ImportMessageReadFlag ".$this->_type);
+		debugLog("HERE ImportMessageReadFlag ".$this->_optiontype);
 		// prevent sending readflags for objects that delete information was sentbefore
         if (in_array($id, $this->_deletedObjects)) {
     	    debugLog("Object $id discarded! Object got deleted prior the readflag set request arrived.");
@@ -403,7 +401,7 @@ class ImportContentsChangesStream {
 		}
 		if (isset($this->_msginfos[$id])) {
 			if (isset($this->_msginfos[$id]['class']) &&
-				$this->_type != $this->_msginfos[$id]['class']) {
+				$this->_optiontype != $this->_msginfos[$id]['class'] && $this->_type != $this->_msginfos[$id]['class']) {
             	debugLog("Object $id Optiontype and type not matching class stored in msginfo, discarding");
 	    		$this->_lastObjectStatus = -1;
             	return true;
@@ -435,7 +433,7 @@ class ImportContentsChangesStream {
     }
 
     function ImportMessageMove($message) {
-		debugLog("HERE ImportMessageMove ".$this->_type);
+		debugLog("HERE ImportMessageMove ".$this->_optiontype);
     	return true;
     }
 };

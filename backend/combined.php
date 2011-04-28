@@ -331,7 +331,7 @@ class BackendCombined {
 		debugLog('Combined::Setup('.$user.', '.$devid.', '.$protocolversion.')');
 		$this->_user = $user;
 		$this->_devid = $devid;
-		$this->_device_filename = STATE_PATH . '/' . strtolower($devid) . '/device_info_'.$user;
+		$this->_device_filename = BASE_PATH . STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 		debugLog("HERE ".$this->_device_filename);
 
 		if (!is_array($this->_backends)) {
@@ -350,10 +350,10 @@ class BackendCombined {
 		}
 
 		// FolderID Cache
-		$dir = opendir(STATE_PATH. "/" .strtolower($this->_devid));
+		$dir = opendir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid));
 	    if (!$dir) {
 		    debugLog("Combined Backend: created folder for device ".strtolower($this->_devid));
-		    if (mkdir(STATE_PATH. "/" .strtolower($this->_devid), 0744) === false) 
+		    if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false) 
 			debugLog("Combined Backend: failed to create folder ".strtolower($this->_devid));
 		}
 		$filename = STATE_DIR . '/' . strtolower($this->_devid). '/combined_folders_'. $this->_user;
@@ -608,7 +608,7 @@ class BackendCombined {
 			debugLog("logon failed for user $user");
 			return false;
         }
-		$this->_device_filename = STATE_PATH . '/' . strtolower($devid) . '/device_info_'.$user;
+		$this->_device_filename = BASE_PATH . STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 
 		if (file_exists($this->_device_filename)) {
 			$this->_device_info = unserialize(file_get_contents($this->_device_filename));
@@ -644,7 +644,7 @@ class BackendCombined {
      * @return unknown
      */
     function setPolicyKey($policykey, $devid) {
-		$this->_device_filename = STATE_PATH . '/' . strtolower($devid) . '/device_info_'.$this->_user;
+		$this->_device_filename = BASE_PATH . STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 
     	if($this->_loggedin !== false) {
     		if (!$policykey) 

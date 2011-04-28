@@ -91,10 +91,10 @@ class BackendiConDir extends BackendDiff {
         $this->_path = str_replace('%u', $this->_user, ICONDIR_DIR);
 
 		// ItemID Cache
-    	$dir = opendir(STATE_PATH. "/" .strtolower($this->_devid));
+    	$dir = opendir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid));
         if(!$dir) {
 	    	debugLog("IMAP Backend: creating folder for device ".strtolower($this->_devid));
-	    	if (mkdir(STATE_PATH. "/" .strtolower($this->_devid), 0744) === false) 
+	    	if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false) 
 				debugLog("IMAP Backend: failed to create folder ".strtolower($this->_devid));
 		}
 		$filename = STATE_DIR . '/' . strtolower($this->_devid). '/icon_items_'. $this->_user;

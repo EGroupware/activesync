@@ -312,16 +312,6 @@ switch($_SERVER["REQUEST_METHOD"]) {
 //		header("MS-Server-ActiveSync: 14.0");
 		header("MS-Server-ActiveSync: 14.1");
         debugLog("POST cmd: $cmd");
-		// Update X-MS-RP In case version changed
-		include_once ('statemachine.php');
-		$protstate = new StateMachine($devid,$user);
-		$protsupp = $protstate->getProtocolState();
-		if ($protsupp !== false && $protsupp != "2.0,2.1,2.5,12.0,12.1,14.0,14.1") {
-    	    header("X-MS-RP: 2.0,2.1,2.5,12.0,12.1,14.0,14.1");
-		    debugLog("Sending X-MS-RP to update Protocol Version on Device");
-    	    $protstate->setProtocolState("2.0,2.1,2.5,12.0,12.1,14.0,14.1");
-    	}
-    	unset($protstate);
         // Do the actual request
         if(!HandleRequest($backend, $cmd, $devid, $protocolversion, $multipart)) {
             // Request failed. Try to output some kind of error information. We can only do this if

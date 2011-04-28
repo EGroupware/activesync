@@ -517,12 +517,6 @@ class SyncAppointment extends Streamer {
 	    						SYNC_AIRSYNCBASE_BODY => array(STREAMER_VAR => "airsyncbasebody", STREAMER_TYPE => "SyncAirSyncBaseBody")
 	    					);
 	    }
-        if(isset($protocolversion) && $protocolversion >= 14.0) {
-	    	$mapping += array(
-                                SYNC_POOMCAL_RESPONSEREQUESTED => array (STREAMER_VAR => "responserequested"),
-                                SYNC_POOMCAL_DISALLOWNEWTIMEPROPOSAL => array (STREAMER_VAR => "disallownewtimeproposal"),
-	    					);
-	    }
 // END ADDED dw2412 Support V12.0
 
         parent::Streamer($mapping);

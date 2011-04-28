@@ -28,10 +28,10 @@ class BackendVCDir extends BackendDiff {
         $this->_path = $this->getPath();
 
 		// ItemID Cache
-    	$dir = opendir(STATE_PATH. "/" .strtolower($this->_devid));
+    	$dir = opendir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid));
         if(!$dir) {
 	    	debugLog("IMAP Backend: creating folder for device ".strtolower($this->_devid));
-	    	if (mkdir(STATE_PATH. "/" .strtolower($this->_devid), 0744) === false) 
+	    	if (mkdir(BASE_PATH . STATE_DIR. "/" .strtolower($this->_devid), 0744) === false) 
 				debugLog("IMAP Backend: failed to create folder ".strtolower($this->_devid));
 		}
 		$filename = STATE_DIR . '/' . strtolower($this->_devid). '/vcard_items_'. $this->_user;

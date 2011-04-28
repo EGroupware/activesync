@@ -484,6 +484,10 @@ class ExportChangesDiff extends DiffState {
                         	if ($change["type"] == "olflags") $this->updateState("olflags", $change);
 			    }
                         }
+                        if ($change["type"] == "olflags")
+                        {
+                        	debugLog(__METHOD__.__LINE__.array2string($change));
+                        }
                         break;
                     case "delete":
                         if($this->_flags & BACKEND_DISCARD_DATA || $this->_importer->ImportMessageDeletion($change["id"]) == true)
@@ -639,7 +643,7 @@ class BackendDiff {
     }
 
     function SendMail($rfc822, $smartdata=array(), $protocolversion=false) {
-        return false;
+        return true;
     }
 
     function GetWasteBasket() {
@@ -750,7 +754,7 @@ class BackendDiff {
 			debugLog("logon failed for user $user");
 			return false;
         }
-		$this->_device_filename = STATE_PATH . '/' . strtolower($devid) . '/device_info_'.$user;
+		$this->_device_filename = STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 
 		if (file_exists($this->_device_filename)) {
 			$this->_device_info = unserialize(file_get_contents($this->_device_filename));
@@ -786,7 +790,7 @@ class BackendDiff {
      * @return unknown
      */
     function setPolicyKey($policykey, $devid) {
-		$this->_device_filename = STATE_PATH . '/' . strtolower($devid) . '/device_info_'.$this->_user;
+		$this->_device_filename = STATE_DIR . '/' . strtolower($devid) . '/device_info_'.$devid;
 		// create device directory, if not yet existing
 		if (!file_exists(dirname($this->_device_filename)))
 		{

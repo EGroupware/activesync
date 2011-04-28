@@ -454,6 +454,47 @@ class BackendEGW extends BackendDiff
 	{
 		return false;
 	}
+/*
+04/28/11 21:55:28 [8923] POST cmd: MeetingResponse
+04/28/11 21:55:28 [8923] I  <MeetingResponse:MeetingResponse>
+04/28/11 21:55:28 [8923] I   <MeetingResponse:Request>
+04/28/11 21:55:28 [8923] I    <MeetingResponse:UserResponse>
+04/28/11 21:55:28 [8923] I     1
+04/28/11 21:55:28 [8923] I    </MeetingResponse:UserResponse>
+04/28/11 21:55:28 [8923] I    <MeetingResponse:FolderId>
+04/28/11 21:55:28 [8923] I     101000000000
+04/28/11 21:55:28 [8923] I    </MeetingResponse:FolderId>
+04/28/11 21:55:28 [8923] I    <MeetingResponse:RequestId>
+04/28/11 21:55:28 [8923] I     99723
+04/28/11 21:55:28 [8923] I    </MeetingResponse:RequestId>
+04/28/11 21:55:28 [8923] I   </MeetingResponse:Request>
+04/28/11 21:55:28 [8923] I  </MeetingResponse:MeetingResponse>
+04/28/11 21:55:28 [8923] BackendEGW::MeetingResponse('99723', '101000000000', '1', ) returning FALSE
+04/28/11 21:55:28 [8923] O  <MeetingResponse:MeetingResponse>
+04/28/11 21:55:28 [8923] O   <MeetingResponse:Result>
+04/28/11 21:55:28 [8923] O    <MeetingResponse:RequestId>
+04/28/11 21:55:28 [8923] O    99723
+04/28/11 21:55:28 [8923] O    </MeetingResponse:RequestId>
+04/28/11 21:55:28 [8923] O    <MeetingResponse:Status>
+04/28/11 21:55:28 [8923] O    2
+04/28/11 21:55:28 [8923] O    </MeetingResponse:Status>
+04/28/11 21:55:28 [8923] O   </MeetingResponse:Result>
+04/28/11 21:55:28 [8923] O  </MeetingResponse:MeetingResponse>
+*/
+	/**
+	 *
+	 * @see BackendDiff::MeetingResponse()
+	 * @param string $requestid uid of mail with meeting request
+	 * @param string $folderid folder of meeting request mail
+	 * @param int $response 1=accepted, 2=tentative, 3=decline
+	 */
+	function MeetingResponse($requestid, $folderid, $response, &$calendarid)
+	{
+		debugLog(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning FALSE");
+		error_log(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning FALSE");
+
+		return false;
+	}
 
 	/**
 	 * Type ID for addressbook

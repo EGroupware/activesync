@@ -1,21 +1,21 @@
 <?php
 /**
- * EGroupware: ActiveSync hooks: eg. preferences
+ * EGroupware: eSync - ActiveSync protocol based on Z-Push: hooks: eg. preferences
  *
  * @link http://www.egroupware.org
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
- * @package activesync
+ * @package esync
  * @author Ralf Becker <RalfBecker-AT-outdoor-training.de>
  * @version $Id$
  */
 
 /**
- * ActiveSync hooks: eg. preferences
+ * eSync hooks: eg. preferences
  */
 class activesync_hooks
 {
 	/**
-	 * Show ActiveSync preferences link in preferences
+	 * Show E-Push preferences link in preferences
 	 *
 	 * @param string|array $args
 	 */

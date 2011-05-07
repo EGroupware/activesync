@@ -1,9 +1,9 @@
 <?php
 /**
- * EGroupware: ActiveSync access: Z-Push backend for EGroupware
+ * EGroupware - eSync - ActiveSync protocol based on Z-Push: backend for EGroupware
  *
  * @link http://www.egroupware.org
- * @package activesync
+ * @package esync
  * @author Ralf Becker <rb@stylite.de>
  * @author Klaus Leithoff <kl@stylite.de>
  * @author Philip Herbert <philip@knauber.de>
@@ -49,7 +49,7 @@ class BackendEGW extends BackendDiff
 		}
 		if (!isset($GLOBALS['egw_info']['user']['apps']['activesync']))
 		{
-			debugLog(__METHOD__."() z-push authentication failed: NO run rights for activesync application!");
+			debugLog(__METHOD__."() z-push authentication failed: NO run rights for E-Push application!");
 			return false;
 		}
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");

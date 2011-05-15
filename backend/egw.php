@@ -87,7 +87,9 @@ class BackendEGW extends BackendDiff
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
 				$folderlist[] = $folder = array(
-					'id'	=>	$this->createID($app,$GLOBALS['egw_info']['user']['account_id']),
+					'id'	=>	$this->createID($app,
+						$app == 'felamimail' ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
+							$GLOBALS['egw_info']['user']['account_id']),
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
 				);
@@ -138,9 +140,10 @@ class BackendEGW extends BackendDiff
 						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_APPOINTMENT : SYNC_FOLDER_TYPE_USER_APPOINTMENT;
 						break;
 					default:
-						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
+						$ret->type = $folder == 0 ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
 						break;
 				}
+				debugLog(__METHOD__."($id) return ".array2string($ret)." for disabled app!");
 			}
 		}
 		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
@@ -173,6 +176,7 @@ class BackendEGW extends BackendDiff
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
 				);
+				debugLog(__METHOD__."($id) return ".array2string($ret)." for disabled app!");
 			}
 		}
 		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
@@ -196,17 +200,61 @@ class BackendEGW extends BackendDiff
   	 */
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
-		//debugLog(__METHOD__.__LINE__.' ID:'.$id.' Cutoffdate:'.$cutoffdate. function_backtrace());
+		$this->splitID($id, $type, $folder, $app);
+		debugLog(__METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate)))
 		{
-			$this->splitID($id, $type, $folder, $app);
-
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
-				$return = array();
+				debugLog(__METHOD__."($id, $cutoffdate) return array() for disabled app!");
+				$ret = array();
 			}
 		}
+		// allow other apps to insert meeting requests
+		if ($app == 'felamimail' && $folder == 0)
+		{
+			$before = count($ret);
+			$not_uids = array();
+			foreach($ret as $message)
+			{
+				if (isset($message->meetingrequest) && is_a($message->meetingrequest, 'SyncMeetingRequest'))
+				{
+					$not_uids[] = self::globalObjId2uid($message->meetingrequest->globalobjid);
+				}
+			}
+			$ret = $this->run_on_all_plugins('GetMeetingRequests', $ret, $not_uids, $cutoffdate);
+			debugLog(__METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret)-$before)." messages");
+			debugLog(array2string($ret));
+		}
 		return $ret;
+	}
+
+	/**
+	 * convert UID to GlobalObjID for meeting requests
+	 *
+	 * @param string $uid iCal UID
+	 * @return binary GlobalObjId
+	 */
+	public static function uid2globalObjId($uid)
+	{
+		return
+			/* Bytes 1-16: */	'\0x04\0x00\0x00\0x00\0x82\0x00\0xE0\0x00\0x74\0xC5\0xB7\0x10\0x1A\0x82\0xE0\0x08'.
+			/* Bytes 17-20: */	'\0x00\0x00\0x00\0x00'.
+			/* Bytes 21-36: */	'\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00'.
+			/* Bytes 37-­40: */	pack('V',13+bytes($uid)).	// binary length + 13 for next line and terminating \0x00
+			/* Bytes 41-­52: */	'vCal-­Uid'.'\0x01\0x00\0x00\0x00'.
+			$uid.'\0x00';
+	}
+
+	/**
+	 * Extract UID from GlobalObjId
+	 *
+	 * @param string $objid
+	 * @return string
+	 */
+	public static function globalObjId2uid($objid)
+	{
+		return cut_bytes($objid, 51, -1);	// 51=(52-1 as start is 1!), -1 to cut off terminating \0x00
 	}
 
 	/**
@@ -222,6 +270,15 @@ class BackendEGW extends BackendDiff
 	 */
 	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
 	{
+		if ($id < 0)
+		{
+			$this->splitID($folderid, $type, $folder, $app);
+			if ($app == 'felamimail' && $folder == 0)
+			{
+
+				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $truncsize, $bodypreference, $mimesupport);
+			}
+		}
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $mimesupport);
 	}
 
@@ -264,11 +321,19 @@ class BackendEGW extends BackendDiff
      *             time for this field, which will change as soon as the contents have changed.
      *
      * @param string $folderid
-     * @param int|array $contact contact id or array
+     * @param int integer id of message
      * @return array
      */
 	function StatMessage($folderid, $id)
 	{
+		if ($id < 0)
+		{
+			$this->splitID($folderid, $type, $folder, $app);
+			if ($app == 'felamimail' && $folder == 0)
+			{
+				return $this->run_on_all_plugins('StatMeetingRequest',array(),$id);
+			}
+		}
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
 	}
 
@@ -394,19 +459,10 @@ class BackendEGW extends BackendDiff
      */
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
-		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion)");
-		$this->setup_plugins();
-		$type = 'felamimail';
-		$method = 'SendMail';
-		$ret = false;
-		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
-		{
-			//debugLog(__METHOD__." Plugin is set ");
-			$params = array($rfc822, $smartdata, $protocolversion);
-			//error_log($method.' called with Params:'.array2string($params));
-			$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
-		}
-		return $ret;	// fake sending mail worked
+return true;	// Ralf test without mail
+		$ret = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $rfc822, $smartdata, $protocolversion);
+		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) returning ".array2string($ret));
+		return $ret;
 	}
 
 	/**
@@ -422,13 +478,13 @@ class BackendEGW extends BackendDiff
 		debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
-				$rows = self::run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
+				$rows = $this->run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
 				break;
 			case 'MAILBOX':
-				$rows = self::run_on_all_plugins('getSearchResultsMailbox',array(),$searchquery);
+				$rows = $this->run_on_all_plugins('getSearchResultsMailbox',array(),$searchquery);
 				break;
 		  	case 'DOCUMENTLIBRARY':
-				$rows = self::run_on_all_plugins('getSearchDocumentLibrary',array(),$searchquery);
+				$rows = $this->run_on_all_plugins('getSearchDocumentLibrary',array(),$searchquery);
 		  		break;
 		  	default:
 		  		debugLog (__METHOD__." unknown searchname ". $searchname);
@@ -484,16 +540,18 @@ class BackendEGW extends BackendDiff
 	/**
 	 *
 	 * @see BackendDiff::MeetingResponse()
-	 * @param string $requestid uid of mail with meeting request
+	 * @param int $requestid uid of mail with meeting request
 	 * @param string $folderid folder of meeting request mail
 	 * @param int $response 1=accepted, 2=tentative, 3=decline
+	 * @param int &$calendarid on return id of calendar item
+	 * @return boolean true on success, false on error
 	 */
 	function MeetingResponse($requestid, $folderid, $response, &$calendarid)
 	{
-		debugLog(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning FALSE");
-		error_log(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning FALSE");
+		$calendarid = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $requestid, $folderid, $response);
 
-		return false;
+		debugLog(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning ".array2string((bool)$calendarid));
+		return (bool)$calendarid;
 	}
 
 	/**
@@ -702,7 +760,7 @@ class BackendEGW extends BackendDiff
 	 */
 	public function settings($hook_data)
 	{
-		return self::run_on_all_plugins('settings',array(),$hook_data);
+		return $this->run_on_all_plugins('settings',array(),$hook_data);
 	}
 
 	/**
@@ -746,6 +804,7 @@ class BackendEGW extends BackendDiff
 	 *
 	 * @param string $method
 	 * @param mixed $agregate=array() if array given array_merge is used, otherwise +=
+	 * 	or 'return-first' to return result from first matching plugin returning not null, false or '' result
 	 * @param optional parameters
 	 * @return mixed agregated result
 	 */
@@ -765,12 +824,21 @@ class BackendEGW extends BackendDiff
 				{
 					$agregate = array_merge($agregate,$result);
 				}
+				elseif ($agregate === 'return-first')
+				{
+					if ($result)
+					{
+						$agregate = $result;
+						break;
+					}
+				}
 				else
 				{
 					$agregate += $result;
 				}
 			}
 		}
+		if ($agregate === 'return-first') $agregate = false;
 		//error_log(__METHOD__."('$method') returning ".array2string($agregate));
 		return $agregate;
 	}
@@ -905,9 +973,7 @@ interface activesync_plugin_write extends activesync_plugin_read
      * @DESC The $flags parameter must contains the poommailflag Object
      */
     public function ChangeMessageFlag($folderid, $id, $flags);
-
 }
-
 
 /**
  * Plugin interface for EGroupware application backends
@@ -1020,6 +1086,94 @@ interface activesync_plugin_read
 	 * @return array name => array with values for keys: type, label, name, help, values, default, ...
 	 */
 	function settings($hook_data);
+}
+
+/**
+ * Plugin that can send mail
+ */
+interface activesync_pluging_sendmail
+{
+    /**
+     * Sends a message which is passed as rfc822. You basically can do two things
+     * 1) Send the message to an SMTP server as-is
+     * 2) Parse the message yourself, and send it some other way
+     * It is up to you whether you want to put the message in the sent items folder. If you
+     * want it in 'sent items', then the next sync on the 'sent items' folder should return
+     * the new message as any other new message in a folder.
+     *
+     * @param string $rfc822 mail
+     * @param array $smartdata=array() values for keys:
+     * 	'task': 'forward', 'new', 'reply'
+     *  'itemid': id of message if it's an reply or forward
+     *  'folderid': folder
+     *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
+	 *	'saveinsentitems': 1 or absent?
+     * @param boolean|double $protocolversion=false
+     * @return boolean true on success, false on error
+     *
+     * @see eg. BackendIMAP::SendMail()
+     * @todo implement either here or in fmail backend
+     * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
+     */
+	function SendMail($rfc822, $smartdata=array(), $protocolversion = false);
+}
+
+/**
+ * Plugin that supports MeetingResponse method
+ *
+ * Plugin can call MeetingResponse method of backend with $requestid containing an iCal to let calendar plugin add the event
+ */
+interface activesync_plugin_meeting_response
+{
+	/**
+	 * Process response to meeting request
+	 *
+	 * @see BackendDiff::MeetingResponse()
+	 * @param int|string $requestid uid of mail with meeting request
+	 * @param string $folderid folder of meeting request mail
+	 * @param int $response 1=accepted, 2=tentative, 3=decline
+	 * @return int|boolean id of calendar item, false on error
+	 */
+	function MeetingResponse($requestid, $folderid, $response);
+}
+
+/**
+ * Plugin that supplies additional (to mail) meeting requests
+ *
+ * These meeting requests should have negative id's to not conflict with uid's of mail!
+ *
+ * Backend merges these meeting requests into the inbox, even if mail is completly disabled
+ */
+interface activesync_plugin_meeting_requests extends activesync_plugin_meeting_response
+{
+	/**
+	 * List all meeting requests / invitations of user NOT having a UID in $not_uids (already received by email)
+	 *
+	 * @param array $not_uids
+	 * @param int $cutoffdate=null
+	 * @return array
+	 */
+	function GetMeetingRequests(array $not_uids, $cutoffdate=NULL);
+
+	/**
+	 * Stat a meeting request
+	 *
+	 * @param int $id negative! id
+	 * @return array
+	 */
+	function StatMeetingRequest($id);
+
+	/**
+	 * Return a meeting request as AS SyncMail object
+	 *
+	 * @param int $id negative! cal_id
+	 * @param int $truncsize
+	 * @param int $bodypreference
+	 * @param $optionbodypreference
+	 * @param bool $mimesupport
+	 * @return SyncMail
+	 */
+	function GetMeetingRequest($id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0);
 }
 
 /**

@@ -459,7 +459,6 @@ class BackendEGW extends BackendDiff
      */
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
-return true;	// Ralf test without mail
 		$ret = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $rfc822, $smartdata, $protocolversion);
 		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) returning ".array2string($ret));
 		return $ret;

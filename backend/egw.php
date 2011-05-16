@@ -1090,7 +1090,7 @@ interface activesync_plugin_read
 /**
  * Plugin that can send mail
  */
-interface activesync_pluging_sendmail
+interface activesync_plugin_sendmail
 {
     /**
      * Sends a message which is passed as rfc822. You basically can do two things

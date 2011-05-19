@@ -13,6 +13,7 @@
 * Consult LICENSE file for details
 ************************************************/
 
+$sessionstarttime = microtime(true);
 //we handle connection aborts ourself. necessary to keep sync state clean in heartbeat/wait
 ignore_user_abort(true);
 ob_start(false, 1048576);
@@ -42,6 +43,7 @@ set_time_limit(REAL_SCRIPT_TIMEOUT);
 debugLog("Start ------ THIS IS AN UNOFFICIAL DEVELOPER VERSION!");
 debugLog("Z-Push version: $zpush_version");
 debugLog("Client IP: ". $_SERVER['REMOTE_ADDR']);
+debugLog("Set max_execution_time to ". ini_get('max_execution_time'));
 //debugLog(print_r($_SERVER,true));
 //debugLog(print_r($_GET,true));
 //debugLog(print_r($_POST,true));
@@ -64,11 +66,16 @@ if(!isset($_SERVER['PHP_AUTH_PW'])) {
 }
 
 // split username & domain if received as one
-$pos = strrpos($_SERVER['PHP_AUTH_USER'], '\\');
-if($pos === false){
-    $auth_user = $_SERVER['PHP_AUTH_USER'];
-    $auth_domain = '';
-}else{
+if (($pos = strrpos($_SERVER['PHP_AUTH_USER'], '\\')) === false) {
+	if (SEPARATE_UPN === true &&
+		($pos = strrpos($_SERVER['PHP_AUTH_USER'], '@')) !== false) {
+	    $auth_user = substr($_SERVER['PHP_AUTH_USER'],0,$pos);
+    	$auth_domain = substr($_SERVER['PHP_AUTH_USER'],$pos+1);
+	} else {
+    	$auth_user = $_SERVER['PHP_AUTH_USER'];
+    	$auth_domain = '';
+	}
+} else {
     $auth_domain = substr($_SERVER['PHP_AUTH_USER'],0,$pos);
     $auth_user = substr($_SERVER['PHP_AUTH_USER'],$pos+1);
 }
@@ -312,6 +319,16 @@ switch($_SERVER["REQUEST_METHOD"]) {
 //		header("MS-Server-ActiveSync: 14.0");
 		header("MS-Server-ActiveSync: 14.1");
         debugLog("POST cmd: $cmd");
+		// Update X-MS-RP In case version changed
+		include_once ('statemachine.php');
+		$protstate = new StateMachine($devid,$user);
+		$protsupp = $protstate->getProtocolState();
+		if ($protsupp !== false && $protsupp != "2.0,2.1,2.5,12.0,12.1,14.0,14.1") {
+    	    header("X-MS-RP: 2.0,2.1,2.5,12.0,12.1,14.0,14.1");
+		    debugLog("Sending X-MS-RP to update Protocol Version on Device");
+    	    $protstate->setProtocolState("2.0,2.1,2.5,12.0,12.1,14.0,14.1");
+    	}
+    	unset($protstate);
         // Do the actual request
         if(!HandleRequest($backend, $cmd, $devid, $protocolversion, $multipart)) {
             // Request failed. Try to output some kind of error information. We can only do this if
@@ -396,6 +413,7 @@ if (!headers_sent()) { // dw2412 need to do this since i.E. getAttachmentData Re
 }
 flush();
 sleep(2);
+debugLog("Session run time duration :".(microtime(true) - $sessionstarttime));
 debugLog("Body Connection aborted :".(connection_aborted() ? "yes" : "no" ));
 debugLog("Body Connection status  :".connection_status());
 $backend->Logoff();

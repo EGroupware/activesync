@@ -230,7 +230,7 @@ class SyncMail extends Streamer {
 				                SYNC_POOMMAIL_BODY => array (STREAMER_VAR => "body"),
     	    			);
         }
-        if(isset($protocolversion) && $protocolversion >= 12.0) {
+        if (isset($protocolversion) && $protocolversion >= 12.0) {
 		    $mapping += array(
 		    					SYNC_AIRSYNCBASE_BODY => array(STREAMER_VAR => "airsyncbasebody", STREAMER_TYPE => "SyncAirSyncBaseBody"),
                               	SYNC_AIRSYNCBASE_ATTACHMENTS => array (STREAMER_VAR => "airsyncbaseattachments", STREAMER_TYPE => "AirSyncBaseAttachment", STREAMER_ARRAY => SYNC_AIRSYNCBASE_ATTACHMENT ),
@@ -466,8 +466,8 @@ class SyncAttendee extends Streamer {
 // START ADDED dw2412 Support V12.0
         if (isset($protocolversion) && $protocolversion >= 12.0) {
     	    $mapping += array(
- 				  				SYNC_POOMCAL_ATTENDEE_STATUS => array (STREAMER_VAR => "status" ),
-								SYNC_POOMCAL_ATTENDEE_TYPE => array (STREAMER_VAR => "type" ),
+ 				  				SYNC_POOMCAL_ATTENDEE_STATUS => array (STREAMER_VAR => "attendeestatus" ),
+								SYNC_POOMCAL_ATTENDEE_TYPE => array (STREAMER_VAR => "attendeetype" ),
 				    	    );
         }
 // END ADDED dw2412 Support V12.0
@@ -515,6 +515,12 @@ class SyncAppointment extends Streamer {
         if(isset($protocolversion) && $protocolversion >= 12.0) {
 	    	$mapping += array(
 	    						SYNC_AIRSYNCBASE_BODY => array(STREAMER_VAR => "airsyncbasebody", STREAMER_TYPE => "SyncAirSyncBaseBody")
+	    					);
+	    }
+        if(isset($protocolversion) && $protocolversion >= 14.0) {
+	    	$mapping += array(
+                                SYNC_POOMCAL_RESPONSEREQUESTED => array (STREAMER_VAR => "responserequested"),
+                                SYNC_POOMCAL_DISALLOWNEWTIMEPROPOSAL => array (STREAMER_VAR => "disallownewtimeproposal"),
 	    					);
 	    }
 // END ADDED dw2412 Support V12.0

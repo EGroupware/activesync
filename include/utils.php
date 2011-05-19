@@ -40,14 +40,14 @@ function _saveFolderData($devid, $folders) {
     if (!array_key_exists(SYNC_FOLDER_TYPE_CONTACT, $unique_folders))         
         $unique_folders[SYNC_FOLDER_TYPE_CONTACT] = SYNC_FOLDER_TYPE_DUMMY;
 
-    if (!file_put_contents(BASE_PATH.STATE_DIR."/".$devid."/compat-$devid", serialize($unique_folders))) {
+    if (!file_put_contents(STATE_PATH."/".$devid."/compat-$devid", serialize($unique_folders))) {
         debugLog("_saveFolderData: Data could not be saved!");
     }
 }
 
 // returns information about folder data for a specific device    
 function _getFolderID($devid, $class) {
-    $filename = BASE_PATH.STATE_DIR."/".$devid."/compat-$devid";
+    $filename = STATE_PATH."/".$devid."/compat-$devid";
 
     if (file_exists($filename)) {
         $arr = unserialize(file_get_contents($filename));
@@ -494,5 +494,176 @@ function parseVFB_date($tstring) {
 }
 // END ADDED dw2412 ResolveRecipient Support
 
+function InternalSMTPClient($from,$to,$cc,$bcc,$content) {
+	$addpath = "";
+	if (strlen($to) > 0) $addpath .= $to.", ";
+	if (strlen($cc) > 0) $addpath .= $cc.", ";
+	if (strlen($bcc) > 0) $addpath .= $bcc.", ";
+	$addrs = array();
+	$namefield="";
+	$addrfield="";
+	for($i=0;$i < strlen($addpath);$i++) {
+		switch ($addpath{$i}) {
+			case "\"" : // parse namefield
+				$namefield="";
+				for($i++;$i < strlen($addpath); $i++) {
+					if ($addpath{$i} == "\\") {
+       					$namefield .= $addpath{$i};
+						$i++;
+						$namefield .= $addpath{$i};
+					} else 
+					if ($addpath{$i} == "\"") 
+						break;
+					else 
+						$namefield .= $addpath{$i};
+				}
+				break;
+			case "<" : 
+				$addrfield="";
+				for($i++;$i < strlen($addpath); $i++) {
+					if ($addpath{$i} == ">") 
+						break;
+					else 
+						$addrfield .= $addpath{$i};
+				}
+				break;
+			case "," : 
+				if ($addrfield != "") {
+					$addr = array ("FullName" => $namefield, "addr" => $addrfield);
+					array_push($addrs,$addr);
+				}
+				$namefield="";
+				$addrfield="";
+				break;
+			}
+	}
+	if ($addrfield != "") {
+		$addr = array ("FullName" => $namefield, "addr" => $addrfield);
+		array_push($addrs,$addr);
+	}
+	if (sizeof($addrs) == 0) {
+		debugLog('Error: No eMail Recipients!');
+		return false;
+	}
+
+	// Initiate connection with the SMTP server
+	if (!($handle = fsockopen(INTERNAL_SMTPCLIENT_SERVERNAME,INTERNAL_SMTPCLIENT_SERVERPORT))) {
+		debugLog('Error: ' . $errstr . ' (' . $errno . ')');
+		return false;
+	}
+
+	if (substr(PHP_OS, 0, 3) != 'WIN') {
+		socket_set_timeout($handle, INTERNAL_SMTPCLIENT_CONNECTTIMEOUT, 0);
+	}
+
+	while ($line = fgets($handle, 515)) {
+		if (substr($line,3,1) == ' ') break;
+	}
+
+	if (substr(PHP_OS, 0, 3) != 'WIN') {
+		socket_set_timeout($handle, INTERNAL_SMTPCLIENT_SOCKETTIMEOUT, 0);
+	}
+	fputs($handle, "EHLO ".INTERNAL_SMTPCLIENT_MAILDOMAIN."\n");
+
+	while ($line = fgets($handle, 515)) {
+		if (substr($line,3,1) == ' ') {
+			if (substr($line,0,3) != '250') {
+				debugLog('Error: EHLO not accepted from server!');
+				return false;
+			}
+		}
+	}
+
+	// SMTP authorization
+	if (INTERNAL_SMTPCLIENT_USERNAME != '' && INTERNAL_SMTPCLIENT_PASSWORD != '') {
+		fputs($handle, "AUTH LOGIN\n");
+		while ($line = fgets($handle, 515)) {
+			if (substr($line,3,1) == ' ') {
+				if (substr($line,0,3) != '334') {
+					debugLog('Error: AUTH LOGIN not accepted from server!');
+					return false;
+				}
+				break;
+			}
+		}
+		fputs($handle, base64_encode(INTERNAL_SMTPCLIENT_USERNAME)."\n");
+		while ($line = fgets($handle, 515)) {
+			if (substr($line,3,1) == ' ') {
+				if (substr($line,0,3) != '334') {
+					debugLog('Error: Username not accepted by server!');
+					return false;
+				}
+				break;
+			}
+		}
+		fputs($handle, base64_encode(INTERNAL_SMTPCLIENT_PASSWORD)."\n");
+		while ($line = fgets($handle, 515)) {
+			if (substr($line,3,1) == ' ') {
+				if (substr($line,0,3) != '235') {
+					debugLog('Error: Password not accepted by server!');
+					return false;
+				}
+				break;
+			}
+		}
+	}
+
+	// Send out the e-mail
+	fputs($handle, "MAIL FROM: ".$from."\n");
+	while ($line = fgets($handle, 515)) {
+		if (substr($line,3,1) == ' ') {
+			if (substr($line,0,3) != '250') {
+				debugLog('Error: MAIL FROM not accepted by server!');
+				return false;
+			}
+		}
+	}
+
+	foreach ($addrs as $value) {
+		if ($value['addr'] != "") {
+			fputs($handle, "RCPT TO: ".$value['addr']."\n");
+			while ($line = fgets($handle, 515)) {
+				if (substr($line,3,1) == ' ') {
+					if (substr($line,0,3) != '250' && substr($line,0,3) != '251') {
+						debugLog('Error: RCPT TO not accepted by server!');
+						return false;
+					}
+				}
+			}
+		}
+	}
+
+	fputs($handle, "DATA\n");
+	while ($line = fgets($handle, 515)) {
+		if (substr($line,3,1) == ' ') {
+			if (substr($line,0,3) != '354') {
+				debugLog('Error: DATA Command not accepted by server!');
+				return false;
+			}
+		}
+	}
+	fputs($handle, $content. "\n");
+	fputs($handle, ".\n");
+	while ($line = fgets($handle, 515)) {
+		if (substr($line,3,1) == ' ') {
+			if (substr($line,0,3) != '250') {
+				debugLog('Error: DATA Content not accepted by server!');
+				return false;
+			}
+		}
+	}
+	// Close connection to SMTP server
+	fputs($handle, "QUIT\n");
+	while ($line = fgets($handle, 515)) {
+		if (substr($line,3,1) == ' ') {
+			if (substr($line,0,3) != '221') {
+				debugLog('Error: QUIT not accepted by server!');
+				return false;
+			}
+		}
+	}
+	fclose ($handle);
+	return true;
+}
 
 ?>

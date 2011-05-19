@@ -24,4 +24,22 @@ if (!function_exists("file_put_contents")) {
     }
 }
 
+// dw2412 should help all using either php-cgi or not apache server at all.
+// This doesn't mean that other servers are supported officially - it just should help
+// lowering the question rate ;-)
+
+if (!function_exists("apache_request_headers")) {
+	function apache_request_headers() {
+		$headers = array();
+		foreach ($_SERVER as $k => $v) {
+			if (substr($k, 0, 5) == "HTTP_") {
+				$k = str_replace('_', ' ', substr($k, 5));
+				$k = str_replace(' ', '-', ucwords(strtolower($k)));
+				$headers[$k] = $v;
+			}
+		}
+		return $headers;
+	}
+}
+
 ?>

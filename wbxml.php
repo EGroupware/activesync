@@ -462,6 +462,7 @@ class WBXMLDecoder {
     }
 
     function getByte() {
+
 //        $ch = fread($this->in, 1);
 // Start to cover timeout scenarios in input stream where stream is not eof but no char is read
 // Could solve t-sync problem. if not above line was replaced until END
@@ -763,8 +764,6 @@ class WBXMLEncoder {
             $cp = 0;
         }
 
-//		debugLog(print_r($this->_dtd,true));
-//		debugLog("cp: ".$cp." split tag: ".$split["tag"]);
         $code = $this->_dtd["codes"][$cp][$split["tag"]];
 
         $mapping["cp"] = $cp;

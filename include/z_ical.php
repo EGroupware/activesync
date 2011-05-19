@@ -43,6 +43,17 @@ class ZPush_ical{
                 continue;
             }
 
+			// start dw2412: Work with the DESCRIPTION Field to get all parts together...
+            if (ereg ("([^:]+):(.*)", $line, $matches) &&
+            	$matches[1] == "DESCRIPTION") {
+				while (!ereg ("([^:]+):(.*)", $nextline, $matches) ||
+					strtoupper(substr($matches[1],1)) != substr($matches[1],1)) {
+                	$line .= "\n".$nextline;
+                	$nextline = $aical[++$i + 1];
+				}
+            }
+			// end dw2412: Work with the DESCRIPTION Field to get all parts together...
+
             while ($nextline{0} == " " || $nextline{0} == "\t") {
                 $line .= substr($nextline, 1);
                 $nextline = $aical[++$i + 1];
@@ -130,8 +141,18 @@ class ZPush_ical{
                                 $data = str_replace("\\t", "&nbsp;", $data);
                                 $data = str_replace("\\r", "<br />", $data);
                                 $data = stripslashes($data);
-                        	$mapiprops[PR_SUBJECT] = $data;
-				break;
+								$mapiprops[PR_SUBJECT] = $data;
+								break;
+
+							// start dw2412: Work with the DESCRIPTION Field to get all parts together...
+                            case 'DESCRIPTION':
+                                $data = str_replace("\\n", "<br />", $data);
+                                $data = str_replace("\\t", "&nbsp;", $data);
+                                $data = str_replace("\\r", "<br />", $data);
+                                $data = stripslashes($data);
+								$mapiprops[PR_BODY] = $data;
+								break;
+							// end dw2412: Work with the DESCRIPTION Field to get all parts together...
 
                             case 'LOCATION':
                                 $data = str_replace("\\n", "<br />", $data);

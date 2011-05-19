@@ -42,9 +42,11 @@
 		BASE_PATH. PATH_SEPARATOR .
 		ini_get('include_path'));
 
-   	// state dir for active sync as "activesync" subdir EGw's files directory
+  // DEPRECIATED USE STATE_PATH! only defined for compatibility
 	define('STATE_DIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync');
- 	if (!file_exists(STATE_DIR))
+	// state dir for active sync as "activesync" subdir EGw's files directory
+	define('STATE_PATH', $GLOBALS['egw_info']['server']['files_dir'].'/activesync');
+ 	if (!file_exists(STATE_PATH))
  	{
  		mkdir(STATE_DIR,0700,true);
  	}
@@ -58,6 +60,10 @@
 
     // Device Provisioning
     define('PROVISIONING', true);
+    
+    // Should UPN be separated for Login Username
+	define('SEPARATE_UPN', false);
+
 
     // This option allows the 'loose enforcement' of the provisioning policies for older
     // devices which don't support provisioning (like WM 5 and HTC Android Mail) - dw2412 contribution

@@ -42,10 +42,10 @@ class Streamer {
     function Streamer($mapping) {
         $this->_mapping = $mapping;
         $this->flags = false;
-	$this->_setflag = false;
-	$this->_setchange = false;
-	$this->_setread = false;
-	
+		$this->_setflag = false;
+		$this->_setchange = false;
+		$this->_setread = false;
+		$this->_setcategories = false;
     }
 
     // Decodes the WBXML from $input until we reach the same depth level of WBXML. This
@@ -84,8 +84,12 @@ class Streamer {
 				    	$this->_setread=true; break;
 				    case "POOMMAIL:Flag" : 
 				    	$this->_setflag=true; break;
-				    default	: $this->_setflag=false; 
+				    case "POOMMAIL:Categories" : 
+				    	$this->_setcategories=true; break;
+				    default	: 
+				    	$this->_setflag=false; 
 						$this->_setread=false; 
+						$this->_setcategories=false; 
 						$this->_setchange=true;
 				};
 			};

@@ -237,13 +237,15 @@ class BackendEGW extends BackendDiff
 	 */
 	public static function uid2globalObjId($uid)
 	{
-		return
+		$objid = base64_encode(
 			/* Bytes 1-16: */	'\0x04\0x00\0x00\0x00\0x82\0x00\0xE0\0x00\0x74\0xC5\0xB7\0x10\0x1A\0x82\0xE0\0x08'.
 			/* Bytes 17-20: */	'\0x00\0x00\0x00\0x00'.
 			/* Bytes 21-36: */	'\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00'.
 			/* Bytes 37-­40: */	pack('V',13+bytes($uid)).	// binary length + 13 for next line and terminating \0x00
 			/* Bytes 41-­52: */	'vCal-­Uid'.'\0x01\0x00\0x00\0x00'.
-			$uid.'\0x00';
+			$uid.'\0x00');
+		debugLog(__METHOD__."('$uid') returning '$objid'");
+		return $objid;
 	}
 
 	/**
@@ -254,7 +256,9 @@ class BackendEGW extends BackendDiff
 	 */
 	public static function globalObjId2uid($objid)
 	{
-		return cut_bytes($objid, 51, -1);	// 51=(52-1 as start is 1!), -1 to cut off terminating \0x00
+		$uid = cut_bytes(base64_decode($objid), 51, -1);	// 51=(52-1 as start is 1!), -1 to cut off terminating \0x00
+		debugLog(__METHOD__."('$objid') returning '$uid'");
+		return $uid;
 	}
 
 	/**
@@ -377,6 +381,14 @@ class BackendEGW extends BackendDiff
 
 	function DeleteMessage($folderid, $id)
 	{
+		if ($id < 0)
+		{
+			$this->splitID($folderid, $type, $folder, $app);
+			if ($app == 'felamimail' && $folder == 0)
+			{
+				return $this->run_on_all_plugins('DeleteMeetingRequest',array(),$id);
+			}
+		}
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
 	}
 

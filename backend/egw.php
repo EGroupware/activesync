@@ -238,12 +238,12 @@ class BackendEGW extends BackendDiff
 	public static function uid2globalObjId($uid)
 	{
 		$objid = base64_encode(
-			/* Bytes 1-16: */	'\0x04\0x00\0x00\0x00\0x82\0x00\0xE0\0x00\0x74\0xC5\0xB7\0x10\0x1A\0x82\0xE0\0x08'.
-			/* Bytes 17-20: */	'\0x00\0x00\0x00\0x00'.
-			/* Bytes 21-36: */	'\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00\0x00'.
-			/* Bytes 37-­40: */	pack('V',13+bytes($uid)).	// binary length + 13 for next line and terminating \0x00
-			/* Bytes 41-­52: */	'vCal-­Uid'.'\0x01\0x00\0x00\0x00'.
-			$uid.'\0x00');
+			/* Bytes 1-16: */	"\x04\x00\x00\x00\x82\x00\xE0\x00\x74\xC5\xB7\x10\x1A\x82\xE0\x08".
+			/* Bytes 17-20: */	"\x00\x00\x00\x00".
+			/* Bytes 21-36: */	"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".
+			/* Bytes 37-­40: */	pack('V',13+bytes($uid)).	// binary length + 13 for next line and terminating \x00
+			/* Bytes 41-­52: */	'vCal-Uid'."\x01\x00\x00\x00".
+			$uid."\x00");
 		debugLog(__METHOD__."('$uid') returning '$objid'");
 		return $objid;
 	}
@@ -256,7 +256,7 @@ class BackendEGW extends BackendDiff
 	 */
 	public static function globalObjId2uid($objid)
 	{
-		$uid = cut_bytes(base64_decode($objid), 51, -1);	// 51=(52-1 as start is 1!), -1 to cut off terminating \0x00
+		$uid = cut_bytes(base64_decode($objid), 52, -1);	// -1 to cut off terminating \0x00
 		debugLog(__METHOD__."('$objid') returning '$uid'");
 		return $uid;
 	}

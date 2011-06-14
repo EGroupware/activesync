@@ -981,10 +981,10 @@ function HandleSync($backend, $protocolversion, $devid) {
 								    	          	   		$foldertype == $collection['optionfoldertype']) {
 								                   	   		$collection['changeids'][$serverid]['optionfoldertype'] = $foldertype;
 								                   	   		if (!isset($msginfo[$serverid])) 
-								                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
+								                   	   		    $collection[$collection['optionfoldertype'].'changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
 								                   	   		else {
 								                   	   			$importer[$collection['optionfoldertype'].$collection["collectionid"]]->ImportMessageChange($serverid, $appdata);
-								                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_SUCCESS;
+								                   	   		    $collection[$collection['optionfoldertype'].'changeids'][$serverid]['status'] = SYNC_STATUS_SUCCESS;
 								                   	   		}
 														} else {
 								                   	   		if (!isset($msginfo[$serverid])) 
@@ -996,17 +996,18 @@ function HandleSync($backend, $protocolversion, $devid) {
 								                   	   	}
 								                   	} else {
 								                 		if ($appdata->_setflag == true) {
-								        	       	   		$collection["flagids"][$serverid]['data'] = $appdata->poommailflag;
 								    	  	        	   	if (isset($collection['optionfoldertype']) &&
 								    	          	   			$foldertype == $collection['optionfoldertype']) {
+									        	       	   		$collection[$collection['optionfoldertype']."flagids"][$serverid]['data'] = $appdata->poommailflag;
 									                   	   		$collection['changeids'][$serverid]['optionfoldertype'] = $foldertype;
 									                   	   		if (!isset($msginfo[$serverid])) 
-									                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
+									                   	   		    $collection[$collection['optionfoldertype'].'changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
 									                   	   		else {
-										    						$collection["flagids"][$serverid]['status'] = $importer[$collection['optionfoldertype'].$collection["collectionid"]]->ImportMessageFlag($serverid, $appdata->poommailflag);
-									                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_SUCCESS;
+										    						$collection[$collection['optionfoldertype']."flagids"][$serverid]['status'] = $importer[$collection['optionfoldertype'].$collection["collectionid"]]->ImportMessageFlag($serverid, $appdata->poommailflag);
+									                   	   		    $collection[$collection['optionfoldertype'].'changeids'][$serverid]['status'] = SYNC_STATUS_SUCCESS;
 									                   	   		}
 								    	  	        	   	} else {
+									        	       	   		$collection["flagids"][$serverid]['data'] = $appdata->poommailflag;
 									                   	   		if (!isset($msginfo[$serverid])) 
 									                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
 									                   	   		else {
@@ -1016,17 +1017,18 @@ function HandleSync($backend, $protocolversion, $devid) {
 									    					}
 								        	    		}
 									            		if ($appdata->_setread == true) {
-							    		               		$collection["readids"][$serverid]['data'] = $appdata->read;
 								    	        	  	   	if (isset($collection['optionfoldertype']) &&
 								    	          	   			$foldertype == $collection['optionfoldertype']) {
+								    		               		$collection[$collection['optionfoldertype']."readids"][$serverid]['data'] = $appdata->read;
 									                   	   		$collection['changeids'][$serverid]['optionfoldertype'] = $foldertype;
 									                   	   		if (!isset($msginfo[$serverid])) 
-									                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
+									                   	   		    $collection[$collection['optionfoldertype'].'changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
 									                   	   		else {
-									        		       			$collection["readids"][$serverid]['status'] = $importer[$collection['optionfoldertype'].$collection["collectionid"]]->ImportMessageReadFlag($serverid, $appdata->read);
-									                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_SUCCESS;
+									        		       			$collection[$collection['optionfoldertype']."readids"][$serverid]['status'] = $importer[$collection['optionfoldertype'].$collection["collectionid"]]->ImportMessageReadFlag($serverid, $appdata->read);
+									                   	   		    $collection[$collection['optionfoldertype'].'changeids'][$serverid]['status'] = SYNC_STATUS_SUCCESS;
 									                   	   		}
 								    	        	  	   	} else {
+								    		               		$collection["readids"][$serverid]['data'] = $appdata->read;
 									                   	   		if (!isset($msginfo[$serverid])) 
 									                   	   		    $collection['changeids'][$serverid]['status'] = SYNC_STATUS_OBJECT_NOT_FOUND;
 									                   	   		else {
@@ -1087,7 +1089,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 															$msginfo[$id] = array('md5msg' => 0, 'read' => '', 'md5flags' => '', 'class' => strtolower(get_class($appdata)));
 															debugLog("HandleSync: Generated msginfos for ".$id." with following values: ".print_r($msginf,true));
 														}
-														$collection["importedchanges"] = true;
+							            	          	$collection["importedchanges"] = true;
 													}
 							    	        	}
 							        	    	break;
@@ -1928,7 +1930,10 @@ function HandleSync($backend, $protocolversion, $devid) {
                 if ((isset($collection["getchanges"]) &&
                 	 $collection["getchanges"] != 0) ||
                 	isset($collection["readids"]) ||
-                	isset($collection["flagids"])) {
+                	isset($collection["flagids"]) ||
+                	(isset($collection['optionfoldertype']) &&
+	               	 (isset($collection[$collection['optionfoldertype']."readids"]) ||
+                 	  isset($collection[$collection['optionfoldertype']."flagids"])))) {
                     // Use the state from the importer, as changes may have already happened
 
 					$filtertype = (isset($collection["filtertype"]) ? $collection["filtertype"] : 
@@ -1975,10 +1980,10 @@ function HandleSync($backend, $protocolversion, $devid) {
 	                $n = 0;
 
 	                // Stream the changes to the PDA
-					$ids = array("readids" => (isset($collection["readids"]) ? $collection["readids"]: array()),
-							     "flagids" => (isset($collection["flagids"]) ? $collection["flagids"]: array()));
-
+	
 					if ($collection['onlyoptionbodypreference'] === false) {
+						$ids = array("readids" => (isset($collection["readids"]) ? $collection["readids"]: array()),
+								     "flagids" => (isset($collection["flagids"]) ? $collection["flagids"]: array()));
 						$importer[$collection["collectionid"]] = new ImportContentsChangesStream($encoder, GetObjectClassFromFolderClass($collection["class"]), $ids, $msginfos[$collection["collectionid"]]);
 
 		                while(1) {
@@ -1998,6 +2003,8 @@ function HandleSync($backend, $protocolversion, $devid) {
 					}
 
 					if (isset($collection['optionfoldertype'])) {
+						$ids = array("readids" => (isset($collection[$collection['optionfoldertype']."readids"]) ? $collection[$collection['optionfoldertype']."readids"]: array()),
+								     "flagids" => (isset($collection[$collection['optionfoldertype']."flagids"]) ? $collection[$collection['optionfoldertype']."flagids"]: array()));
 						$importer[$collection['optionfoldertype'].$collection["collectionid"]] = new ImportContentsChangesStream($encoder, GetObjectClassFromFolderClass($collection["optionfoldertype"]), $ids, $msginfos[$collection["collectionid"]]);
 
 		                while(1) {
@@ -2027,7 +2034,8 @@ function HandleSync($backend, $protocolversion, $devid) {
 						foreach ($array_rf as $rfid) {
 					        $encoder->startTag(SYNC_MODIFY);
 							if (!isset($msginfos[$collection["collectionid"]][$rfid])) {
-
+								unset($importer[$collection["collectionid"]]->_readids[$rfid]);
+								unset($importer[$collection["collectionid"]]->_flagids[$rfid]);
 							    $encoder->startTag(SYNC_SERVERENTRYID);
 							    	$encoder->content($rfid);
 							    $encoder->endTag();
@@ -2078,8 +2086,8 @@ function HandleSync($backend, $protocolversion, $devid) {
 					if (isset($collection["optionfoldertype"])) {
 						$array_rf = array_unique(
 										array_merge(
-										    array_keys($importer[$collection["optionfoldertype"].$collection["collectionid"]]->_flagids),
-										    array_keys($importer[$collection["optionfoldertype"].$collection["collectionid"]]->_readids)
+										    array_keys(isset($importer[$collection["optionfoldertype"].$collection["collectionid"]]) ? $importer[$collection["optionfoldertype"].$collection["collectionid"]]->_flagids : array()),
+										    array_keys(isset($importer[$collection["optionfoldertype"].$collection["collectionid"]]) ? $importer[$collection["optionfoldertype"].$collection["collectionid"]]->_readids : array())
 										    ));
 				    	debugLog("HandleSync: After Exporting Changes we still have following array_rf in importer for optionfoldertype: ".print_r($array_rf,true));
 						$class = GetObjectClassFromFolderClass($collection["optionfoldertype"]);
@@ -2090,7 +2098,8 @@ function HandleSync($backend, $protocolversion, $devid) {
 						    $encoder->content($collection["optionfoldertype"]);
 				    	    $encoder->endTag();
 							if (!isset($msginfos[$collection["collectionid"]][$rfid])) {
-
+								unset($importer[$collection["optionfoldertype"].$collection["collectionid"]]->_readids[$rfid]);
+								unset($importer[$collection["optionfoldertype"].$collection["collectionid"]]->_flagids[$rfid]);
 							    $encoder->startTag(SYNC_SERVERENTRYID);
 							    	$encoder->content($rfid);
 							    $encoder->endTag();
@@ -2437,7 +2446,7 @@ function HandleGetItemEstimate($backend, $protocolversion, $devid) {
 
 	                $optionexporter = $backend->GetExporter($collection["collectionid"]);
     	            $optionexporter->Config($importer, $collection['options']['foldertype'], $collection['options'][$collection['options']['foldertype']]['filtertype'], $optionsyncstate, 0, 0, false, false);
-					$optionchangecount = $exporter->GetChangeCount();
+					$optionchangecount = $optionexporter->GetChangeCount();
 					if ($optionchangecount === false) {
 					    $optionsyncstatus=2;
 					} else {
@@ -2766,7 +2775,15 @@ function HandleSendMail($backend, $protocolversion) {
 							$result == 1) {
 			    switch ($tag) {
 					case SYNC_COMPOSEMAIL_SAVEINSENTITEMS : 
-					    $data['saveinsentitems'] = true; 
+						if ($data['saveinsentitems'] = $decoder->getElementContent()) {
+							$decoder->getElementEndTag();
+						} else {
+							$e = $decoder->peek();
+							if ($e[EN_TYPE] == EN_TYPE_ENDTAG) {
+								$decoder->getElementEndTag();
+							}
+					    	$data['saveinsentitems'] = true;
+						}
 					    break;
 					case SYNC_COMPOSEMAIL_CLIENTID :
     				    $data['clientid'] = $decoder->getElementContent();
@@ -2872,7 +2889,15 @@ function HandleSmartForward($backend, $protocolversion) {
 							$result == 1) {
 			    switch ($tag) {
 					case SYNC_COMPOSEMAIL_SAVEINSENTITEMS : 
-					    $data['saveinsentitems'] = true; 
+						if ($data['saveinsentitems'] = $decoder->getElementContent()) {
+							$decoder->getElementEndTag();
+						} else {
+							$e = $decoder->peek();
+							if ($e[EN_TYPE] == EN_TYPE_ENDTAG) {
+								$decoder->getElementEndTag();
+							}
+					    	$data['saveinsentitems'] = true;
+						}
 					    break;
 					case SYNC_COMPOSEMAIL_CLIENTID :
 		    		    $data['clientid'] = $decoder->getElementContent();
@@ -3046,7 +3071,15 @@ function HandleSmartReply($backend, $protocolversion) {
 				$result == 1) {
 			    switch ($tag) {
 					case SYNC_COMPOSEMAIL_SAVEINSENTITEMS : 
-					    $data['saveinsentitems'] = true; 
+						if ($data['saveinsentitems'] = $decoder->getElementContent()) {
+							$decoder->getElementEndTag();
+						} else {
+							$e = $decoder->peek();
+							if ($e[EN_TYPE] == EN_TYPE_ENDTAG) {
+								$decoder->getElementEndTag();
+							}
+					    	$data['saveinsentitems'] = true;
+						}
 					    break;
 					case SYNC_COMPOSEMAIL_CLIENTID :
 		    		    $data['clientid'] = $decoder->getElementContent();
@@ -3808,7 +3841,7 @@ function HandleSearch($backend, $devid, $protocolversion) {
 			$searchquery['query'] = ParseQuery($decoder);
 			break;	
 		case 'gal'	: 
-			$searchquery = $decoder->getElementContent(); 
+			$searchquery['query'] = $decoder->getElementContent(); 
 			break;
     }
     if(!$decoder->getElementEndTag())
@@ -3949,6 +3982,9 @@ function HandleSearch($backend, $devid, $protocolversion) {
            	$searchquery['deeptraversal'] =  $searchquerydeeptraversal;
             $searchquery['range'] = $searchrange;
 			break;	
+		case 'gal'		:
+            $searchquery['range'] = $searchrange;
+            break;
 	}
 
 

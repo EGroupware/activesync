@@ -737,10 +737,10 @@ class BackendEGW extends BackendDiff
 			switch($airsyncbasebody->type)
 			{
 				case '3' :	$rtf = $airsyncbasebody->data;
-							error_log("Airsyncbase RTF Body");
+							//error_log("Airsyncbase RTF Body");
 							break;
 				case '1' :	$body = $airsyncbasebody->data;
-							error_log("Airsyncbase Plain Body");
+							//error_log("Airsyncbase Plain Body");
 							break;
 			}
 		}

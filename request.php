@@ -2628,8 +2628,14 @@ function HandlePing($backend, $devid) {
 
     debugLog("Waiting for changes... (lifetime $lifetime)");
     // Wait for something to happen
-    for ($n=0;$n<$lifetime / $timeout; $n++ ) {
+	$pingrunavrgduration = 0;
+	$pingrunmaxduration = 0;
+	$until = time() + $lifetime;
+    $n=0;
+    while ((time()+$pingrunavrgduration) < ($until-$pingrunmaxduration)) {
+		$n++;
 		//check if there is a new ping request running...
+		$pingrunstarttime = microtime(true);
  		if (file_exists($file)) {
         	$ping = unserialize(file_get_contents($file));
 			if ($ping['timestamp'] > $timestamp) {
@@ -2696,7 +2702,15 @@ function HandlePing($backend, $devid) {
         }
 
         sleep($timeout);
+		$pingrunthisduration = (microtime(true) - $pingrunstarttime);
+		if ($pingrunavrgduration > 0)
+			$pingrunavrgduration = ($pingrunavrgduration + $pingrunthisduration) / 2;
+		else
+			$pingrunavrgduration = $pingrunthisduration;
+		if ($pingrunthisduration>$pingrunmaxduration) $pingrunmaxduration = $pingrunthisduration;
     }
+	debugLog("HandlePing: Max Ping run duration is ".$pingrunmaxduration);
+	debugLog("HandlePing: Average Ping run duration is ".$pingrunavrgduration);
 
     $encoder->StartWBXML();
 
@@ -3981,10 +3995,10 @@ function HandleSearch($backend, $devid, $protocolversion) {
           	$searchquery['rebuildresults'] = $searchqueryrebuildresults;
            	$searchquery['deeptraversal'] =  $searchquerydeeptraversal;
             $searchquery['range'] = $searchrange;
-			break;	
-		case 'gal'		:
+			break;
+		case 'gal'  : 
             $searchquery['range'] = $searchrange;
-            break;
+			break;
 	}
 
 

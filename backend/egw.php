@@ -139,6 +139,9 @@ class BackendEGW extends BackendDiff
 					case 'calendar':
 						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_APPOINTMENT : SYNC_FOLDER_TYPE_USER_APPOINTMENT;
 						break;
+					case 'infolog':
+						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_TASK : SYNC_FOLDER_TYPE_USER_TASK;
+						break;
 					default:
 						$ret->type = $folder == 0 ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
 						break;
@@ -574,6 +577,7 @@ class BackendEGW extends BackendDiff
 	 */
 	const TYPE_ADDRESSBOOK = 0x1000;
 	const TYPE_CALENDAR = 0x1001;
+	const TYPE_INFOLOG = 0x1002;
 	const TYPE_MAIL = 0x1010;
 
 	/**
@@ -596,6 +600,9 @@ class BackendEGW extends BackendDiff
 				break;
 			case 'calendar':
 				$type = self::TYPE_CALENDAR;
+				break;
+			case 'infolog':
+				$type = self::TYPE_INFOLOG;
 				break;
 			case 'mail': case 'felamimail':
 				$type = self::TYPE_MAIL;
@@ -649,6 +656,9 @@ class BackendEGW extends BackendDiff
 				break;
 			case self::TYPE_CALENDAR:
 				$app = $type = 'calendar';
+				break;
+			case self::TYPE_INFOLOG:
+				$app = $type = 'inflog';
 				break;
 			default:
 				if ($type < self::TYPE_MAIL)

@@ -489,7 +489,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function getSearchResults($searchquery,$searchname)
 	{
-		debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
+		//debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
 				$rows = $this->run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
@@ -658,7 +658,7 @@ class BackendEGW extends BackendDiff
 				$app = $type = 'calendar';
 				break;
 			case self::TYPE_INFOLOG:
-				$app = $type = 'inflog';
+				$app = $type = 'infolog';
 				break;
 			default:
 				if ($type < self::TYPE_MAIL)

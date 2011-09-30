@@ -186,6 +186,30 @@ class BackendEGW extends BackendDiff
 		return $ret;
 	}
 
+
+	/**
+	 * Creates or modifies a folder
+	 *
+	 * Attention: eGroupware currently does not support creating folders. The first device seen during testing
+	 * is now iOS 5 (beta). At least returning false causes the sync not to break.
+	 * As we currently do not support this function currently nothing is forwarded to the plugin.
+	 *
+	 * @param $id of the parent folder
+	 * @param $oldid => if empty -> new folder created, else folder is to be renamed
+	 * @param $displayname => new folder name (to be created, or to be renamed to)
+	 * @param type => folder type, ignored in IMAP
+	 *
+	 * @return stat | boolean false on error
+	 * 
+	 */
+	function ChangeFolder($id, $oldid, $displayname, $type)
+	{
+		debugLog(__METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
+		debugLog(__METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
+		return (false);
+	}
+
+
 	/**
 	 * Should return a list (array) of messages, each entry being an associative array
      * with the same entries as StatMessage(). This function should return stable information; ie

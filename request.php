@@ -2569,15 +2569,32 @@ function HandlePing($backend, $devid) {
             while($decoder->getElementStartTag(SYNC_PING_FOLDER)) {
                 $collection = array();
 
-                if($decoder->getElementStartTag(SYNC_PING_SERVERENTRYID)) {
-                    $collection["serverid"] = $decoder->getElementContent();
-                    $decoder->getElementEndTag();
-                }
-                if($decoder->getElementStartTag(SYNC_PING_FOLDERTYPE)) {
-                    $collection["class"] = $decoder->getElementContent();
-                    $decoder->getElementEndTag();
+				// moxier tasks for apple sends both values in a different order. thats why it was changed here to do it in flexible way
+                while (($type = ($decoder->getElementStartTag(SYNC_PING_SERVERENTRYID) ? SYNC_PING_SERVERENTRYID :
+				                ($decoder->getElementStartTag(SYNC_PING_FOLDERTYPE)    ? SYNC_PING_FOLDERTYPE :
+				                -1))) != -1) {
+					switch ($type) {
+						case SYNC_PING_SERVERENTRYID :
+							if (($collection["serverid"] = $decoder->getElementContent()) != false) {
+						        if(!$decoder->getElementEndTag())
+				    		        return false;
+							}
+							break;
+						case SYNC_PING_FOLDERTYPE :
+							if (($collection["class"] = $decoder->getElementContent()) != false) {
+						        if(!$decoder->getElementEndTag())
+						            return false;
+							}
+							break;
+					}
                 }
 
+				// if we don't find either class or serverid send back error 3 to ask device for a full request
+				if (!isset($collection["class"]) ||
+					!isset($collection["serverid"])) {
+					_HandlePingError("3");
+					return false;
+				}
                 $decoder->getElementEndTag();
 
                 // initialize empty state

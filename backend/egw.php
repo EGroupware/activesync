@@ -139,6 +139,9 @@ class BackendEGW extends BackendDiff
 					case 'calendar':
 						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_APPOINTMENT : SYNC_FOLDER_TYPE_USER_APPOINTMENT;
 						break;
+					case 'infolog':
+						$ret->type = $folder == $account_id ? SYNC_FOLDER_TYPE_TASK : SYNC_FOLDER_TYPE_USER_TASK;
+						break;
 					default:
 						$ret->type = $folder == 0 ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
 						break;
@@ -182,6 +185,30 @@ class BackendEGW extends BackendDiff
 		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
+
+
+	/**
+	 * Creates or modifies a folder
+	 *
+	 * Attention: eGroupware currently does not support creating folders. The first device seen during testing
+	 * is now iOS 5 (beta). At least returning false causes the sync not to break.
+	 * As we currently do not support this function currently nothing is forwarded to the plugin.
+	 *
+	 * @param $id of the parent folder
+	 * @param $oldid => if empty -> new folder created, else folder is to be renamed
+	 * @param $displayname => new folder name (to be created, or to be renamed to)
+	 * @param type => folder type, ignored in IMAP
+	 *
+	 * @return stat | boolean false on error
+	 * 
+	 */
+	function ChangeFolder($id, $oldid, $displayname, $type)
+	{
+		debugLog(__METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
+		debugLog(__METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
+		return (false);
+	}
+
 
 	/**
 	 * Should return a list (array) of messages, each entry being an associative array
@@ -486,7 +513,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function getSearchResults($searchquery,$searchname)
 	{
-		debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
+		//debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
 				$rows = $this->run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
@@ -574,6 +601,7 @@ class BackendEGW extends BackendDiff
 	 */
 	const TYPE_ADDRESSBOOK = 0x1000;
 	const TYPE_CALENDAR = 0x1001;
+	const TYPE_INFOLOG = 0x1002;
 	const TYPE_MAIL = 0x1010;
 
 	/**
@@ -596,6 +624,9 @@ class BackendEGW extends BackendDiff
 				break;
 			case 'calendar':
 				$type = self::TYPE_CALENDAR;
+				break;
+			case 'infolog':
+				$type = self::TYPE_INFOLOG;
 				break;
 			case 'mail': case 'felamimail':
 				$type = self::TYPE_MAIL;
@@ -649,6 +680,9 @@ class BackendEGW extends BackendDiff
 				break;
 			case self::TYPE_CALENDAR:
 				$app = $type = 'calendar';
+				break;
+			case self::TYPE_INFOLOG:
+				$app = $type = 'infolog';
 				break;
 			default:
 				if ($type < self::TYPE_MAIL)

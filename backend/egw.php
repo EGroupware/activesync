@@ -200,7 +200,7 @@ class BackendEGW extends BackendDiff
 	 * @param type => folder type, ignored in IMAP
 	 *
 	 * @return stat | boolean false on error
-	 * 
+	 *
 	 */
 	function ChangeFolder($id, $oldid, $displayname, $type)
 	{
@@ -307,10 +307,10 @@ class BackendEGW extends BackendDiff
 			if ($app == 'felamimail' && $folder == 0)
 			{
 
-				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $truncsize, $bodypreference, $mimesupport);
+				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
 			}
 		}
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $mimesupport);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
 	}
 
 	/**

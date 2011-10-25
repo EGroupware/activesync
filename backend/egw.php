@@ -343,6 +343,12 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
 	}
 
+	function ItemOperationsFetchMailbox($entryid, $bodypreference, $mimesupport = 0) {
+		debugLog(__METHOD__.__LINE__.'Entry:'.$entryid.', BodyPref:'.array2string( $bodypreference).', MimeSupport:'.array2string($mimesupport));
+		debugLog(function_backtrace());
+		return false;
+	}
+
 	/**
 	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
      * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)

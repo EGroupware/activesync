@@ -345,8 +345,17 @@ class BackendEGW extends BackendDiff
 
 	function ItemOperationsFetchMailbox($entryid, $bodypreference, $mimesupport = 0) {
 		debugLog(__METHOD__.__LINE__.'Entry:'.$entryid.', BodyPref:'.array2string( $bodypreference).', MimeSupport:'.array2string($mimesupport));
-		debugLog(function_backtrace());
-		return false;
+		list($folderid, $uid) = explode(":", $entryid); // split name as it is constructed that way FOLDERID:UID:PARTID
+		$this->splitID($folderid, $type, $folder, $app);
+		//debugLog(__METHOD__.__LINE__."$folderid, $type, $folder, $app");
+		if ($app === 'felamimail')
+		{									// GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
+			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreferences[1]['TruncationSize']?$bodypreferences[1]['TruncationSize']:500), $bodypreference, $optionbodypreference=false, $mimesupport);
+		}
+		else
+		{
+			return false;
+		}
 	}
 
 	/**

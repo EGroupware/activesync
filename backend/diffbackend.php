@@ -352,7 +352,7 @@ class ExportChangesDiff extends DiffState {
     }
 
     // CHANGED dw2412 Support Protocol Version 12 (added bodypreference)
-    function Config(&$importer, $folderid, $restrict, $syncstate, $flags, $truncation, $bodypreference, $optionbodypreference, $mimesupport=0) {
+    function Config(&$importer, $mclass, $restrict, $syncstate, $flags, $truncation, $bodypreference, $optionbodypreference, $mimesupport=0) {
         $this->_importer = &$importer;
         $this->_restrict = $restrict;
         $this->_syncstate = unserialize($syncstate);
@@ -365,7 +365,6 @@ class ExportChangesDiff extends DiffState {
         $this->_changes = array();
         $this->_step = 0;
 
-		debugLog("DiffBackend::Config mimesupport is: ". $this->_mimesupport);
         $cutoffdate = $this->getCutOffDate($restrict);
 
         if($this->_folderid) {
@@ -380,8 +379,16 @@ class ExportChangesDiff extends DiffState {
             //do nothing if it is a dummy folder
             if ($this->_folderid != SYNC_FOLDER_TYPE_DUMMY) {
 
+            	debugLog (__METHOD__. " folderid is ". $folderid);
+
+            	if ($mclass == 'SMS') {
+            		debugLog(__METHOD__. " disabled for mclass=sms"); // mclass is not available in GetMessageList/GetMessage
+            		$this->_changes = array();
+            	}
+            	else
+
                 // on ping: check if backend supports alternative PING mechanism & use it
-                if ($folderid === false && $this->_flags == BACKEND_DISCARD_DATA && $this->_backend->AlterPing()) {
+                if ($mclass === false && $this->_flags == BACKEND_DISCARD_DATA && $this->_backend->AlterPing()) {
                     $this->_changes = $this->_backend->AlterPingChanges($this->_folderid, $this->_syncstate);
                 }
                 else {
@@ -420,7 +427,6 @@ class ExportChangesDiff extends DiffState {
     function Synchronize() {
         $progress = array();
 
-		debugLog("DiffBackend::Synchronize mimesupport is: ". $this->_mimesupport);
         // Get one of our stored changes and send it to the importer, store the new state if
         // it succeeds
         if($this->_folderid == false) {

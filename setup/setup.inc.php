@@ -34,6 +34,7 @@ $setup_info['activesync']['maintainer'] = array(
 
 $setup_info['activesync']['hooks']['preferences']	= 'activesync_hooks::menus';
 $setup_info['activesync']['hooks']['settings']	= 'activesync_hooks::settings';
+$setup_info['activesync']['hooks']['verify_settings']	= 'activesync_hooks::verify_settings';
 
 /* Dependencies for this app to work */
 $setup_info['activesync']['depends'][] = array(

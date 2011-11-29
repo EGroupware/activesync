@@ -71,6 +71,71 @@ class activesync_hooks
 			}
 			$settings[$name] = $data;
 		}
+		if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
+			$GLOBALS['egw_info']['user']['preferences']['activesync']['delete-profile'] !== 'never')
+		{
+			// check if our verify_settings hook is registered, register if if not
+			$hooks = $GLOBALS['egw']->hooks;
+			if (!isset($hooks->locations['verify_settings']['activesync']))
+			{
+				$f = EGW_SERVER_ROOT . '/activesync/setup/setup.inc.php';
+				$setup_info = array($appname => array());
+				if(@file_exists($f)) include($f);
+				$hooks->register_hooks('activesync', $setup_info['activesync']['hooks']);
+				$GLOBALS['egw']->invalidate_session_cache();
+			}
+			if ($GLOBALS['type'] === 'user')
+			{
+				$profiles = array();
+				if (($dirs = scandir($as_dir=$GLOBALS['egw_info']['server']['files_dir'].'/activesync')))
+				{
+					foreach($dirs as $dir)
+					{
+						if (file_exists($as_dir.'/'.$dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']))
+						{
+							$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
+						}
+					}
+				}
+			}
+			else	// allow to force users to NOT be able to delete their profiles
+			{
+				$profiles = array('never' => lang('Never'));
+			}
+			$settings[] = array(
+				'type'  => 'section',
+				'title' => 'Maintenance',
+			);
+			$settings['delete-profile'] = array(
+				'type'   => 'select',
+				'label'  => 'Select serverside profile to delete<br>ALWAYS delete account on device first!',
+				'name'   => 'delete-profile',
+				'help'   => 'Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.',
+				'values' => $profiles,
+				'xmlrpc' => True,
+				'admin'  => False,
+			);
+		}
 		return $settings;
+	}
+
+	/**
+	 * Verify settings before storing them
+	 *
+	 * @param array $hook_data values for keys 'location', 'prefs', 'prefix' and 'type'
+	 * @return string|boolean false on success or string with error-message to NOT store preferences
+	 */
+	static function verify_settings($hook_data)
+	{
+		if ($hook_data['prefs']['delete-profile'] && preg_match('/^[a-z0-9]+$/',$hook_data['prefs']['delete-profile']) &&
+			file_exists($profil=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$hook_data['prefs']['delete-profile']))
+		{
+			foreach(scandir($profil) as $file)
+			{
+				unlink($profil.'/'.$file);
+			}
+			return rmdir($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
+				lang('Deleting of profil %1 failed!',$hook_data['prefs']['delete-profile']);
+		}
 	}
 }

@@ -558,6 +558,30 @@ define("SYNC_POOMNOTES_CATEGORIES","POOMNOTES:Categories");
 define("SYNC_POOMNOTES_CATEGORY","POOMNOTES:Category");
 // END ADDED dw2412 14.0 PoomNotes Support
 
+// START ADDED dw2412 14.1 RightsManagementSupport
+define("SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT","RightsManagement:RightsManagementSupport");
+define("SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTTEMPLATES","RightsManagement:RightsManagementTemplates");
+define("SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTTEMPLATE","RightsManagement:RightsManagementTemplate");
+define("SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTLICENSE","RightsManagement:RightsManagementLicense");
+define("SYNC_RIGHTSMANAGEMENT_EDITALLOWED","RightsManagement:EditAllowed");
+define("SYNC_RIGHTSMANAGEMENT_REPLYALLOWED","RightsManagement:ReplyAllowed");
+define("SYNC_RIGHTSMANAGEMENT_REPLYALLALLOWED","RightsManagement:ReplyAllAllowed");
+define("SYNC_RIGHTSMANAGEMENT_FORWARDALLOWED","RightsManagement:ForwardAllowed");
+define("SYNC_RIGHTSMANAGEMENT_MODIFYRECIPIENTSALLOWED","RightsManagement:ModifyRecipientsAllowed");
+define("SYNC_RIGHTSMANAGEMENT_EXTRACTALLOWED","RightsManagement:ExtractAllowed");
+define("SYNC_RIGHTSMANAGEMENT_PRINTALLOWED","RightsManagement:PrintAllowed");
+define("SYNC_RIGHTSMANAGEMENT_EXPORTALLOWED","RightsManagement:ExportAllowed");
+define("SYNC_RIGHTSMANAGEMENT_PROGRAMMATICACCESSALLOWED","RightsManagement:ProgrammaticAccessAllowed");
+define("SYNC_RIGHTSMANAGEMENT_RMOWNER","RightsManagement:RMOwner");
+define("SYNC_RIGHTSMANAGEMENT_CONTENTEXPIRYDATE","RightsManagement:ContentExpiryDate");
+define("SYNC_RIGHTSMANAGEMENT_TEMPLATEID","RightsManagement:TemplateID");
+define("SYNC_RIGHTSMANAGEMENT_TEMPLATENAME","RightsManagement:TemplateName");
+define("SYNC_RIGHTSMANAGEMENT_TEMPLATEDESCRIPTION","RightsManagement:TemplateDescription");
+define("SYNC_RIGHTSMANAGEMENT_CONTENTOWNER","RightsManagement:ContentOwner");
+define("SYNC_RIGHTSMANAGEMENT_REMOVERIGHTSMANAGEMENTDISTRIBUTION","RightsManagement:RemoveRightsManagementDistribution");
+// START ADDED dw2412 14.1 RightsManagementSupport
+
+
 // Other constants
 define("SYNC_FOLDER_TYPE_OTHER", 1);
 define("SYNC_FOLDER_TYPE_INBOX", 2);

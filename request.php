@@ -611,7 +611,7 @@ function HandleSync($backend, $protocolversion, $devid) {
 				        // set default conflict behavior from config if the device doesn't send a conflict resolution parameter
 						$collection['conflict'] = SYNC_CONFLICT_DEFAULT;
 						$collection['onlyoptionbodypreference'] = false;
-
+						$collection['RightsManagementSupport'] = false;
 			    		while (($foldertag = ($decoder->getElementStartTag(SYNC_FOLDERTYPE)  		? SYNC_FOLDERTYPE		:
 			    							 ($decoder->getElementStartTag(SYNC_SYNCKEY)  			? SYNC_SYNCKEY 			:
 			 								 ($decoder->getElementStartTag(SYNC_FOLDERID)	  		? SYNC_FOLDERID 		:
@@ -715,11 +715,15 @@ function HandleSync($backend, $protocolversion, $devid) {
 							        						 ($decoder->getElementStartTag(SYNC_MIMETRUNCATION) ? SYNC_MIMETRUNCATION :
 							        						 ($decoder->getElementStartTag(SYNC_CONFLICT) ? SYNC_CONFLICT :
 					    		    						 ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE) ? SYNC_AIRSYNCBASE_BODYPREFERENCE :
-					        								 -1))))))))) != -1) {
+					    		    						 ($decoder->getElementStartTag(SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT) ? SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
+					        								 -1)))))))))) != -1) {
 								    	// dw2412 in as14 this is used to sent SMS type messages
 								    	switch ($syncoptionstag) {
 								    		case SYNC_FOLDERTYPE :
 						    	       	   	    $collection['optionfoldertype'] = $decoder->getElementContent();
+												$collection[$collection['optionfoldertype']]['RightsManagementSupport'] = false;
+								        		$collection[$collection['optionfoldertype']]['truncation'] = SYNC_TRUNCATION_ALL;
+												$collection[$collection['optionfoldertype']]['conflict'] = SYNC_CONFLICT_DEFAULT;
 		    		    			       	    if(!$decoder->getElementEndTag())
 		    		    	    		   	    	return false;
 												// In case there is no optionfoldertype set in our cache, remove all old 
@@ -824,6 +828,14 @@ function HandleSync($backend, $protocolversion, $devid) {
 		    	    																			   						   !isset($collection["BodyPreference"][4]));
 							               		break;
 		    	   							// END ADDED dw2412 V12.0 Sync Support
+								            case SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
+					    		        	    if (isset($collection['optionfoldertype'])) 
+				        		 	      			$collection[$collection['optionfoldertype']]['RightsManagementSupport'] = $decoder->getElementContent();
+						    				    else
+				   	            					$collection['RightsManagementSupport'] = $decoder->getElementContent();
+					               	    		if(!$decoder->getElementEndTag())
+						                       		return false;
+						                       	break;
 				       					}
 						            }
 					               	$decoder->getElementEndTag();
@@ -3952,17 +3964,19 @@ function HandleSearch($backend, $devid, $protocolversion) {
 		$searchquerydeeptraversal = false;
 		$searchqueryrebuildresults = false;
 	    $searchschema = false;
+		$rightsmanagementsupport = false;
 		$mimesupport = 0;
-	  	while (($searchoptionstag = ($decoder->getElementStartTag(SYNC_SEARCH_RANGE)  				? SYNC_SEARCH_RANGE					:
-			    					($decoder->getElementStartTag(SYNC_SEARCH_DEEPTRAVERSAL)		? SYNC_SEARCH_DEEPTRAVERSAL			:
-			 						($decoder->getElementStartTag(SYNC_SEARCH_REBUILDRESULTS)		? SYNC_SEARCH_REBUILDRESULTS		:
-			 						($decoder->getElementStartTag(SYNC_SEARCH_USERNAME)	  			? SYNC_SEARCH_USERNAME	 			:
-			 						($decoder->getElementStartTag(SYNC_SEARCH_PASSWORD)	  			? SYNC_SEARCH_PASSWORD	 			:
-			 						($decoder->getElementStartTag(SYNC_SEARCH_SCHEMA)	  			? SYNC_SEARCH_SCHEMA		 		:
-			 						($decoder->getElementStartTag(SYNC_MIMESUPPORT)	  				? SYNC_MIMESUPPORT		 			:
-			 						($decoder->getElementStartTag(SYNC_MIMETRUNCATION)	  			? SYNC_MIMETRUNCATION	 			:
-			 						($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE)	? SYNC_AIRSYNCBASE_BODYPREFERENCE	:
-									-1)))))))))) != -1) {
+	  	while (($searchoptionstag = ($decoder->getElementStartTag(SYNC_SEARCH_RANGE)  								? SYNC_SEARCH_RANGE								:
+			    					($decoder->getElementStartTag(SYNC_SEARCH_DEEPTRAVERSAL)						? SYNC_SEARCH_DEEPTRAVERSAL						:
+			 						($decoder->getElementStartTag(SYNC_SEARCH_REBUILDRESULTS)						? SYNC_SEARCH_REBUILDRESULTS					:
+			 						($decoder->getElementStartTag(SYNC_SEARCH_USERNAME)	  							? SYNC_SEARCH_USERNAME	 						:
+			 						($decoder->getElementStartTag(SYNC_SEARCH_PASSWORD)	  							? SYNC_SEARCH_PASSWORD				 			:
+			 						($decoder->getElementStartTag(SYNC_SEARCH_SCHEMA)	  							? SYNC_SEARCH_SCHEMA		 					:
+			 						($decoder->getElementStartTag(SYNC_MIMESUPPORT)	  								? SYNC_MIMESUPPORT		 						:
+			 						($decoder->getElementStartTag(SYNC_MIMETRUNCATION)	  							? SYNC_MIMETRUNCATION	 						:
+			 						($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE)					? SYNC_AIRSYNCBASE_BODYPREFERENCE				:
+			 						($decoder->getElementStartTag(SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT) 	? SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
+									-1))))))))))) != -1) {
  			switch($searchoptionstag) {
  				case SYNC_SEARCH_RANGE :
 					if (($searchrange = $decoder->getElementContent()))
@@ -4049,6 +4063,11 @@ function HandleSearch($backend, $devid, $protocolversion) {
 					}
 			       	$decoder->getElementEndTag();
                 	break;
+	            case SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
+					$rightsmanagementsupport = $decoder->getElementContent();
+      	    		if(!$decoder->getElementEndTag())
+                  		return false;
+                  	break;
 			};
     //END ADDED dw2412 V12.0 Support
         }
@@ -4523,6 +4542,7 @@ function HandleItemOperations($backend, $devid, $protocolversion, $multipart) {
 
     $request = array();
 	$mimesupport = 0;
+	$rightsmanagementsupport = false;
     while (($reqtype = ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_FETCH)       			?   SYNC_ITEMOPERATIONS_FETCH      	  		:
 				       ($decoder->getElementStartTag(SYNC_ITEMOPERATIONS_EMPTYFOLDERCONTENT) 	?   SYNC_ITEMOPERATIONS_EMPTYFOLDERCONTENT	:
 				       -1))) != -1) {
@@ -4539,43 +4559,52 @@ function HandleItemOperations($backend, $devid, $protocolversion, $multipart) {
 						      ($decoder->getElementStartTag(SYNC_SEARCH_LONGID)			 	?   SYNC_SEARCH_LONGID				:
 				    	      -1)))))))))) != -1) {
 	    		if ($reqtag == SYNC_ITEMOPERATIONS_OPTIONS) {
-	    		    while (($thisoption = ($decoder->getElementStartTag(SYNC_MIMESUPPORT)					? SYNC_MIMESUPPORT 					:
-	    		    					  ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE) 	? SYNC_AIRSYNCBASE_BODYPREFERENCE 	:
-	    		    					  -1))) != -1) {
-						if ($thisoption == SYNC_MIMESUPPORT) {
-			        	    $mimesupport = $decoder->getElementContent();
-	    			    	$decoder->getElementEndTag();
-						} elseif ($thisoption == SYNC_AIRSYNCBASE_BODYPREFERENCE) {
-				    	    $bodypreference=array();
-	        	        	while(1) {
-            	    	    	if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TYPE)) {
-			                        $bodypreference["Type"] = $decoder->getElementContent();
-    				                if(!$decoder->getElementEndTag())
-        	                    	    return false;
-    	    		    	    }
+	    		    while (($thisoption = ($decoder->getElementStartTag(SYNC_MIMESUPPORT)								? SYNC_MIMESUPPORT 								:
+	    		    					  ($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE) 				? SYNC_AIRSYNCBASE_BODYPREFERENCE 				:
+	    		    					  ($decoder->getElementStartTag(SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT) 	? SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
+	    		    					  -1)))) != -1) {
+						switch ($thisoption) {
+							case SYNC_MIMESUPPORT :
+								$mimesupport = $decoder->getElementContent();
+								$decoder->getElementEndTag();
+								break;
+							case SYNC_AIRSYNCBASE_BODYPREFERENCE :
+					    	    $bodypreference=array();
+		        	        	while(1) {
+        	    	    	    	if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TYPE)) {
+				                        $bodypreference["Type"] = $decoder->getElementContent();
+	    				                if(!$decoder->getElementEndTag())
+	        	                    	    return false;
+	    	    		    	    }
 
-	            	    	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TRUNCATIONSIZE)) {
-			        	        	$bodypreference["TruncationSize"] = $decoder->getElementContent();
-			        		        if(!$decoder->getElementEndTag())
-            	                	    return false;
-	        		    	    }
+		            	    	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_TRUNCATIONSIZE)) {
+				        	        	$bodypreference["TruncationSize"] = $decoder->getElementContent();
+				        		        if(!$decoder->getElementEndTag())
+	            	                	    return false;
+		        		    	    }
 
-		                	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_ALLORNONE)) {
-    		    	                $bodypreference["AllOrNone"] = $decoder->getElementContent();
-			        		        if(!$decoder->getElementEndTag())
-	        	            		    return false;
-	    	    			    }
+			                	    if($decoder->getElementStartTag(SYNC_AIRSYNCBASE_ALLORNONE)) {
+	    		    	                $bodypreference["AllOrNone"] = $decoder->getElementContent();
+				        		        if(!$decoder->getElementEndTag())
+		        	            		    return false;
+		    	    			    }
 
-	            	    	    $e = $decoder->peek();
-		            		    if($e[EN_TYPE] == EN_TYPE_ENDTAG) {
-    			        			$decoder->getElementEndTag();
-									if (!isset($thisio["bodypreference"]["wanted"]))
-									    $thisio["bodypreference"]["wanted"] = $bodypreference["Type"];
-									if (isset($bodypreference["Type"]))
-									    $thisio["bodypreference"][$bodypreference["Type"]] = $bodypreference;
-		    		    			break;
-	    		    	    	}
-                			}
+		            	    	    $e = $decoder->peek();
+			            		    if($e[EN_TYPE] == EN_TYPE_ENDTAG) {
+	    			        			$decoder->getElementEndTag();
+										if (!isset($thisio["bodypreference"]["wanted"]))
+										    $thisio["bodypreference"]["wanted"] = $bodypreference["Type"];
+										if (isset($bodypreference["Type"]))
+										    $thisio["bodypreference"][$bodypreference["Type"]] = $bodypreference;
+			    		    			break;
+		    		    	    	}
+								}
+								break;
+				            case SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
+								$rightsmanagementsupport = $decoder->getElementContent();
+			      	    		if(!$decoder->getElementEndTag())
+			                  		return false;
+			                  	break;
 				    	}
 					}
 				} elseif ($reqtag == SYNC_ITEMOPERATIONS_STORE) {

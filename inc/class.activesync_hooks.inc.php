@@ -130,12 +130,32 @@ class activesync_hooks
 		if ($hook_data['prefs']['delete-profile'] && preg_match('/^[a-z0-9]+$/',$hook_data['prefs']['delete-profile']) &&
 			file_exists($profil=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$hook_data['prefs']['delete-profile']))
 		{
-			foreach(scandir($profil) as $file)
-			{
-				unlink($profil.'/'.$file);
-			}
-			return rmdir($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
+			return self::rm_recursive($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
 				lang('Deleting of profil %1 failed!',$hook_data['prefs']['delete-profile']);
 		}
+	}
+
+	/**
+	 * Recursivly remove a whole directory (or file)
+	 *
+	 * @param string $path
+	 * @return boolean true on success, false on failure
+	 */
+	private static function rm_recursive($path)
+	{
+		$ok = true;
+		if (is_dir($path))
+		{
+			foreach(scandir($path) as $file)
+			{
+				if ($file != '.' && $file != '..' && !($ok = self::rm_recursive($path.'/'.$file))) break;
+			}
+			if ($ok) $ok = rmdir($path);
+		}
+		else
+		{
+			$ok = unlink($path);
+		}
+		return $ok;
 	}
 }

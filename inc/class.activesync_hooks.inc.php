@@ -14,6 +14,10 @@
  */
 class activesync_hooks
 {
+	public $public_functions = array(
+		'log' => true,
+	);
+
 	/**
 	 * Show E-Push preferences link in preferences
 	 *
@@ -71,52 +75,118 @@ class activesync_hooks
 			}
 			$settings[$name] = $data;
 		}
-		if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
-			$GLOBALS['egw_info']['user']['preferences']['activesync']['delete-profile'] !== 'never')
+		// check if our verify_settings hook is registered, register if if not
+		$hooks = $GLOBALS['egw']->hooks;
+		if (!isset($hooks->locations['verify_settings']['activesync']))
 		{
-			// check if our verify_settings hook is registered, register if if not
-			$hooks = $GLOBALS['egw']->hooks;
-			if (!isset($hooks->locations['verify_settings']['activesync']))
+			$f = EGW_SERVER_ROOT . '/activesync/setup/setup.inc.php';
+			$setup_info = array($appname => array());
+			if(@file_exists($f)) include($f);
+			$hooks->register_hooks('activesync', $setup_info['activesync']['hooks']);
+			$GLOBALS['egw']->invalidate_session_cache();
+		}
+		if ($GLOBALS['type'] === 'user')
+		{
+			$profiles = $logs = array();
+			if (($dirs = scandir($as_dir=$GLOBALS['egw_info']['server']['files_dir'].'/activesync')))
 			{
-				$f = EGW_SERVER_ROOT . '/activesync/setup/setup.inc.php';
-				$setup_info = array($appname => array());
-				if(@file_exists($f)) include($f);
-				$hooks->register_hooks('activesync', $setup_info['activesync']['hooks']);
-				$GLOBALS['egw']->invalidate_session_cache();
-			}
-			if ($GLOBALS['type'] === 'user')
-			{
-				$profiles = array();
-				if (($dirs = scandir($as_dir=$GLOBALS['egw_info']['server']['files_dir'].'/activesync')))
+				foreach($dirs as $dir)
 				{
-					foreach($dirs as $dir)
+					if (file_exists($as_dir.'/'.$dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']))
 					{
-						if (file_exists($as_dir.'/'.$dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']))
-						{
-							$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
-						}
+						$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
+
+						$logs['activesync/'.$dir.'/debug.txt'] = (file_exists($log = $as_dir.'/'.$dir.'/debug.txt') && !is_link($log) ?
+								egw_time::to(filemtime($log)) : lang('disabled')).': '.$dir;
 					}
 				}
+				if ($GLOBALS['egw_info']['user']['apps']['admin'])
+				{
+					$logs['activesync/debug.txt'] = (file_exists($log = $as_dir.'/debug.txt') && !is_link($log) ?
+							egw_time::to(filemtime($log)) : lang('disabled')).': '.lang('All users, admin only');
+				}
 			}
-			else	// allow to force users to NOT be able to delete their profiles
-			{
-				$profiles = array('never' => lang('Never'));
-			}
+			$link = egw::link('/index.php',array(
+				'menuaction' => 'activesync.activesync_hooks.log',
+				'filename' => '',
+			));
+			$onchange = "egw_openWindowCentered('$link'+encodeURIComponent(this.value), '_blank', 1000, 500); this.value=''";
+		}
+		else	// allow to force users to NOT be able to delete their profiles
+		{
+			$profiles = $logs = array('never' => lang('Never'));
+		}
+		if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
+			($GLOBALS['egw_info']['user']['preferences']['activesync']['show-log'] !== 'never' ||
+			$GLOBALS['egw_info']['user']['preferences']['activesync']['delete-profile'] !== 'never'))
+		{
 			$settings[] = array(
 				'type'  => 'section',
 				'title' => 'Maintenance',
 			);
-			$settings['delete-profile'] = array(
-				'type'   => 'select',
-				'label'  => 'Select serverside profile to delete<br>ALWAYS delete account on device first!',
-				'name'   => 'delete-profile',
-				'help'   => 'Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.',
-				'values' => $profiles,
-				'xmlrpc' => True,
-				'admin'  => False,
-			);
+			if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
+				$GLOBALS['egw_info']['user']['preferences']['activesync']['show-log'] !== 'never')
+			{
+				$settings['show-log'] = array(
+					'type'   => 'select',
+					'label'  => 'Show log of following device',
+					'name'   => 'show-log',
+					'help'   => 'Shows log of a device, enabling it if currently disabled. To disable logging, delete the log file in popup!',
+					'values' => $logs,
+					'xmlrpc' => True,
+					'admin'  => False,
+					'onchange' => $onchange,
+				);
+			}
+			if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
+				$GLOBALS['egw_info']['user']['preferences']['activesync']['delete-profile'] !== 'never')
+			{
+				$settings['delete-profile'] = array(
+					'type'   => 'select',
+					'label'  => 'Select serverside profile to delete<br>ALWAYS delete account on device first!',
+					'name'   => 'delete-profile',
+					'help'   => 'Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.',
+					'values' => $profiles,
+					'xmlrpc' => True,
+					'admin'  => False,
+				);
+			}
 		}
 		return $settings;
+	}
+
+	/**
+	 * Open log window for log-file specified in GET parameter filename (relative to files_dir)
+	 *
+	 * $_GET['filename'] has to be in groupdav sub-dir of files_dir and start with account_lid of current user
+	 *
+	 * @throws egw_exception_wrong_parameter
+	 */
+	public function log()
+	{
+		$filename = $_GET['filename'];
+		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/'.dirname($filename);
+		if (!file_exists($profile_dir) || !is_dir($profile_dir) || (
+				!file_exists($profile_dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']) &&
+				!($GLOBALS['egw_info']['user']['apps']['admin'] && $filename == 'activesync/debug.txt')))
+		{
+			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
+		}
+		$GLOBALS['egw_info']['flags']['css'] = '
+body { background-color: #e0e0e0; }
+pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
+';
+		if (!file_exists($debug_file=$GLOBALS['egw_info']['server']['files_dir'].'/'.$filename))
+		{
+			touch($debug_file);
+		}
+		elseif (is_link($debug_file))
+		{
+			unlink($debug_file);
+			touch($debug_file);
+		}
+		$tail = new egw_tail($filename);
+		$GLOBALS['egw']->framework->render($tail->show(),false,false);
 	}
 
 	/**
@@ -128,7 +198,8 @@ class activesync_hooks
 	static function verify_settings($hook_data)
 	{
 		if ($hook_data['prefs']['delete-profile'] && preg_match('/^[a-z0-9]+$/',$hook_data['prefs']['delete-profile']) &&
-			file_exists($profil=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$hook_data['prefs']['delete-profile']))
+			file_exists($profil=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$hook_data['prefs']['delete-profile']) &&
+			file_exists($profil.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']))
 		{
 			return self::rm_recursive($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
 				lang('Deleting of profil %1 failed!',$hook_data['prefs']['delete-profile']);

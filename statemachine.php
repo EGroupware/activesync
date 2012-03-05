@@ -226,7 +226,7 @@ class StateMachine {
     }
 
     // Writes the sync state to a new synckey
-    function setSyncCache($cachestate) {
+    function setSyncCache($cachestate, $folders = false) {
 		global $cachestatus;
 		$this->newsynccache = unserialize($cachestate);
 		$cachestatus = SYNCCACHE_UNCHANGED;
@@ -237,8 +237,43 @@ class StateMachine {
 				$this->_compareCacheRecursive($this->newsynccache["collections"],$this->oldsynccache["collections"],$cachestatus);
 		    } else $cachestatus = SYNCCACHE_CHANGED;
 		} else $cachestatus = SYNCCACHE_CHANGED;
+		$dir = STATE_PATH. "/" .$this->_devid."/cache_".$this->_user;
+		$initialconvert = false;
+        if(!is_dir($dir)) {
+	    	debugLog("StateMachine->setSyncCache: created folder ".$dir);
+			$initialconvert = true;
+	 		if (mkdir($dir, 0744) === false) 
+				debugLog("StateMachine->setSyncCache: failed to create folder ".$dir);
+		}
+		foreach($this->newsynccache as $k1=>$v1) {
+			if ($folders == false && 
+				$k1 == 'folders' &&
+				$initialconvert == false) continue;
+			if (is_array($v1)) {
+				if (!is_dir($dir."/".$k1))
+			 		mkdir($dir.'/'.$k1, 0744);
+				foreach($v1 as $k2=>$v2) {
+					if (is_array($v2)) {
+						file_put_contents($dir."/".$k1."/".$k2,serialize($v2));
+					} else 
+						file_put_contents($dir."/".$k1."/".$k2,serialize(array("singleValue" => $v2)));
+				}
+			} else {
+				file_put_contents($dir."/".$k1,serialize(array("singleValue" => $v1)));
+			}
+		}
 		return file_put_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $cachestate);
     }
+
+	function deleteSyncCacheConfirmedSyncKey(&$cache,$key) {
+		$file = STATE_PATH. "/" .$this->_devid."/cache_".$this->_user."/confirmed_synckeys/".$key;
+		debugLog("try to unlink $file ".file_exists($file));
+		if (file_exists($file))
+			if (!unlink($file)) 
+				debugLog("StateMachine->deleteSyncCacheConfirmedSyncKey: Failed to unlink $file ".file_exists($file));
+		if (isset($cache['confirmed_synckeys'][$key])) 
+			unset($cache['confirmed_synckeys'][$key]);
+	}
 
     function _compareCacheRecursive($old, $new, &$cachestatus) {
 		$cachestatus = SYNCCACHE_UNCHANGED;
@@ -260,14 +295,43 @@ class StateMachine {
 		}
     }
 
+	function _readSyncCacheFromFolder($folder) {
+		$res = array();
+		$dir = opendir($folder);
+		if (!$dir) return false;
+		while (($file = readdir($dir)) !== false) {
+			if ($file == '.' || $file == '..') continue;
+			if (is_dir($folder."/".$file)) 
+				$res[$file] = $this->_readSyncCacheFromFolder($folder."/".$file);
+			else 
+				$res[$file] = (is_array($c1 = @unserialize(file_get_contents($folder."/".$file))) ? (isset($c1['singleValue']) ? $c1['singleValue'] : $c1) : false);
+		}
+		return $res;
+	}
+
     function getSyncCache() {
-        
-        if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
+		if (is_dir(STATE_PATH. "/". $this->_devid . "/cache_" . $this->_user)) {
+			debugLog("StateMachine->getSyncCache: Folder based!");
+    	    if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
+    	    	$content1 = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
+				$content1 = ksort_recursive(unserialize($content1));
+			} else { 
+				$content1 = array();
+			}
+			$content2 = $this->_readSyncCacheFromFolder(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user);
+			$content2 = ksort_recursive($content2);
+			if (is_array($res = array_diff_assoc_recursive($content1,$content2)))
+				debugLog("StateMachine->getSyncCache: array_diff_assoc_recursive result is ".print_r($res,true));
+    	    $this->oldsynccache=$content2;
+            return serialize($content2);
+		} else if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
+			debugLog("StateMachine->getSyncCache: File Device User based! (DEPRECIATED SINCE PARALLEL SYNC REQUESTS WILL BREAK FILE CONTENT)");
     	    $content = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
     	    $this->oldsynccache=unserialize($content);
             return $content;
         } else if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid)) {
 // just for compatibility to take old cache and apply it for new format
+			debugLog("StateMachine->getSyncCache: File Device based! (DEPRECIATED SINCE MORE THAN ONE USERPROFILE COULD BE CREATED ON SOME DEVICES! i.e. iPhone)");
     	    $content = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
 			if (file_put_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $content)) 
 				unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
@@ -278,9 +342,25 @@ class StateMachine {
 
 
     function deleteSyncCache() {
-    	// Remove the cache in case full sync is requested with a synckey 0. 
-    	if(file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid))
-    	    unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
+		// Remove the cache in case full sync is requested with a synckey 0. 
+		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid)) 
+			unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
+		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) 
+			unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
+		if (is_dir(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user)) {
+			$dir = STATE_PATH . "/". $this->_devid . "/cache_".$this->_user;
+       		$objects = scandir($dir);
+           	foreach ($objects as $object) {
+				if ($object != "." && $object != "..") {
+					if (filetype($dir."/".$object) == "dir") 
+						rrmdir($dir."/".$object); 
+					else 
+						unlink($dir."/".$object);
+                }
+			}
+			reset($objects);
+			rmdir($dir); 
+		}
     }
 
     function updateSyncCacheFolder(&$cache, $serverid, $parentid, $displayname, $type) {
@@ -317,21 +397,25 @@ class StateMachine {
 		debugLog("Delete SyncCache Folder ".$serverid);
 		unset($cache['folders'][$serverid]);
 		unset($cache['collections'][$serverid]);
+		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user."/folders/".$serverid))
+			unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user."/folders/".$serverid);
+		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user."/collections/".$serverid))
+			unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user."/collections/".$serverid);
 		$cache['timestamp'] = time();
     }
-    
+
     function getProtocolState() {
 		if ($this->_devid == "") return false;
 	        if (file_exists(STATE_PATH . "/". $this->_devid . "/prot_".$this->_devid))
     	        return file_get_contents(STATE_PATH . "/". $this->_devid . "/prot_".$this->_devid);
 	        else return "";
 	}
-    
+
     function setProtocolState($protstate) {
 		if ($this->_devid == "") return false;
         	return file_put_contents(STATE_PATH . "/". $this->_devid . "/prot_".$this->_devid,$protstate);
 	}
-    
+
 	function getMsgInfos($hierarchysynckey) {
         if(!isset($hierarchysynckey) || $hierarchysynckey == "0") {
             return array();

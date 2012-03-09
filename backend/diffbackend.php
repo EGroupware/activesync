@@ -50,22 +50,25 @@ function GetDiff(array $old_in, array $new_in)
             $old_item =& $old[$id];
 
             // Both messages are still available, compare flags and mod
-            if(isset($old_item["flags"]) && isset($item["flags"]) && $old_item["flags"] != $item["flags"]) {
+            // according to Andreas: "Prüfung sollte lauten wenn element komplett geändert dann ignoriere flags/olflags.
+            // flags und olfags geändert = 2 änderungen oder aber alternativ flags und olfags geändert dann ganze nachricht nochmal."
+            if ($old_item['mod'] != $item['mod'] ||
+         	   isset($old_item["flags"]) && isset($item["flags"]) && $old_item["flags"] != $item["flags"] &&
+         	   isset($old_item['olflags']) && isset($item['olflags']) && $old_item['olflags'] != $item['olflags'])
+         	{
+                $change['type'] = 'change';
+                $changes[] = $change;
+            }
+            elseif(isset($old_item["flags"]) && isset($item["flags"]) && $old_item["flags"] != $item["flags"]) {
                 // Flags changed
                 $change['type'] = 'flags';
                 $change['flags'] = $item['flags'];
                 $changes[] = $change;
             }
-
-            if(isset($old_item['olflags']) && isset($item['olflags']) && $old_item['olflags'] != $item['olflags']) {
+            elseif(isset($old_item['olflags']) && isset($item['olflags']) && $old_item['olflags'] != $item['olflags']) {
                 // Outlook Flags changed
                 $change['type'] = 'olflags';
                 $change['olflags'] = $item['olflags'];
-                $changes[] = $change;
-            }
-
-            if($old_item['mod'] != $item['mod']) {
-                $change['type'] = 'change';
                 $changes[] = $change;
             }
 

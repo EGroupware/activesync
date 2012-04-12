@@ -75,7 +75,7 @@ class activesync_hooks
 			}
 			$settings[$name] = $data;
 		}
-		// check if our verify_settings hook is registered, register if if not
+		// check if our verify_settings hook is registered, register it if not
 		$hooks = $GLOBALS['egw']->hooks;
 		if (!isset($hooks->locations['verify_settings']['activesync']))
 		{
@@ -83,7 +83,10 @@ class activesync_hooks
 			$setup_info = array($appname => array());
 			if(@file_exists($f)) include($f);
 			$hooks->register_hooks('activesync', $setup_info['activesync']['hooks']);
-			$GLOBALS['egw']->invalidate_session_cache();
+			if (method_exists($GLOBALS['egw'], 'invalidate_session_cache'))
+			{
+				$GLOBALS['egw']->invalidate_session_cache();
+			}
 		}
 		if ($GLOBALS['type'] === 'user')
 		{

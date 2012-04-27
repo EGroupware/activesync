@@ -437,7 +437,7 @@ class ExportChangesDiff extends DiffState {
                         $stat = $this->_backend->StatFolder($change["id"]);
                         if (!$folder || !$stat)
                         {
-                            error_log(__METHOD__."() FATAL !folder || !stat->".(!$folder?'nofolder':'nostat'));
+                            error_log(__METHOD__."() FATAL !folder || !stat->".(!$folder?'nofolder':'nostat').' Device:'.$this->_backend->_devid.' User:'.$this->_backend->_user);
                             debugLog(__METHOD__.__LINE__."() FATAL !folder || !stat>".(!$folder?'nofolder':'nostat').':'.print_r($folder,true).'<-||->'.print_r($stat,true).'<-');
                         }
                         if(!$folder)
@@ -481,9 +481,9 @@ class ExportChangesDiff extends DiffState {
                         $message = $this->_backend->GetMessage($this->_folderid, $change["id"], $truncsize,(isset($this->_bodypreference) ? $this->_bodypreference : false),(isset($this->_optionbodypreference) ? $this->_optionbodypreference : false), $this->_mimesupport);
 
                         // copy the flag to the message
-                        if (!$message || !$stat) 
+                        if (!$message || !$stat)
                         {
-                            error_log(__METHOD__."() FATAL !message || !stat->".(!$message?'nomessage':'nostat'));
+                            error_log(__METHOD__."() FATAL !message || !stat->".(!$message?'nomessage':'nostat').' Device:'.$this->_backend->_devid.' User:'.$this->_backend->_user);
                             debugLog(__METHOD__.__LINE__."() FATAL !folder || !stat>".(!$message?'nomessage':'nostat').':'.print_r($message,true).'<-||->'.print_r($stat,true).'<-');
                         }
                         $message->flags = (isset($change["flags"])) ? $change["flags"] : 0;

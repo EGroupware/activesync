@@ -3,7 +3,7 @@
 /***********************************************
 * File      :   utils.php
 * Project   :   Z-Push
-* Descr     :   
+* Descr     :
 *
 * Created   :   03.04.2008
 *
@@ -27,17 +27,17 @@ function _saveFolderData($devid, $folders) {
         if ($folder->type == SYNC_FOLDER_TYPE_INBOX)
             continue;
 
-        // no folder from that type    or the default folder        
+        // no folder from that type    or the default folder
         if (!array_key_exists($folder->type, $unique_folders) || $folder->parentid == 0) {
             $unique_folders[$folder->type] = $folder->serverid;
         }
     }
 
-    // Treo does initial sync for calendar and contacts too, so we need to fake 
+    // Treo does initial sync for calendar and contacts too, so we need to fake
     // these folders if they are not supported by the backend
-    if (!array_key_exists(SYNC_FOLDER_TYPE_APPOINTMENT, $unique_folders))     
+    if (!array_key_exists(SYNC_FOLDER_TYPE_APPOINTMENT, $unique_folders))
         $unique_folders[SYNC_FOLDER_TYPE_APPOINTMENT] = SYNC_FOLDER_TYPE_DUMMY;
-    if (!array_key_exists(SYNC_FOLDER_TYPE_CONTACT, $unique_folders))         
+    if (!array_key_exists(SYNC_FOLDER_TYPE_CONTACT, $unique_folders))
         $unique_folders[SYNC_FOLDER_TYPE_CONTACT] = SYNC_FOLDER_TYPE_DUMMY;
 
     if (!file_put_contents(STATE_PATH."/".$devid."/compat-$devid", serialize($unique_folders))) {
@@ -45,7 +45,7 @@ function _saveFolderData($devid, $folders) {
     }
 }
 
-// returns information about folder data for a specific device    
+// returns information about folder data for a specific device
 function _getFolderID($devid, $class) {
     $filename = STATE_PATH."/".$devid."/compat-$devid";
 
@@ -62,19 +62,23 @@ function _getFolderID($devid, $class) {
     return false;
 }
 
-/**
- * Function which converts a hex entryid to a binary entryid.
- * @param string @data the hexadecimal string
- */
-function hex2bin($data)
+// hex2bin is a native PHP function in 5.4+
+if (!function_exists('hex2bin'))
 {
-    $len = byte_strlen($data);
-    $newdata = "";
+	/**
+	 * Function which converts a hex entryid to a binary entryid.
+	 * @param string @data the hexadecimal string
+	 */
+	function hex2bin($data)
+	{
+	    $len = byte_strlen($data);
+	    $newdata = "";
 
-    for ($i = 0;$i < $len;$i += 2) {
-        $newdata .= pack("C", hexdec(byte_substr($data, $i, 2)));
-    }
-    return $newdata;
+	    for ($i = 0;$i < $len;$i += 2) {
+	        $newdata .= pack("C", hexdec(byte_substr($data, $i, 2)));
+	    }
+	    return $newdata;
+	}
 }
 
 function utf8_to_backendcharset($string, $option = "")
@@ -109,15 +113,15 @@ function u2wi($string) { return utf8_to_backendcharset($string, "//TRANSLIT"); }
 
 /**
  * Truncate an UTF-8 encoded sting correctly
- * 
- * If it's not possible to truncate properly, an empty string is returned 
+ *
+ * If it's not possible to truncate properly, an empty string is returned
  *
  * @param string $string - the string
  * @param string $length - position where string should be cut
  * @return string truncated string
- */ 
+ */
 function utf8_truncate($string, $length) {
-    if (byte_strlen($string) <= $length) 
+    if (byte_strlen($string) <= $length)
         return $string;
 
     while ($length >= 0) {
@@ -166,7 +170,7 @@ function checkMapiExtVersion($version = "") {
     // compare build number if requested
     if (preg_match('/^\d+$/',$version) && byte_strlen($version) > 3) {
         $vs = preg_split('/-/', phpversion("mapi"));
-        return ($version <= $vs[1]); 
+        return ($version <= $vs[1]);
     }
 
     if (extension_loaded("mapi")){
@@ -207,12 +211,12 @@ function base64uri_decode($uri) {
 		$pos = 2+$lenToken;
 		$uri = byte_substr($uri,$pos);
     }
-    
+
     return $arr_ret;
 }
 
 /**
- * Read the correct message body 
+ * Read the correct message body
  *
  * @param ressource $msg - the message
 **/
@@ -232,7 +236,7 @@ function eml_ReadMessage($msg) {
 		    $content = "text/html";
 		}
     }
-    if (mb_detect_encoding($body) != "UTF-8") 
+    if (mb_detect_encoding($body) != "UTF-8")
 		$body = w2ui( $body );
     return array('body' => $body,'content' => $content);
 }
@@ -276,7 +280,7 @@ function buildEMLAttachment($attach) {
 	        	debugLog("Unable to open attachment number $attachnum");
 		    } else {
 		    	$msgembeddedattachprops = mapi_getprops($msgembeddedattach, array(PR_ATTACH_MIME_TAG, PR_ATTACH_LONG_FILENAME,PR_ATTACH_FILENAME,PR_DISPLAY_NAME));
-            	if (isset($msgembeddedattachprops[PR_ATTACH_LONG_FILENAME])) 
+            	if (isset($msgembeddedattachprops[PR_ATTACH_LONG_FILENAME]))
 	        	    $attachfilename = w2u($msgembeddedattachprops[PR_ATTACH_LONG_FILENAME]);
 	        	else if (isset($msgembeddedattachprops[PR_ATTACH_FILENAME]))
 				    $attachfilename = w2u($msgembeddedattachprops[PR_ATTACH_FILENAME]);
@@ -284,7 +288,7 @@ function buildEMLAttachment($attach) {
 				    $attachfilename = w2u($msgembeddedattachprops[PR_DISPLAY_NAME]);
 				else
 				    $attachfilename = w2u("untitled");
-	        	if ($msgembeddedattachtablerow[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG) 
+	        	if ($msgembeddedattachtablerow[PR_ATTACH_METHOD] == ATTACH_EMBEDDED_MSG)
         		    $attachfilename .= w2u(".eml");
 				$msgembeddedbody['body'] .= "--".$boundary."\n".
 							    		    "Content-Type: ".$msgembeddedattachprops[PR_ATTACH_MIME_TAG].";\n".
@@ -325,9 +329,9 @@ function buildEMLAttachment($attach) {
 }
 // END ADDED dw2412 EML Attachment
 
- 
+
 /**
- * Parses and returns an ecoded vCal-Uid from an 
+ * Parses and returns an ecoded vCal-Uid from an
  * OL compatible GlobalObjectID
  *
  * @param string $olUid - an OL compatible GlobalObjectID
@@ -361,14 +365,14 @@ function getOLUidFromICalUid($icalUid) {
 	}
 	else
 		return hex2bin($icalUid);
-} 
+}
 
 /**
- * Extracts the basedate of the GlobalObjectID and the RecurStartTime 
+ * Extracts the basedate of the GlobalObjectID and the RecurStartTime
  *
  * @param string $goid - OL compatible GlobalObjectID
- * @param long $recurStartTime - RecurStartTime 
- * @return long basedate 
+ * @param long $recurStartTime - RecurStartTime
+ * @return long basedate
  *
  */
 function extractBaseDate($goid, $recurStartTime) {
@@ -376,7 +380,7 @@ function extractBaseDate($goid, $recurStartTime) {
 	$day = hexdec(byte_substr($hexbase, 6, 2));
 	$month = hexdec(byte_substr($hexbase, 4, 2));
 	$year = hexdec(byte_substr($hexbase, 0, 4));
- 
+
 	if ($day && $month && $year) {
 		$h = $recurStartTime >> 12;
 		$m = ($recurStartTime - $h * 4096) >> 6;
@@ -414,19 +418,19 @@ function byte_strlen($str) {
  * @return string
  */
 function byte_substr(&$data,$offset,$len=null) {
-	if ($len == null) 
+	if ($len == null)
 		return MBSTRING_OVERLOAD & 2 ? mb_substr($data,$offset,byte_strlen($data),'ascii') : substr($data,$offset);
 	return MBSTRING_OVERLOAD & 2 ? mb_substr($data,$offset,$len,'ascii') : substr($data,$offset,$len);
 }
 
-// START ADDED dw2412 just to find out if include file is available (didn't find a better place to have this 
+// START ADDED dw2412 just to find out if include file is available (didn't find a better place to have this
 // nice function reachable to check if common classes not already integrated in Zarafa Server exists)
 function include_file_exists($filename) {
      $path = explode(":", ini_get('include_path'));
      foreach($path as $value) {
         if (file_exists($value.$filename)) return true;
      }
-     
+
      return false;
 }
 // END ADDED dw2412 just to find out if include file is available
@@ -454,25 +458,25 @@ function parseVFB($lines, &$line_no) {
 			$field = substr($line,0,$i);
 			$value = substr($line,$i+1);
 			switch (strtolower($field)) {
-				case 'begin'	: 
+				case 'begin'	:
 					$line_no++;
 					$vfb_loc[strtolower($value)] = parseVFB($lines,$line_no);
 					break;
-				case 'dtend' : 
-				case 'dtstart' : 
-				case 'dtstamp' : 
-					$vfb_loc[strtolower($field)] = parseVFB_date($value); 
+				case 'dtend' :
+				case 'dtstart' :
+				case 'dtstamp' :
+					$vfb_loc[strtolower($field)] = parseVFB_date($value);
 					break;
-				case 'freebusy' : 
+				case 'freebusy' :
 		           	if (($i = strpos($value,"/"))) {
 				        $val['starttime'] = parseVFB_date(substr($value,0,$i));
 				        $val['endtime']   = parseVFB_date(substr($value,$i+1));
 		           	}
-					$vfb_loc[strtolower($field)][] = $val; 
+					$vfb_loc[strtolower($field)][] = $val;
 					break;
-				case 'end'		: 
+				case 'end'		:
 					return $vfb_loc;
-				default			: 
+				default			:
 					$vfb_loc[strtolower($field)] = $value;
 			}
 		}
@@ -511,23 +515,23 @@ function InternalSMTPClient($from,$to,$cc,$bcc,$content) {
        					$namefield .= $addpath{$i};
 						$i++;
 						$namefield .= $addpath{$i};
-					} else 
-					if ($addpath{$i} == "\"") 
+					} else
+					if ($addpath{$i} == "\"")
 						break;
-					else 
+					else
 						$namefield .= $addpath{$i};
 				}
 				break;
-			case "<" : 
+			case "<" :
 				$addrfield="";
 				for($i++;$i < strlen($addpath); $i++) {
-					if ($addpath{$i} == ">") 
+					if ($addpath{$i} == ">")
 						break;
-					else 
+					else
 						$addrfield .= $addpath{$i};
 				}
 				break;
-			case "," : 
+			case "," :
 				if ($addrfield != "") {
 					$addr = array ("FullName" => $namefield, "addr" => $addrfield);
 					array_push($addrs,$addr);

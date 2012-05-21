@@ -16,7 +16,7 @@
 $sessionstarttime = microtime(true);
 //we handle connection aborts ourself. necessary to keep sync state clean in heartbeat/wait
 ignore_user_abort(true);
-ob_start(false, 1048576);
+ob_start(null, 1048576);
 
 include_once('zpushdefs.php');
 include_once("config.php");

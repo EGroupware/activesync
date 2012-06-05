@@ -378,16 +378,18 @@ if (!headers_sent()) { // dw2412 need to do this since i.E. getAttachmentData Re
     	    debugLog("GZip Results: Original Size ".$len." / Compress Size ".$gzlen." byte(s) --> Send compressed data");
 		    header("Content-Encoding: gzip");
 		    header("Content-Length: ".$gzlen);
-		    flush();
-		    sleep(2);
+// Talked to Andreas: this sleep is for debuging wbxml shutdown behavior and only slowing down regular requests
+// therefore I commented them out
+//		    flush();
+//		    sleep(2);
 		    debugLog("Header Connection aborted :".(connection_aborted() ? "yes" : "no" ));
 		    debugLog("Header Connection status  :".connection_status());
     	    print $gz_data;
 		} else {
 		    debugLog("GZip Results: Original Size ".$len." / Compress Size ".$gzlen." byte(s) --> Send uncompressed data");
 		    header("Content-Length: ".$len);
-		    flush();
-		    sleep(2);
+//		    flush();
+//		    sleep(2);
 		    debugLog("Header Connection aborted :".(connection_aborted() ? "yes" : "no" ));
 		    debugLog("Header Connection status  :".connection_status());
 		    print $data;
@@ -395,8 +397,8 @@ if (!headers_sent()) { // dw2412 need to do this since i.E. getAttachmentData Re
     } else {
 		debugLog("Output Results: GZip not used send Original Size ".$len." byte(s) --> Send uncompressed data");
 		header("Content-Length: ".$len);
-		flush();
-		sleep(2);
+//		flush();
+//		sleep(2);
 		debugLog("Header Connection aborted :".(connection_aborted() ? "yes" : "no" ));
 		debugLog("Header Connection status  :".connection_status());
 		print $data;
@@ -404,15 +406,15 @@ if (!headers_sent()) { // dw2412 need to do this since i.E. getAttachmentData Re
     // END CHANGED dw2412 Support gzip compression in result
     // destruct backend after all data is on the stream
 } else { // just output what we maybe got from the content buffer
-    flush();
-    sleep(2);
+//	flush();
+//	sleep(2);
     debugLog("1st Part Connection aborted :".(connection_aborted() ? "yes" : "no" ));
     debugLog("1st Part Connection status  :".connection_status());
     debugLog("Output ".$len." Bytes of data found in content buffer since output already started earlier in backend");
     print $data;
 }
-flush();
-sleep(2);
+//flush();
+//sleep(2);
 debugLog("Session run time duration :".(microtime(true) - $sessionstarttime));
 debugLog("Body Connection aborted :".(connection_aborted() ? "yes" : "no" ));
 debugLog("Body Connection status  :".connection_status());
@@ -420,5 +422,3 @@ $backend->Logoff();
 
 debugLog("end");
 debugLog("--------");
-
-?>

@@ -207,6 +207,12 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 			return self::rm_recursive($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
 				lang('Deleting of profil %1 failed!',$hook_data['prefs']['delete-profile']);
 		}
+		// call verification hook of eSync backends
+		set_include_path(EGW_SERVER_ROOT.'/activesync' . PATH_SEPARATOR . get_include_path());
+		require_once EGW_INCLUDE_ROOT.'/activesync/backend/egw.php';
+		$backend = new BackendEGW();
+
+		return implode("<br/>\n", $backend->verify_settings($hook_data));
 	}
 
 	/**
@@ -231,5 +237,14 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 			$ok = unlink($path);
 		}
 		return $ok;
+	}
+}
+
+// to not fail, if any backend calls z-push debugLog, simply ignore it
+if (!function_exists('debugLog'))
+{
+	function debugLog($message)
+	{
+
 	}
 }

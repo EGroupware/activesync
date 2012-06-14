@@ -3,13 +3,16 @@ additional addressbooks to sync	activesync	de	Zusätzliche Addressbücher synchr
 additional calendars to sync	activesync	de	Zusätzliche Kalender synchronisieren
 addressbooks to sync	activesync	de	Addressbücher zu synchronisieren
 all users, admin only	activesync	de	Alle Benutzer, nur für Adminstratoren
+can not open imap connection	activesync	de	Kann KEINE Verbindung zum IMAP Server herstellen
 deleting of profil %1 failed!	activesync	de	Löschen des Profil %1 fehlgeschlagen!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	de	Löschen des serverseitigen Profile entfernt alle Spuren früherer Synchrosierung des ausgewählten Gerätes.
 disabled	activesync	de	ausgeschaltet
 email account to sync	activesync	de	eMail Konto zu synchronisieren
+esync will fail without a working email configuration!	activesync	de	eSync BENÖTIGT eine funktionierende eMail Konfiguration!
 force sorting on device to	activesync	de	Erzwinge Sortierung auf Gerät als
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	de	Die globale Adresssuche durchsucht immer alle Adressbücher, daher müssen Sie nicht alle Adressbücher synchronisieren, um darauf Zugriff zu haben solange Sie online sind.
 maintenance	activesync	de	Wartung
+no valid %1 folder configured!	activesync	de	Kein gültiger %1 Ordner konfiguriert!
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	de	Nicht alle Geräte unterstützen zusätzliche Kalender. Ihr persönlicher Kalender wird immer synchronisiert.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	de	Nicht alle Geräte unterstützen mehrere Adressbücher, deshalb können Sie alle oben ausgewählten Adressebücher in ein einziges synchronisieren.
 profil %1 deleted.	activesync	de	Profil %1 gelöscht.

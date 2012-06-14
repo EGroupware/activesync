@@ -3,13 +3,16 @@ additional addressbooks to sync	activesync	en	Additional addressbooks to sync
 additional calendars to sync	activesync	en	Additional calendars to sync
 addressbooks to sync	activesync	en	Addressbooks to sync
 all users, admin only	activesync	en	All users, admin only
+can not open imap connection	activesync	en	Can not open IMAP connection
 deleting of profil %1 failed!	activesync	en	Deleting of profil %1 failed!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	en	Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.
 disabled	activesync	en	disabled
 email account to sync	activesync	en	eMail Account to sync
+esync will fail without a working email configuration!	activesync	en	eSync will FAIL without a working eMail configuration!
 force sorting on device to	activesync	en	Force sorting on device to
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	en	Global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.
 maintenance	activesync	en	Maintenance
+no valid %1 folder configured!	activesync	en	No valid %1 folder configured!
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	en	Not all devices support additonal calendars. Your personal calendar is always synchronised.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	en	Not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.
 profil %1 deleted.	activesync	en	Profil %1 deleted.

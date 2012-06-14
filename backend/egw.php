@@ -816,11 +816,22 @@ class BackendEGW extends BackendDiff
 	 * Run and return settings from all plugins
 	 *
 	 * @param array|string $hook_data
-	 * @var array
+	 * @return array with settings from all plugins
 	 */
 	public function settings($hook_data)
 	{
 		return $this->run_on_all_plugins('settings',array(),$hook_data);
+	}
+
+	/**
+	 * Run and return verify_settings from all plugins
+	 *
+	 * @param array|string $hook_data
+	 * @return array with error-messages from all plugins
+	 */
+	public function verify_settings($hook_data)
+	{
+		return $this->run_on_all_plugins('verify_settings', array(), $hook_data);
 	}
 
 	/**

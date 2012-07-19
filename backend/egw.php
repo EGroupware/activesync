@@ -472,6 +472,7 @@ class BackendEGW extends BackendDiff
 			$response["devicepassword"]["status"] = true;
 		}
 
+		error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
 		return $response;
 	}
 
@@ -486,8 +487,112 @@ class BackendEGW extends BackendDiff
 		if (isset($request["oof"])) {
 			$response["oof"]["status"] 	= 0;
 		};
+		error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
 		return $response;
 	}
+
+	/**
+	 * Get provisioning data for a given device and user
+	 *
+	 * @param string $devid
+	 * @param string $user
+	 * @return array
+	 */
+	function getProvision($devid, $user)
+	{
+		$ret = $this->run_on_all_plugins('getProvision', array(), $devid, $user);
+    	error_log(__METHOD__."('$devid', '$user') returning ".array2string($ret));
+    	return $ret;
+	}
+
+	/**
+     * Checks if the sent policykey matches the latest policykey on the server
+     *
+	 * @param string $policykey
+     * @param string $devid
+     *
+	 * @return status flag
+     */
+	function CheckPolicy($policykey, $devid)
+	{
+		$ret = parent::CheckPolicy($policykey, $devid);
+    	error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($ret));
+	    return $ret;
+	}
+
+    /**
+     * Return a policy key for given user with a given device id.
+     * If there is no combination user-deviceid available, a new key
+     * should be generated.
+     *
+     * @param string $user
+     * @param string $pass
+     * @param string $devid
+     *
+     * @return string|boolean
+     */
+    function getPolicyKey($user, $pass, $devid)
+    {
+		$ret = parent::getPolicyKey($user, $pass, $devid);
+    	error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($ret));
+	    return $ret;
+    }
+
+    /**
+     * Generate a random policy key. Right now it's a 10-digit number.
+     *
+     * @return unknown
+     */
+	function generatePolicyKey()
+	{
+		$ret = parent::generatePolicyKey();
+    	error_log(__METHOD__."() returning ".array2string($ret));
+	    return $ret;
+	}
+
+    /**
+     * Set a new policy key for the given device id.
+     *
+     * @param string $policykey
+     * @param string $devid
+     * @return unknown
+     */
+    function setPolicyKey($policykey, $devid)
+    {
+    	$ret = parent::setPolicyKey($policykey, $devid);
+    	error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($ret));
+	    return $ret;
+    }
+
+    /**
+     * Return a device wipe status
+     *
+     * @param string $user
+     * @param string $pass
+     * @param string $devid
+     * @return int
+     */
+    function getDeviceRWStatus($user, $pass, $devid)
+    {
+    	error_log(__METHOD__."('$user', '$pass', '$devid') returning FALSE");
+    	return false;
+    }
+
+    /**
+     * Set a new rw status for the device
+     *
+     * @param string $user
+     * @param string $pass
+     * @param string $devid
+     * @param string $status
+     *
+     * @return boolean
+     */
+    function setDeviceRWStatus($user, $pass, $devid, $status)
+    {
+    	error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning FALSE");
+    	return false;
+    }
 
     /**
      * Sends a message which is passed as rfc822. You basically can do two things
@@ -555,14 +660,6 @@ class BackendEGW extends BackendDiff
 		return $result;
 	}
 
-	/**
-	 *
-	 * @see BackendDiff::getDeviceRWStatus()
-	 */
-	function getDeviceRWStatus($user, $pass, $devid)
-	{
-		return false;
-	}
 /*
 04/28/11 21:55:28 [8923] POST cmd: MeetingResponse
 04/28/11 21:55:28 [8923] I  <MeetingResponse:MeetingResponse>

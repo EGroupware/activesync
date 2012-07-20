@@ -447,6 +447,10 @@ class BackendEGW extends BackendDiff
 
 	/**
 	 * START ADDED dw2412 Settings Support
+	 *
+	 * @param array $request
+	 * @param string $devid
+	 * @return array response
 	 */
 	function setSettings($request,$devid)
 	{
@@ -471,6 +475,9 @@ class BackendEGW extends BackendDiff
 			// in case you'd like to store device informations do it here.
 			$response["devicepassword"]["status"] = true;
 		}
+
+		// allow plugins to overwrite standard responses
+		$response = $this->run_on_all_plugins('setSettings', $response, $request, $devid);
 
 		error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
 		return $response;

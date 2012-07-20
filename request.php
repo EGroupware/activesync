@@ -4044,8 +4044,9 @@ function HandleProvision($backend, $devid, $protocolversion) {
 				    $encoder->startTag('Provision:EASProvisionDoc');
 				    $devicepasswordenable = 0;
 				    $encoder->startTag('Provision:DevicePasswordEnabled');$encoder->content($devicepasswordenable);$encoder->endTag();
+				    $defaults = array();
 				    if ($devicepasswordenable == 1 || (defined('NOKIA_DETECTED') && NOKIA_DETECTED == true)) {
-				    	foreach(array(
+				    	$defaults += array(
 	                		'AlphanumericDevicePasswordRequired' => '0',
 							'PasswordRecoveryEnabled' => '1',
 							'MinDevicePasswordLength' => '1',
@@ -4053,36 +4054,16 @@ function HandleProvision($backend, $devid, $protocolversion) {
 							'AllowSimpleDevicePassword' => '1',
 							'DevicePasswordExpiration' => '',
 							'DevicePasswordHistory' => '0',
-				    	) as $name => $default)
-				    	{
-				    		if (($cont = isset($provision[$name]) ? $provision[$name] : $default) === '')
-							{
-								$encoder->startTag('Provision:'.$name, false, true);
-							}
-							else
-							{
-								$encoder->startTag('Provision:'.$name); $encoder->content($cont); $encoder->endTag();
-							}
-						}
+				    	);
 				    }
-			    	foreach(array(
+			    	$defaults += array(
 				    	'DeviceEncryptionEnabled' => '0',
 				    	'AttachmentsEnabled' => '1',
 				    	'MaxInactivityTimeDeviceLock' => '9999',
 				    	'MaxAttachmentSize' => '5000000',
-			    	) as $name => $default)
-			    	{
-			    		if (($cont = isset($provision[$name]) ? $provision[$name] : $default) === '')
-						{
-							$encoder->startTag('Provision:'.$name, false, true);
-						}
-						else
-						{
-							$encoder->startTag('Provision:'.$name); $encoder->content($cont); $encoder->endTag();
-						}
-					}
+			    	);
 				    if ($protocolversion >= 12.1) {
-				    	foreach(array(
+				    	$defaults += array(
 							'AllowStorageCard' => '1',
 							'AllowCamera' => '1',
 							'RequireDeviceEncryption' => '0',
@@ -4115,18 +4096,19 @@ function HandleProvision($backend, $devid, $protocolversion) {
 //							'ApplicationName' => '',
 							'ApprovedApplicationList' => '',
 //							'Hash' => '',
-				    	) as $name => $default)
-				    	{
-				    		if (($cont = isset($provision[$name]) ? $provision[$name] : $default) === '')
-							{
-								$encoder->startTag('Provision:'.$name, false, true);
-							}
-							else
-							{
-								$encoder->startTag('Provision:'.$name); $encoder->content($cont); $encoder->endTag();
-							}
+				    	);
+				    }
+			    	foreach($defaults as $name => $default)
+			    	{
+			    		if (($cont = isset($provision[$name]) ? $provision[$name] : $default) === '')
+						{
+							$encoder->startTag('Provision:'.$name, false, true);
 						}
-				    };
+						else
+						{
+							$encoder->startTag('Provision:'.$name); $encoder->content($cont); $encoder->endTag();
+						}
+					}
 				    $encoder->endTag();
 				} else {
                     debugLog("Wrong policy type");

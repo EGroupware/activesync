@@ -1019,12 +1019,20 @@ class BackendEGW extends BackendDiff
 		if (isset($this->plugins)) return;
 
 		$this->plugins = array();
-		$apps = $GLOBALS['egw_info']['user']['apps'];
+		$apps = array_keys($GLOBALS['egw_info']['user']['apps']);
 		if (!isset($apps))	// happens during setup
 		{
-			$apps = array('addressbook'=>null,'calendar'=>null,'felamimail'=>null,'infolog'=>null,'filemanager'=>null);
+			$apps = array('addressbook', 'calendar', 'felamimail', 'infolog', 'filemanager');
 		}
-		foreach($apps as $app => $data)
+		// allow apps without user run-rights to hook into eSync
+		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps')))
+		{
+			foreach($hook_data as $app => $extra_apps)
+			{
+				if ($extra_apps) $apps = array_unique(array_merge($apps, (array)$extra_apps));
+			}
+		}
+		foreach($apps as $app)
 		{
 			$class = $app.'_activesync';
 			if (class_exists($class))

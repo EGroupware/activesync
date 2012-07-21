@@ -4687,7 +4687,7 @@ function HandleSettings($backend, $devid, $protocolversion) {
 		}
     }
     $decoder->getElementEndTag(); // end SYNC_SETTINGS_SETTINGS
-error_log(__METHOD__."(..., '$devid', $protocolversion) request=".array2string($request));
+
     if (isset($request["set"])) $result["set"] = $backend->setSettings($request["set"],$devid);
     if (isset($request["get"])) $result["get"] = $backend->getSettings($request["get"],$devid);
 

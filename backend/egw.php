@@ -212,18 +212,18 @@ class BackendEGW extends BackendDiff
 
 	/**
 	 * Should return a list (array) of messages, each entry being an associative array
-     * with the same entries as StatMessage(). This function should return stable information; ie
-     * if nothing has changed, the items in the array must be exactly the same. The order of
-     * the items within the array is not important though.
-     *
-     * The cutoffdate is a date in the past, representing the date since which items should be shown.
-     * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
-     * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
-     * will work OK apart from that.
-     *
-     * @param string $id folder id
-     * @param int $cutoffdate=null
-     * @return array
+	 * with the same entries as StatMessage(). This function should return stable information; ie
+	 * if nothing has changed, the items in the array must be exactly the same. The order of
+	 * the items within the array is not important though.
+	 *
+	 * The cutoffdate is a date in the past, representing the date since which items should be shown.
+	 * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
+	 * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
+	 * will work OK apart from that.
+	 *
+	 * @param string $id folder id
+	 * @param int $cutoffdate=null
+	 * @return array
   	 */
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
@@ -319,7 +319,7 @@ class BackendEGW extends BackendDiff
 	 * the exact string that is returned in the 'AttName' property of an SyncAttachment. So, you should
 	 * encode any information you need to find the attachment in that 'attname' property.
 	 *
-     * @param string $attname - should contain (folder)id
+	 * @param string $attname - should contain (folder)id
 	 * @return true, prints the content of the attachment
 	 */
 	function GetAttachmentData($attname)
@@ -334,7 +334,7 @@ class BackendEGW extends BackendDiff
 	 * the exact string that is returned in the 'AttName' property of an SyncAttachment. So, you should
 	 * encode any information you need to find the attachment in that 'attname' property.
 	 *
-     * @param string $attname - should contain (folder)id
+	 * @param string $attname - should contain (folder)id
 	 * @return SyncAirSyncBaseFileAttachment-object
 	 */
 	function ItemOperationsGetAttachmentData($attname)
@@ -360,16 +360,16 @@ class BackendEGW extends BackendDiff
 
 	/**
 	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
-     * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
-     * 'flags'     => simply '0' for unread, '1' for read
-     * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
-     *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
-     *             time for this field, which will change as soon as the contents have changed.
-     *
-     * @param string $folderid
-     * @param int integer id of message
-     * @return array
-     */
+	 * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
+	 * 'flags'  => simply '0' for unread, '1' for read
+	 * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
+	 *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
+	 *             time for this field, which will change as soon as the contents have changed.
+	 *
+	 * @param string $folderid
+	 * @param int integer id of message
+	 * @return array
+	 */
 	function StatMessage($folderid, $id)
 	{
 		if ($id < 0)
@@ -388,7 +388,7 @@ class BackendEGW extends BackendDiff
 	 *
 	 * if changes occurr default diff engine computes the actual changes
 	 *
-     * We can NOT use run_on_plugin_by_id, because $syncstate is passed by reference!
+	 * We can NOT use run_on_plugin_by_id, because $syncstate is passed by reference!
 	 *
 	 * @param string $folderid
 	 * @param string &$syncstate on call old syncstate, on return new syncstate
@@ -447,6 +447,8 @@ class BackendEGW extends BackendDiff
 
 	/**
 	 * START ADDED dw2412 Settings Support
+	 *
+	 * Plugins either return array() to NOT change standard response or array('response' => value)
 	 *
 	 * @param array $request
 	 * @param string $devid
@@ -508,121 +510,143 @@ class BackendEGW extends BackendDiff
 	function getProvision($devid, $user)
 	{
 		$ret = $this->run_on_all_plugins('getProvision', array(), $devid, $user);
-    	error_log(__METHOD__."('$devid', '$user') returning ".array2string($ret));
-    	return $ret;
+		error_log(__METHOD__."('$devid', '$user') returning ".array2string($ret));
+		return $ret;
 	}
 
 	/**
-     * Checks if the sent policykey matches the latest policykey on the server
-     *
+	 * Checks if the sent policykey matches the latest policykey on the server
+	 *
+	 * Plugins either return array() to NOT change standard response or array('response' => value)
+	 *
 	 * @param string $policykey
-     * @param string $devid
-     *
-	 * @return status flag
-     */
+	 * @param string $devid
+	 *
+	 * @return int status flag SYNC_PROVISION_STATUS_SUCCESS, SYNC_PROVISION_STATUS_POLKEYMISM (triggers provisioning)
+	 */
 	function CheckPolicy($policykey, $devid)
 	{
-		$ret = parent::CheckPolicy($policykey, $devid);
-    	error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($ret));
-	    return $ret;
+		$response = array('response' => parent::CheckPolicy($policykey, $devid));
+
+		// allow plugins to overwrite standard responses
+		$response = $this->run_on_all_plugins('setDeviceRWStatus', $response, $user, $pass, $devid, $status);
+
+		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
+		return $response['response'];
 	}
 
-    /**
-     * Return a policy key for given user with a given device id.
-     * If there is no combination user-deviceid available, a new key
-     * should be generated.
-     *
-     * @param string $user
-     * @param string $pass
-     * @param string $devid
-     *
-     * @return string|boolean
-     */
-    function getPolicyKey($user, $pass, $devid)
-    {
+	/**
+	 * Return a policy key for given user with a given device id.
+	 * If there is no combination user-deviceid available, a new key
+	 * should be generated.
+	 *
+	 * @param string $user
+	 * @param string $pass
+	 * @param string $devid
+	 *
+	 * @return string|boolean
+	 */
+	function getPolicyKey($user, $pass, $devid)
+	{
 		$ret = parent::getPolicyKey($user, $pass, $devid);
-    	error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($ret));
-	    return $ret;
-    }
+		error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($ret));
+		return $ret;
+	}
 
-    /**
-     * Generate a random policy key. Right now it's a 10-digit number.
-     *
-     * @return unknown
-     */
+	/**
+	 * Generate a random policy key. Right now it's a 10-digit number.
+	 *
+	 * @return unknown
+	 */
 	function generatePolicyKey()
 	{
 		$ret = parent::generatePolicyKey();
-    	error_log(__METHOD__."() returning ".array2string($ret));
-	    return $ret;
+		error_log(__METHOD__."() returning ".array2string($ret));
+		return $ret;
 	}
 
-    /**
-     * Set a new policy key for the given device id.
-     *
-     * @param string $policykey
-     * @param string $devid
-     * @return unknown
-     */
-    function setPolicyKey($policykey, $devid)
-    {
-    	$ret = parent::setPolicyKey($policykey, $devid);
-    	error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($ret));
-	    return $ret;
-    }
+	/**
+	 * Set a new policy key for the given device id.
+	 *
+	 * @param string $policykey
+	 * @param string $devid
+	 * @return unknown
+	 */
+	function setPolicyKey($policykey, $devid)
+	{
+		$ret = parent::setPolicyKey($policykey, $devid);
+		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($ret));
+		return $ret;
+	}
 
-    /**
-     * Return a device wipe status
-     *
-     * @param string $user
-     * @param string $pass
-     * @param string $devid
-     * @return int
-     */
-    function getDeviceRWStatus($user, $pass, $devid)
-    {
-    	error_log(__METHOD__."('$user', '$pass', '$devid') returning FALSE");
-    	return false;
-    }
+	/**
+	 * Return a device wipe status
+	 *
+	 * Z-Push will send remote wipe request to client, if returned status is SYNC_PROVISION_RWSTATUS_PENDING or _WIPED
+	 *
+	 * Plugins either return array() to NOT change standard response or array('response' => value)
+	 *
+	 * @param string $user
+	 * @param string $pass
+	 * @param string $devid
+	 * @return int SYNC_PROVISION_RWSTATUS_NA, SYNC_PROVISION_RWSTATUS_OK, SYNC_PROVISION_RWSTATUS_PENDING, SYNC_PROVISION_RWSTATUS_WIPED
+	 */
+	function getDeviceRWStatus($user, $pass, $devid)
+	{
+		$response = array('response' => false);
+		// allow plugins to overwrite standard responses
+		$response = $this->run_on_all_plugins('setDeviceRWStatus', $response, $user, $pass, $devid, $status);
 
-    /**
-     * Set a new rw status for the device
-     *
-     * @param string $user
-     * @param string $pass
-     * @param string $devid
-     * @param string $status
-     *
-     * @return boolean
-     */
-    function setDeviceRWStatus($user, $pass, $devid, $status)
-    {
-    	error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning FALSE");
-    	return false;
-    }
+		error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
+		return $response['response'];
+	}
 
-    /**
-     * Sends a message which is passed as rfc822. You basically can do two things
-     * 1) Send the message to an SMTP server as-is
-     * 2) Parse the message yourself, and send it some other way
-     * It is up to you whether you want to put the message in the sent items folder. If you
-     * want it in 'sent items', then the next sync on the 'sent items' folder should return
-     * the new message as any other new message in a folder.
-     *
-     * @param string $rfc822 mail
-     * @param array $smartdata=array() values for keys:
-     * 	'task': 'forward', 'new', 'reply'
-     *  'itemid': id of message if it's an reply or forward
-     *  'folderid': folder
-     *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
+	/**
+	 * Set a new rw status for the device
+	 *
+	 * Z-Push call this with SYNC_PROVISION_RWSTATUS_WIPED, after sending remote wipe command
+	 *
+	 * Plugins either return array() to NOT change standard response or array('response' => value)
+	 *
+	 * @param string $user
+	 * @param string $pass
+	 * @param string $devid
+	 * @param int $status SYNC_PROVISION_RWSTATUS_OK, SYNC_PROVISION_RWSTATUS_PENDING, SYNC_PROVISION_RWSTATUS_WIPED
+	 *
+	 * @return boolean seems not to be used in Z-Push
+	 */
+	function setDeviceRWStatus($user, $pass, $devid, $status)
+	{
+		$response = array('response' => false);
+		// allow plugins to overwrite standard responses
+		$response = $this->run_on_all_plugins('setDeviceRWStatus', $response, $user, $pass, $devid, $status);
+
+		error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning ".array2string($response['response']));
+		return $response['response'];
+	}
+
+	/**
+	 * Sends a message which is passed as rfc822. You basically can do two things
+	 * 1) Send the message to an SMTP server as-is
+	 * 2) Parse the message yourself, and send it some other way
+	 * It is up to you whether you want to put the message in the sent items folder. If you
+	 * want it in 'sent items', then the next sync on the 'sent items' folder should return
+	 * the new message as any other new message in a folder.
+	 *
+	 * @param string $rfc822 mail
+	 * @param array $smartdata=array() values for keys:
+	 * 	'task': 'forward', 'new', 'reply'
+	 *  'itemid': id of message if it's an reply or forward
+	 *  'folderid': folder
+	 *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
 	 *	'saveinsentitems': 1 or absent?
-     * @param boolean|double $protocolversion=false
-     * @return boolean true on success, false on error
-     *
-     * @see eg. BackendIMAP::SendMail()
-     * @todo implement either here or in fmail backend
-     * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
-     */
+	 * @param boolean|double $protocolversion=false
+	 * @return boolean true on success, false on error
+	 *
+	 * @see eg. BackendIMAP::SendMail()
+	 * @todo implement either here or in fmail backend
+	 * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
+	 */
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
 		$ret = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $rfc822, $smartdata, $protocolversion);
@@ -1061,101 +1085,101 @@ interface activesync_plugin_write extends activesync_plugin_read
 {
 	/**
 	 *  Creates or modifies a folder
-     *
-     * @param $id of the parent folder
-     * @param $oldid => if empty -> new folder created, else folder is to be renamed
-     * @param $displayname => new folder name (to be created, or to be renamed to)
-     * @param type => folder type, ignored in IMAP
-     *
-     * @return stat | boolean false on error
-     *
-     */
-    public function ChangeFolder($id, $oldid, $displayname, $type);
+	 *
+	 * @param $id of the parent folder
+	 * @param $oldid => if empty -> new folder created, else folder is to be renamed
+	 * @param $displayname => new folder name (to be created, or to be renamed to)
+	 * @param type => folder type, ignored in IMAP
+	 *
+	 * @return stat | boolean false on error
+	 *
+	 */
+	public function ChangeFolder($id, $oldid, $displayname, $type);
 
-    /**
-     * Deletes (really delete) a Folder
-     *
-     * @param $parentid of the folder to delete
-     * @param $id of the folder to delete
-     *
-     * @return
-     * @TODO check what is to be returned
-     *
-     */
-    public function DeleteFolder($parentid, $id);
+	/**
+	 * Deletes (really delete) a Folder
+	 *
+	 * @param $parentid of the folder to delete
+	 * @param $id of the folder to delete
+	 *
+	 * @return
+	 * @TODO check what is to be returned
+	 *
+	 */
+	public function DeleteFolder($parentid, $id);
 
-    /**
-     * Changes or adds a message on the server
-     *
-     * @param $folderid
-     * @param $id for change | empty for create new
-     * @param $message object to SyncObject to create
-     *
-     * @return $stat whatever would be returned from StatMessage
-     *
-     * This function is called when a message has been changed on the PDA. You should parse the new
-     * message here and save the changes to disk. The return value must be whatever would be returned
-     * from StatMessage() after the message has been saved. This means that both the 'flags' and the 'mod'
-     * properties of the StatMessage() item may change via ChangeMessage().
-     * Note that this function will never be called on E-mail items as you can't change e-mail items, you
-     * can only set them as 'read'.
-     */
-    public function ChangeMessage($folderid, $id, $message);
+	/**
+	 * Changes or adds a message on the server
+	 *
+	 * @param $folderid
+	 * @param $id for change | empty for create new
+	 * @param $message object to SyncObject to create
+	 *
+	 * @return $stat whatever would be returned from StatMessage
+	 *
+	 * This function is called when a message has been changed on the PDA. You should parse the new
+	 * message here and save the changes to disk. The return value must be whatever would be returned
+	 * from StatMessage() after the message has been saved. This means that both the 'flags' and the 'mod'
+	 * properties of the StatMessage() item may change via ChangeMessage().
+	 * Note that this function will never be called on E-mail items as you can't change e-mail items, you
+	 * can only set them as 'read'.
+	 */
+	public function ChangeMessage($folderid, $id, $message);
 
-    /**
-     * Moves a message from one folder to another
-     *
-     * @param $folderid of the current folder
-     * @param $id of the message
-     * @param $newfolderid
-     *
-     * @return $newid as a string | boolean false on error
-     *
-     * After this call, StatMessage() and GetMessageList() should show the items
-     * to have a new parent. This means that it will disappear from GetMessageList() will not return the item
-     * at all on the source folder, and the destination folder will show the new message
-     *
-     */
-    public function MoveMessage($folderid, $id, $newfolderid);
+	/**
+	 * Moves a message from one folder to another
+	 *
+	 * @param $folderid of the current folder
+	 * @param $id of the message
+	 * @param $newfolderid
+	 *
+	 * @return $newid as a string | boolean false on error
+	 *
+	 * After this call, StatMessage() and GetMessageList() should show the items
+	 * to have a new parent. This means that it will disappear from GetMessageList() will not return the item
+	 * at all on the source folder, and the destination folder will show the new message
+	 *
+	 */
+	public function MoveMessage($folderid, $id, $newfolderid);
 
-    /**
-     * Delete (really delete) a message in a folder
-     *
-     * @param $folderid
-     * @param $id
-     *
-     * @TODO check what is to be returned
-     *
-     * @DESC After this call has succeeded, a call to
-     * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the PDA
-     * as it will be seen as a 'new' item. This means that if you don't implement this function, you will
-     * be able to delete messages on the PDA, but as soon as you sync, you'll get the item back
-     */
-    public function DeleteMessage($folderid, $id);
+	/**
+	 * Delete (really delete) a message in a folder
+	 *
+	 * @param $folderid
+	 * @param $id
+	 *
+	 * @TODO check what is to be returned
+	 *
+	 * @DESC After this call has succeeded, a call to
+	 * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the PDA
+	 * as it will be seen as a 'new' item. This means that if you don't implement this function, you will
+	 * be able to delete messages on the PDA, but as soon as you sync, you'll get the item back
+	 */
+	public function DeleteMessage($folderid, $id);
 
-    /**
-     * modify read flag of a message
-     *
-     * @param $folderid
-     * @param $id
-     * @param $flags
-     *
-     *
-     * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
-     */
-    public function SetReadFlag($folderid, $id, $flags);
+	/**
+	 * modify read flag of a message
+	 *
+	 * @param $folderid
+	 * @param $id
+	 * @param $flags
+	 *
+	 *
+	 * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
+	 */
+	public function SetReadFlag($folderid, $id, $flags);
 
-    /**
-     * modify olflags (outlook style) flag of a message
-     *
-     * @param $folderid
-     * @param $id
-     * @param $flags
-     *
-     *
-     * @DESC The $flags parameter must contains the poommailflag Object
-     */
-    public function ChangeMessageFlag($folderid, $id, $flags);
+	/**
+	 * modify olflags (outlook style) flag of a message
+	 *
+	 * @param $folderid
+	 * @param $id
+	 * @param $flags
+	 *
+	 *
+	 * @DESC The $flags parameter must contains the poommailflag Object
+	 */
+	public function ChangeMessageFlag($folderid, $id, $flags);
 }
 
 /**
@@ -1180,7 +1204,7 @@ interface activesync_plugin_read
 	/**
 	 * Return a changes array
 	 *
-     * if changes occurr default diff engine computes the actual changes
+	 * if changes occurr default diff engine computes the actual changes
 	 *
 	 * @param string $folderid
 	 * @param string &$syncstate on call old syncstate, on return new syncstate
@@ -1222,14 +1246,14 @@ interface activesync_plugin_read
 	 * @DESC
 	 * each entry being an associative array with the same entries as StatMessage().
 	 * This function should return stable information; ie
-     * if nothing has changed, the items in the array must be exactly the same. The order of
-     * the items within the array is not important though.
-     *
-     * The cutoffdate is a date in the past, representing the date since which items should be shown.
-     * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
-     * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
-     * will work OK apart from that.
-     */
+	 * if nothing has changed, the items in the array must be exactly the same. The order of
+	 * the items within the array is not important though.
+	 *
+	 * The cutoffdate is a date in the past, representing the date since which items should be shown.
+	 * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
+	 * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
+	 * will work OK apart from that.
+	 */
 	public function GetMessageList($folderid, $cutoffdate=NULL);
 
 	/**
@@ -1241,12 +1265,12 @@ interface activesync_plugin_read
 	 * @return $array
 	 *
 	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
-     * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
-     * 'flags'     => simply '0' for unread, '1' for read
-     * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
-     *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
-     *             time for this field, which will change as soon as the contents have changed.
-     */
+	 * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
+	 * 'flags'  => simply '0' for unread, '1' for read
+	 * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
+	 *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
+	 *             time for this field, which will change as soon as the contents have changed.
+	 */
 	public function StatMessage($folderid, $id);
 
 	/**
@@ -1276,28 +1300,28 @@ interface activesync_plugin_read
  */
 interface activesync_plugin_sendmail
 {
-    /**
-     * Sends a message which is passed as rfc822. You basically can do two things
-     * 1) Send the message to an SMTP server as-is
-     * 2) Parse the message yourself, and send it some other way
-     * It is up to you whether you want to put the message in the sent items folder. If you
-     * want it in 'sent items', then the next sync on the 'sent items' folder should return
-     * the new message as any other new message in a folder.
-     *
-     * @param string $rfc822 mail
-     * @param array $smartdata=array() values for keys:
-     * 	'task': 'forward', 'new', 'reply'
-     *  'itemid': id of message if it's an reply or forward
-     *  'folderid': folder
-     *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
+	/**
+	 * Sends a message which is passed as rfc822. You basically can do two things
+	 * 1) Send the message to an SMTP server as-is
+	 * 2) Parse the message yourself, and send it some other way
+	 * It is up to you whether you want to put the message in the sent items folder. If you
+	 * want it in 'sent items', then the next sync on the 'sent items' folder should return
+	 * the new message as any other new message in a folder.
+	 *
+	 * @param string $rfc822 mail
+	 * @param array $smartdata=array() values for keys:
+	 * 	'task': 'forward', 'new', 'reply'
+	 *  'itemid': id of message if it's an reply or forward
+	 *  'folderid': folder
+	 *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
 	 *	'saveinsentitems': 1 or absent?
-     * @param boolean|double $protocolversion=false
-     * @return boolean true on success, false on error
-     *
-     * @see eg. BackendIMAP::SendMail()
-     * @todo implement either here or in fmail backend
-     * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
-     */
+	 * @param boolean|double $protocolversion=false
+	 * @return boolean true on success, false on error
+	 *
+	 * @see eg. BackendIMAP::SendMail()
+	 * @todo implement either here or in fmail backend
+	 * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
+	 */
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false);
 }
 

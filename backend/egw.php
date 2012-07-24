@@ -1056,7 +1056,7 @@ class BackendEGW extends BackendDiff
 			$apps = array('addressbook', 'calendar', 'felamimail', 'infolog', 'filemanager');
 		}
 		// allow apps without user run-rights to hook into eSync
-		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps')))
+		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps', array(), true)))	// true = no perms. check
 		{
 			foreach($hook_data as $app => $extra_apps)
 			{
@@ -1071,6 +1071,7 @@ class BackendEGW extends BackendDiff
 				$this->plugins[$app] = new $class($this);
 			}
 		}
+		//error_log(__METHOD__."() hook_data=".array2string($hook_data).' returning '.array2string(array_keys($this->plugins)));
 	}
 }
 

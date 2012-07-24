@@ -616,7 +616,7 @@ class BackendEGW extends BackendDiff
 	{
 		$response = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('setDeviceRWStatus', $response, $user, $pass, $devid, $status);
+		$response = $this->run_on_all_plugins('getDeviceRWStatus', $response, $user, $pass, $devid);
 
 		error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
 		return $response['response'];

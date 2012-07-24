@@ -54,6 +54,9 @@ class BackendEGW extends BackendDiff
 		}
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
+   		// call plugins in case they are interested in being call on each command
+   		$this->run_on_all_plugins(__FUNCTION__, array(), $username, $domain, $password);
+
    		$this->_loggedin = TRUE;
 
 		return true;
@@ -479,7 +482,7 @@ class BackendEGW extends BackendDiff
 		}
 
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('setSettings', $response, $request, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $request, $devid);
 
 		error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
 		return $response;
@@ -509,7 +512,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function getProvision($devid, $user)
 	{
-		$ret = $this->run_on_all_plugins('getProvision', array(), $devid, $user);
+		$ret = $this->run_on_all_plugins(__FUNCTION__, array(), $devid, $user);
 		error_log(__METHOD__."('$devid', '$user') returning ".array2string($ret));
 		return $ret;
 	}
@@ -529,7 +532,7 @@ class BackendEGW extends BackendDiff
 		$response = array('response' => parent::CheckPolicy($policykey, $devid));
 
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('CheckPolicy', $response, $policykey, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $policykey, $devid);
 
 		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
@@ -550,7 +553,7 @@ class BackendEGW extends BackendDiff
 		$response = array('response' => true);	// allow loose provisioning by default
 
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('LooseProvisioning', $response, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $devid);
 
 		error_log(__METHOD__."('$devid') returning ".array2string($response['response']));
 		return $response['response'];
@@ -616,7 +619,7 @@ class BackendEGW extends BackendDiff
 	{
 		$response = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('getDeviceRWStatus', $response, $user, $pass, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid);
 
 		error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
@@ -640,7 +643,7 @@ class BackendEGW extends BackendDiff
 	{
 		$response = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('setDeviceRWStatus', $response, $user, $pass, $devid, $status);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid, $status);
 
 		error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning ".array2string($response['response']));
 		return $response['response'];
@@ -1043,6 +1046,7 @@ class BackendEGW extends BackendDiff
 				if (is_array($agregate))
 				{
 					$agregate = array_merge($agregate,$result);
+					//error_log(__METHOD__."('$method', , ".array2string($params).") result $plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
 				}
 				elseif ($agregate === 'return-first')
 				{

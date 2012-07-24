@@ -529,9 +529,9 @@ class BackendEGW extends BackendDiff
 		$response = array('response' => parent::CheckPolicy($policykey, $devid));
 
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins('setDeviceRWStatus', $response, $user, $pass, $devid, $status);
+		$response = $this->run_on_all_plugins('CheckPolicy', $response, $policykey, $devid);
 
-		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
+		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response));
 		return $response['response'];
 	}
 

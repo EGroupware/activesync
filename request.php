@@ -4042,7 +4042,7 @@ function HandleProvision($backend, $devid, $protocolversion) {
                 		$provision = $backend->getProvision($devid, $user);
                 	}
 				    $encoder->startTag('Provision:EASProvisionDoc');
-				    $devicepasswordenable = 0;
+				    $devicepasswordenable = isset($provision['DevicePasswordEnabled']) ? $provision['DevicePasswordEnabled'] : 0;
 				    $encoder->startTag('Provision:DevicePasswordEnabled');$encoder->content($devicepasswordenable);$encoder->endTag();
 				    $defaults = array();
 				    if ($devicepasswordenable == 1 || (defined('NOKIA_DETECTED') && NOKIA_DETECTED == true)) {

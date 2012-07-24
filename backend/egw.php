@@ -484,7 +484,7 @@ class BackendEGW extends BackendDiff
 		// allow plugins to overwrite standard responses
 		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $request, $devid);
 
-		error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
+		//error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
 		return $response;
 	}
 
@@ -499,7 +499,7 @@ class BackendEGW extends BackendDiff
 		if (isset($request["oof"])) {
 			$response["oof"]["status"] 	= 0;
 		};
-		error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
+		//error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
 		return $response;
 	}
 
@@ -513,7 +513,7 @@ class BackendEGW extends BackendDiff
 	function getProvision($devid, $user)
 	{
 		$ret = $this->run_on_all_plugins(__FUNCTION__, array(), $devid, $user);
-		error_log(__METHOD__."('$devid', '$user') returning ".array2string($ret));
+		//error_log(__METHOD__."('$devid', '$user') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -534,7 +534,7 @@ class BackendEGW extends BackendDiff
 		// allow plugins to overwrite standard responses
 		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $policykey, $devid);
 
-		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
+		//error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
 	}
 
@@ -555,52 +555,8 @@ class BackendEGW extends BackendDiff
 		// allow plugins to overwrite standard responses
 		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $devid);
 
-		error_log(__METHOD__."('$devid') returning ".array2string($response['response']));
+		//error_log(__METHOD__."('$devid') returning ".array2string($response['response']));
 		return $response['response'];
-	}
-
-	/**
-	 * Return a policy key for given user with a given device id.
-	 * If there is no combination user-deviceid available, a new key
-	 * should be generated.
-	 *
-	 * @param string $user
-	 * @param string $pass
-	 * @param string $devid
-	 *
-	 * @return string|boolean
-	 */
-	function getPolicyKey($user, $pass, $devid)
-	{
-		$ret = parent::getPolicyKey($user, $pass, $devid);
-		error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($ret));
-		return $ret;
-	}
-
-	/**
-	 * Generate a random policy key. Right now it's a 10-digit number.
-	 *
-	 * @return unknown
-	 */
-	function generatePolicyKey()
-	{
-		$ret = parent::generatePolicyKey();
-		error_log(__METHOD__."() returning ".array2string($ret));
-		return $ret;
-	}
-
-	/**
-	 * Set a new policy key for the given device id.
-	 *
-	 * @param string $policykey
-	 * @param string $devid
-	 * @return unknown
-	 */
-	function setPolicyKey($policykey, $devid)
-	{
-		$ret = parent::setPolicyKey($policykey, $devid);
-		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($ret));
-		return $ret;
 	}
 
 	/**
@@ -621,7 +577,7 @@ class BackendEGW extends BackendDiff
 		// allow plugins to overwrite standard responses
 		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid);
 
-		error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
+		//error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
 	}
 
@@ -645,7 +601,7 @@ class BackendEGW extends BackendDiff
 		// allow plugins to overwrite standard responses
 		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid, $status);
 
-		error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning ".array2string($response['response']));
+		//error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning ".array2string($response['response']));
 		return $response['response'];
 	}
 

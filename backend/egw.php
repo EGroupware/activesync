@@ -531,7 +531,28 @@ class BackendEGW extends BackendDiff
 		// allow plugins to overwrite standard responses
 		$response = $this->run_on_all_plugins('CheckPolicy', $response, $policykey, $devid);
 
-		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response));
+		error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
+		return $response['response'];
+	}
+
+	/**
+	 * Checks if policy of device allows loose provisioning
+	 *
+	 * Plugins either return array() to NOT change standard response or array('response' => value)
+	 *
+	 * @param string $policykey
+	 * @param string $devid
+	 *
+	 * @return boolean
+	 */
+	function LooseProvisioning($devid)
+	{
+		$response = array('response' => true);	// allow loose provisioning by default
+
+		// allow plugins to overwrite standard responses
+		$response = $this->run_on_all_plugins('LooseProvisioning', $response, $devid);
+
+		error_log(__METHOD__."('$devid') returning ".array2string($response['response']));
 		return $response['response'];
 	}
 

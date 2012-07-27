@@ -6,13 +6,13 @@
 *
 * Created   :   01.10.2007
 *
-* © Zarafa Deutschland GmbH, www.zarafaserver.de
+* ï¿½ Zarafa Deutschland GmbH, www.zarafaserver.de
 * This file is distributed under GPL v2.
 * Consult LICENSE file for details
 ************************************************/
 
 	// disable globally enabled compression, as this causes issues with some devices
-	// z-push handles output compression 
+	// z-push handles output compression
 	ini_set("zlib.output_compression",0);
 
 	$GLOBALS['egw_info'] = array(
@@ -60,7 +60,7 @@
 
     // Device Provisioning
     define('PROVISIONING', true);
-    
+
     // Should UPN be separated for Login Username
 	define('SEPARATE_UPN', false);
 
@@ -69,7 +69,8 @@
     // devices which don't support provisioning (like WM 5 and HTC Android Mail) - dw2412 contribution
     // false (default) - Enforce provisioning for all devices
     // true - allow older devices, but enforce policies on devices which support it
-    define('LOOSE_PROVISIONING', true);
+    // 'backend' call LooseProvisioning method of backend
+    define('LOOSE_PROVISIONING', 'backend');
 
     // Palm Pre AS2.5 PoomTasks:RTF Fix
     define('ENABLE_PALM_PRE_AS25_CONTACT_FIX',true);

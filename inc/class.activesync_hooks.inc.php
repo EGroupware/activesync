@@ -99,13 +99,13 @@ class activesync_hooks
 					{
 						$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
 
-						$logs['activesync/'.$dir.'/debug.txt'] = (file_exists($log = $as_dir.'/'.$dir.'/debug.txt') && !is_link($log) ?
+						$logs[$dir.'/debug.txt'] = (file_exists($log = $as_dir.'/'.$dir.'/debug.txt') && !is_link($log) ?
 								egw_time::to(filemtime($log)) : lang('disabled')).': '.$dir;
 					}
 				}
 				if ($GLOBALS['egw_info']['user']['apps']['admin'])
 				{
-					$logs['activesync/debug.txt'] = (file_exists($log = $as_dir.'/debug.txt') && !is_link($log) ?
+					$logs['debug.txt'] = (file_exists($log = $as_dir.'/debug.txt') && !is_link($log) ?
 							egw_time::to(filemtime($log)) : lang('disabled')).': '.lang('All users, admin only');
 				}
 			}
@@ -161,17 +161,33 @@ class activesync_hooks
 	/**
 	 * Open log window for log-file specified in GET parameter filename (relative to files_dir)
 	 *
-	 * $_GET['filename'] has to be in groupdav sub-dir of files_dir and start with account_lid of current user
+	 * $_GET['filename'] has to be in activsync subdir of files dir
 	 *
 	 * @throws egw_exception_wrong_parameter
 	 */
 	public function log()
 	{
 		$filename = $_GET['filename'];
-		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/'.dirname($filename);
-		if (!file_exists($profile_dir) || !is_dir($profile_dir) || (
-				!file_exists($profile_dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']) &&
-				!($GLOBALS['egw_info']['user']['apps']['admin'] && $filename == 'activesync/debug.txt')))
+		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.dirname($filename);
+		if (!file_exists($profile_dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']) &&
+			!($GLOBALS['egw_info']['user']['apps']['admin'] && $filename == 'debug.txt'))
+		{
+			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
+		}
+		self::debug_log(substr($filename,10));	// strip
+	}
+
+	/**
+	 * Enable and view debug log
+	 *
+	 * @param string $filename relativ to activsync subdir of files-dir
+	 * @throws egw_exception_wrong_parameter
+	 */
+	public static function debug_log($filename)
+	{
+		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.dirname($filename);
+		if (!file_exists($profile_dir) || !is_dir($profile_dir) || strpos($filename, '..') !== false ||
+			basename($filename) != 'debug.txt')
 		{
 			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
 		}
@@ -179,7 +195,7 @@ class activesync_hooks
 body { background-color: #e0e0e0; }
 pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 ';
-		if (!file_exists($debug_file=$GLOBALS['egw_info']['server']['files_dir'].'/'.$filename))
+		if (!file_exists($debug_file=$GLOBALS['egw_info']['server']['files_dir'].'/activsync/'.$filename))
 		{
 			touch($debug_file);
 		}
@@ -188,7 +204,7 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 			unlink($debug_file);
 			touch($debug_file);
 		}
-		$tail = new egw_tail($filename);
+		$tail = new egw_tail('activesync/'.$filename);
 		$GLOBALS['egw']->framework->render($tail->show(),false,false);
 	}
 
@@ -221,7 +237,7 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 	 * @param string $path
 	 * @return boolean true on success, false on failure
 	 */
-	private static function rm_recursive($path)
+	public static function rm_recursive($path)
 	{
 		$ok = true;
 		if (is_dir($path))

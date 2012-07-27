@@ -254,11 +254,12 @@ if($backend->Logon($auth_user, $auth_domain, $auth_pw) == false) {
 }
 
 // check policy header
-
+$loose_provisioning = LOOSE_PROVISIONING === 'backend' ?
+	$backend->LooseProvisioning($devid) : LOOSE_PROVISIONING;
 if (PROVISIONING === true && $_SERVER["REQUEST_METHOD"] != 'OPTIONS' && $cmd != 'Ping' && $cmd != 'Provision' &&
     $backend->CheckPolicy($policykey, $devid) != SYNC_PROVISION_STATUS_SUCCESS &&
-    (LOOSE_PROVISIONING === false ||
-    (LOOSE_PROVISIONING === true && (isset($_SERVER['HTTP_X_MS_POLICYKEY']) || isset($uri_decoded['PolKey']) )))) {
+    ($loose_provisioning === false ||
+    ($loose_provisioning === true && (isset($_SERVER['HTTP_X_MS_POLICYKEY']) || isset($uri_decoded['PolKey']) )))) {
     header("HTTP/1.1 449 Retry after sending a PROVISION command");
     // dw2412 changed to support AS14 Protocol
     header("MS-Server-ActiveSync: 14.00.048.018");

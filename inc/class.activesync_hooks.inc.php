@@ -161,7 +161,7 @@ class activesync_hooks
 	/**
 	 * Open log window for log-file specified in GET parameter filename (relative to files_dir)
 	 *
-	 * $_GET['filename'] has to be in activsync subdir of files dir
+	 * $_GET['filename'] has to be in activesync subdir of files dir
 	 *
 	 * @throws egw_exception_wrong_parameter
 	 */
@@ -180,7 +180,7 @@ class activesync_hooks
 	/**
 	 * Enable and view debug log
 	 *
-	 * @param string $filename relativ to activsync subdir of files-dir
+	 * @param string $filename relativ to activesync subdir of files-dir
 	 * @throws egw_exception_wrong_parameter
 	 */
 	public static function debug_log($filename)
@@ -195,7 +195,7 @@ class activesync_hooks
 body { background-color: #e0e0e0; }
 pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 ';
-		if (!file_exists($debug_file=$GLOBALS['egw_info']['server']['files_dir'].'/activsync/'.$filename))
+		if (!file_exists($debug_file=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$filename))
 		{
 			touch($debug_file);
 		}

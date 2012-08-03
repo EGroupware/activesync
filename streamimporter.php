@@ -57,7 +57,7 @@ class ImportContentsChangesStream {
             debugLog("Object $id discarded! Object deleted prior change submission.");
 		    $this->_lastObjectStatus = -1;
             return true;
-        } 
+	}
 
         debugLog("ImportMessageChange: Object $id Class ".strtolower(get_class($message))." Flags=".$message->flags);
 		switch($class) {
@@ -261,7 +261,7 @@ class ImportContentsChangesStream {
 		$msginfo['read'] = (isset($message->read) ? $message->read : '');
 		$msginfo['class'] = $class;
 /*		if ($message->flags === false || $message->flags === SYNC_NEWMESSAGE) {
-			if (isset($this->_msginfos[$id])) 
+			if (isset($this->_msginfos[$id]))
 				unset($this->_msginfos[$id]);
 		}
 */		unset($md5msg);
@@ -274,19 +274,23 @@ class ImportContentsChangesStream {
 			debugLog("ImportMessageChange: Discarding change since read,  md5 sums for flags and message didn't change");
 		    $this->_lastObjectStatus = -1;
             return true;
-		} 
+		}
 
         $this->_seenObjects[] = $id;
 
-        if (!isset($this->_msginfos[$id]) && ($message->flags === false || $message->flags === SYNC_NEWMESSAGE)) 
+        if (!isset($this->_msginfos[$id]) || ($message->flags === false || $message->flags === SYNC_NEWMESSAGE))
     	    $this->_encoder->startTag(SYNC_ADD);
         else
     	    $this->_encoder->startTag(SYNC_MODIFY);
 
+	settype ($this->_msginfos[$id]['md5msg'],'string');
+
 		if (isset($this->_msginfos[$id])) {
 			if ($this->_msginfos[$id]['md5msg'] != $msginfo['md5msg']) debugLog("ImportMessageChange: Whole message changed");
+			 if ($class == 'syncsms' || $class == 'syncmail') {
 			if ($this->_msginfos[$id]['md5flags'] != $msginfo['md5flags']) debugLog("ImportMessageChange: MD5 Flags changes ".$msginfo['md5flags']." vs ".$this->_msginfos[$id]['md5flags']);
 			if ($this->_msginfos[$id]['read'] != $msginfo['read']) debugLog("ImportMessageChange: Read change");
+			 }
 		} else {
 			debugLog("ImportMessageChange: Seems to be new message, no entry in msginfos");
 		}
@@ -305,6 +309,8 @@ class ImportContentsChangesStream {
         	  !isset($this->_msginfos[$id])) && !isset($this->_readids[$id]) && !isset($this->_flagids[$id])) {
     	    $message->encode($this->_encoder);
 		} else {
+			 if ($class == 'syncsms' || $class == 'syncmail') {
+
     	    if ((isset($this->_msginfos[$id]) && $this->_msginfos[$id]['read'] != $msginfo['read']) ||
         	 	isset($this->_readids[$id])) {
 				$this->_encoder->startTag(SYNC_POOMMAIL_READ);
@@ -314,7 +320,7 @@ class ImportContentsChangesStream {
 		    }
 		    if ((isset($this->_msginfos[$id]) && $this->_msginfos[$id]['md5flags'] != $msginfo['md5flags']) ||
         	 	isset($this->_flagids[$id])) {
-				if ($message->poommailflag->flagstatus == 0 || $message->poommailflag->flagstatus == "") {
+				if (!isset($message->poommailflag->flagstatus) || $message->poommailflag->flagstatus == 0 || $message->poommailflag->flagstatus == "") {
 				    $this->_encoder->startTag(SYNC_POOMMAIL_FLAG,false,true);
 				} else {
 				    $this->_encoder->startTag(SYNC_POOMMAIL_FLAG);
@@ -323,7 +329,8 @@ class ImportContentsChangesStream {
 				}
 				unset($this->_flagids[$id]);
 		    }
-        }
+        		}
+      	}
 /*        if (!in_array($id, $this->_readids) && !in_array($id, $this->_flagids)) {
     	    $message->encode($this->_encoder);
 	} else {
@@ -359,7 +366,7 @@ class ImportContentsChangesStream {
             debugLog("Object $id discarded! Object already deleted.");
 	    	$this->_lastObjectStatus = -1;
     	    return true;
-        } 
+        }
         $this->_deletedObjects[] = $id;
 		if (isset($this->_msginfos[$id])) {
 			if (isset($this->_msginfos[$id]['class']) &&

@@ -1,1 +1,3 @@
 activesync	common	nl	eSync
+maintenance	activesync	nl	Onderhoud
+sync all addressbooks as one	activesync	nl	Synchroniseer alle adresboeken als een

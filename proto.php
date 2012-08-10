@@ -426,13 +426,13 @@ class SyncContact extends Streamer {
         }
 // END ADDED dw2412 Support V12.0
 // START ADDED dw2412 Workaround for Palm Pre, to stop breakdown in AS 2.5 Mode....
-		if (isset($protocolversion) && $protocolversion == 2.5 && 
+		if (isset($protocolversion) && $protocolversion == 2.5 &&
 	    	substr($devid,0,4) == "PALM" &&
 	    	ENABLE_PALM_PRE_AS25_CONTACT_FIX === true) {
             $mapping += array(
         						SYNC_POOMTASKS_RTF => array (STREAMER_VAR => "rtf"),
 						    );
-		} 
+		}
 // END ADDED dw2412 Workaround for Palm, to stop breakdown.
 
 	    if (isset($protocolversion) && $protocolversion >= 2.5) {
@@ -595,6 +595,7 @@ class SyncTaskRecurrence extends Streamer {
     function SyncTaskRecurrence() {
         $mapping = array (
 			                    SYNC_POOMTASKS_TYPE => array (STREAMER_VAR => "type"),
+					SYNC_POOMTASKS_START => array (STREAMER_VAR => "start", STREAMER_TYPE => STREAMER_TYPE_DATE),
             			        SYNC_POOMTASKS_UNTIL => array (STREAMER_VAR => "until", STREAMER_TYPE => STREAMER_TYPE_DATE),
 			                    SYNC_POOMTASKS_OCCURRENCES => array (STREAMER_VAR => "occurrences"),
             			        SYNC_POOMTASKS_INTERVAL => array (STREAMER_VAR => "interval"),

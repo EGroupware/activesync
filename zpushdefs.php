@@ -432,6 +432,9 @@ define("SYNC_GAL_LASTNAME", "GAL:LastName");
 define("SYNC_GAL_HOMEPHONE", "GAL:HomePhone");
 define("SYNC_GAL_MOBILEPHONE", "GAL:MobilePhone");
 define("SYNC_GAL_EMAILADDRESS", "GAL:EmailAddress");
+define("SYNC_GAL_PICTURE", "GAL:Picture");
+define("SYNC_GAL_STATUS", "GAL:Status");
+define("SYNC_GAL_DATA", "GAL:Data");
 
 // START ADDED dw2412 Settings Support
 define("SYNC_SETTINGS_SETTINGS", "Settings:Settings");

@@ -416,6 +416,9 @@ define("SYNC_SEARCH_SUPPORTED", "Search:Supported");
 define("SYNC_SEARCH_USERNAME", "Search:UserName");
 define("SYNC_SEARCH_PASSWORD", "Search:Password");
 define("SYNC_SEARCH_CONVERSATIONID", "Search:ConversationId");
+define("SYNC_SEARCH_PICTURE", "Search:Picture");
+define("SYNC_SEARCH_MAXSIZE", "Search:MaxSize");
+define("SYNC_SEARCH_MAXPICTURES", "Search:MaxPictures");
 
 //GAL
 define("SYNC_GAL_DISPLAYNAME", "GAL:DisplayName");

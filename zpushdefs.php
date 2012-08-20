@@ -416,6 +416,9 @@ define("SYNC_SEARCH_SUPPORTED", "Search:Supported");
 define("SYNC_SEARCH_USERNAME", "Search:UserName");
 define("SYNC_SEARCH_PASSWORD", "Search:Password");
 define("SYNC_SEARCH_CONVERSATIONID", "Search:ConversationId");
+define("SYNC_SEARCH_PICTURE", "Search:Picture");
+define("SYNC_SEARCH_MAXSIZE", "Search:MaxSize");
+define("SYNC_SEARCH_MAXPICTURES", "Search:MaxPictures");
 
 //GAL
 define("SYNC_GAL_DISPLAYNAME", "GAL:DisplayName");
@@ -429,6 +432,9 @@ define("SYNC_GAL_LASTNAME", "GAL:LastName");
 define("SYNC_GAL_HOMEPHONE", "GAL:HomePhone");
 define("SYNC_GAL_MOBILEPHONE", "GAL:MobilePhone");
 define("SYNC_GAL_EMAILADDRESS", "GAL:EmailAddress");
+define("SYNC_GAL_PICTURE", "GAL:Picture");
+define("SYNC_GAL_STATUS", "GAL:Status");
+define("SYNC_GAL_DATA", "GAL:Data");
 
 // START ADDED dw2412 Settings Support
 define("SYNC_SETTINGS_SETTINGS", "Settings:Settings");

@@ -4239,11 +4239,12 @@ function HandleSearch($backend, $devid, $protocolversion) {
 			 						($decoder->getElementStartTag(SYNC_SEARCH_USERNAME)	  							? SYNC_SEARCH_USERNAME	 						:
 			 						($decoder->getElementStartTag(SYNC_SEARCH_PASSWORD)	  							? SYNC_SEARCH_PASSWORD				 			:
 			 						($decoder->getElementStartTag(SYNC_SEARCH_SCHEMA)	  							? SYNC_SEARCH_SCHEMA		 					:
+			 						($decoder->getElementStartTag(SYNC_SEARCH_PICTURE)	  							? SYNC_SEARCH_PICTURE		 					:
 			 						($decoder->getElementStartTag(SYNC_MIMESUPPORT)	  								? SYNC_MIMESUPPORT		 						:
 			 						($decoder->getElementStartTag(SYNC_MIMETRUNCATION)	  							? SYNC_MIMETRUNCATION	 						:
 			 						($decoder->getElementStartTag(SYNC_AIRSYNCBASE_BODYPREFERENCE)					? SYNC_AIRSYNCBASE_BODYPREFERENCE				:
 			 						($decoder->getElementStartTag(SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT) 	? SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
-									-1))))))))))) != -1) {
+									-1)))))))))))) != -1) {
  			switch($searchoptionstag) {
  				case SYNC_SEARCH_RANGE :
 					if (($searchrange = $decoder->getElementContent()))
@@ -4330,6 +4331,26 @@ function HandleSearch($backend, $devid, $protocolversion) {
 					}
 			       	$decoder->getElementEndTag();
                 	break;
+				case SYNC_SEARCH_PICTURE :
+		        	$searchpicture=array();
+   		    	    while(($searchpicturefield = ($decoder->getElementStartTag(SYNC_SEARCH_MAXSIZE) ? SYNC_SEARCH_MAXSIZE :
+												 ($decoder->getElementStartTag(SYNC_SEARCH_MAXPICTURES) ? SYNC_SEARCH_MAXPICTURES :
+   		    	    							  -1))) != -1) {
+   						switch($searchpicturefield) {
+	   						case SYNC_SEARCH_MAXSIZE :
+		    		    		$searchpicture["MaxSize"] = $decoder->getElementContent();
+				     	    	if(!$decoder->getElementEndTag())
+				        	    	return false;
+				        	    break;
+	   						case SYNC_SEARCH_MAXPICTURES :
+		    		    		$searchpicture["MaxPictures"] = $decoder->getElementContent();
+				     	    	if(!$decoder->getElementEndTag())
+				        	    	return false;
+				        	    break;
+						}
+					}
+      	    		if (count($searchpicture) > 0) $decoder->getElementEndTag();
+                  	break;
 	            case SYNC_RIGHTSMANAGEMENT_RIGHTSMANAGEMENTSUPPORT :
 					$rightsmanagementsupport = $decoder->getElementContent();
       	    		if(!$decoder->getElementEndTag())
@@ -4371,6 +4392,7 @@ function HandleSearch($backend, $devid, $protocolversion) {
 			break;
 		case 'gal'  :
             $searchquery['range'] = $searchrange;
+            if (isset($searchpicture)) $searchquery['searchpicture'] = $searchpicture;
 			break;
 	}
 

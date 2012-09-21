@@ -95,7 +95,7 @@ class activesync_hooks
 			{
 				foreach($dirs as $dir)
 				{
-					if (file_exists($as_dir.'/'.$dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']))
+					if (file_exists($as_dir.'/'.$dir.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])))
 					{
 						$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
 
@@ -169,7 +169,7 @@ class activesync_hooks
 	{
 		$filename = $_GET['filename'];
 		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.dirname($filename);
-		if (!file_exists($profile_dir.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']) &&
+		if (!file_exists($profile_dir.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])) &&
 			!($GLOBALS['egw_info']['user']['apps']['admin'] && $filename == 'debug.txt'))
 		{
 			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
@@ -218,7 +218,7 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 	{
 		if ($hook_data['prefs']['delete-profile'] && preg_match('/^[a-z0-9]+$/',$hook_data['prefs']['delete-profile']) &&
 			file_exists($profil=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$hook_data['prefs']['delete-profile']) &&
-			file_exists($profil.'/device_info_'.$GLOBALS['egw_info']['user']['account_lid']))
+			file_exists($profil.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])))
 		{
 			return self::rm_recursive($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
 				lang('Deleting of profil %1 failed!',$hook_data['prefs']['delete-profile']);

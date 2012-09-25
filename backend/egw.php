@@ -709,7 +709,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function MeetingResponse($requestid, $folderid, $response, &$calendarid)
 	{
-		$calendarid = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $requestid, $folderid, $response);
+		$calendarid = $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $requestid, $response);
 
 		debugLog(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning ".array2string((bool)$calendarid));
 		return (bool)$calendarid;
@@ -1318,12 +1318,12 @@ interface activesync_plugin_meeting_response
 	 * Process response to meeting request
 	 *
 	 * @see BackendDiff::MeetingResponse()
-	 * @param int|string $requestid uid of mail with meeting request
 	 * @param string $folderid folder of meeting request mail
+	 * @param int|string $requestid uid of mail with meeting request
 	 * @param int $response 1=accepted, 2=tentative, 3=decline
 	 * @return int|boolean id of calendar item, false on error
 	 */
-	function MeetingResponse($requestid, $folderid, $response);
+	function MeetingResponse($folderid, $requestid, $response);
 }
 
 /**

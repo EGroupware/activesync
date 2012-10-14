@@ -171,6 +171,11 @@ class SyncMeetingRequest extends Streamer {
                                 SYNC_POOMMAIL_TIMEZONE => array (STREAMER_VAR => "timezone"),
                                 SYNC_POOMMAIL_GLOBALOBJID => array (STREAMER_VAR => "globalobjid"),
                               );
+        if(isset($protocolversion) && $protocolversion >= 14.0) {
+		    $mapping += array(
+	    						SYNC_POOMMAIL_DISALLOWNEWTIMEPROPOSAL => array(STREAMER_VAR => "disallownewtimeproposal"),
+	    					);
+		};
 
         parent::Streamer($mapping);
     }
@@ -232,8 +237,8 @@ class SyncMail extends Streamer {
         }
         if (isset($protocolversion) && $protocolversion >= 12.0) {
 		    $mapping += array(
-		    					SYNC_AIRSYNCBASE_BODY => array(STREAMER_VAR => "airsyncbasebody", STREAMER_TYPE => "SyncAirSyncBaseBody"),
                               	SYNC_AIRSYNCBASE_ATTACHMENTS => array (STREAMER_VAR => "airsyncbaseattachments", STREAMER_TYPE => "AirSyncBaseAttachment", STREAMER_ARRAY => SYNC_AIRSYNCBASE_ATTACHMENT ),
+		    					SYNC_AIRSYNCBASE_BODY => array(STREAMER_VAR => "airsyncbasebody", STREAMER_TYPE => "SyncAirSyncBaseBody"),
                     	      	SYNC_POOMMAIL_FLAG => array(STREAMER_VAR => "poommailflag", STREAMER_TYPE => "SyncPoommailFlag"),
                     	      	SYNC_POOMMAIL_CONTENTCLASS => array(STREAMER_VAR => "contentclass"),
                     	      	SYNC_AIRSYNCBASE_NATIVEBODYTYPE => array(STREAMER_VAR => "airsyncbasenativebodytype"),
@@ -426,7 +431,7 @@ class SyncContact extends Streamer {
         }
 // END ADDED dw2412 Support V12.0
 // START ADDED dw2412 Workaround for Palm Pre, to stop breakdown in AS 2.5 Mode....
-		if (isset($protocolversion) && $protocolversion == 2.5 &&
+	if (isset($protocolversion) && $protocolversion == 2.5 &&
 	    	substr($devid,0,4) == "PALM" &&
 	    	ENABLE_PALM_PRE_AS25_CONTACT_FIX === true) {
             $mapping += array(
@@ -554,8 +559,13 @@ class SyncRecurrence extends Streamer {
 					        );
 		if ($protocolversion >= 14.0) {
 		    $mapping += array (
-                            	SYNC_POOMMAIL2_CALENDARTYPE => array (STREAMER_VAR => "calendartype"),
-                            	SYNC_POOMMAIL2_ISLEAPMONTH => array (STREAMER_VAR => "isleapmonth"),
+                            	SYNC_POOMCAL_CALENDARTYPE => array (STREAMER_VAR => "calendartype"),
+                            	SYNC_POOMCAL_ISLEAPMONTH => array (STREAMER_VAR => "isleapmonth"),
+    	    				);
+		}
+		if ($protocolversion >= 14.1) {
+		    $mapping += array (
+		                        SYNC_POOMCAL_FIRSTDAYOFWEEK => array (STREAMER_VAR => "firstdayofweek"),
     	    				);
 		}
 
@@ -585,6 +595,17 @@ class SyncMeetingRequestRecurrence extends Streamer {
 			                    SYNC_POOMMAIL_WEEKOFMONTH => array (STREAMER_VAR => "weekofmonth"),
             			        SYNC_POOMMAIL_MONTHOFYEAR => array (STREAMER_VAR => "monthofyear")
 	    					);
+        if (isset($protocolversion) && $protocolversion >= 14.0) {
+	    	$mapping += array(
+	    						SYNC_POOMMAIL2_CALENDARTYPE => array(STREAMER_VAR => "calendartype"),
+	    						SYNC_POOMMAIL2_ISLEAPMONTH => array(STREAMER_VAR => "isleapmonth"),
+	    				);
+        }
+        if (isset($protocolversion) && $protocolversion >= 14.1) {
+	    	$mapping += array(
+	    						SYNC_POOMMAIL2_FIRSTDAYOFWEEK => array(STREAMER_VAR => "firstdayofweek"),
+	    				);
+        }
 
         parent::Streamer($mapping);
     }
@@ -595,7 +616,7 @@ class SyncTaskRecurrence extends Streamer {
     function SyncTaskRecurrence() {
         $mapping = array (
 			                    SYNC_POOMTASKS_TYPE => array (STREAMER_VAR => "type"),
-					SYNC_POOMTASKS_START => array (STREAMER_VAR => "start", STREAMER_TYPE => STREAMER_TYPE_DATE),
+	           			        SYNC_POOMTASKS_START => array (STREAMER_VAR => "start", STREAMER_TYPE => STREAMER_TYPE_DATE),
             			        SYNC_POOMTASKS_UNTIL => array (STREAMER_VAR => "until", STREAMER_TYPE => STREAMER_TYPE_DATE),
 			                    SYNC_POOMTASKS_OCCURRENCES => array (STREAMER_VAR => "occurrences"),
             			        SYNC_POOMTASKS_INTERVAL => array (STREAMER_VAR => "interval"),

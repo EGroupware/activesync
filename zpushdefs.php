@@ -166,6 +166,8 @@ define("SYNC_POOMMAIL_FLAG","POOMMAIL:Flag");
 define("SYNC_POOMMAIL_FLAGSTATUS","POOMMAIL:FlagStatus");
 define("SYNC_POOMMAIL_FLAGTYPE","POOMMAIL:FlagType");
 define("SYNC_POOMMAIL_COMPLETETIME","POOMMAIL:CompleteTime");
+// ADDED dw2412 V14.0 Support
+define("SYNC_POOMMAIL_DISALLOWNEWTIMEPROPOSAL","POOMMAIL:DisallowNewTimeProposal");
 
 // AIRNOTIFY
 define("SYNC_AIRNOTIFY_NOTIFY","AirNotify:Notify");
@@ -230,6 +232,8 @@ define("SYNC_POOMCAL_ATTENDEE_TYPE","POOMCAL:AttendeeType");
 // AS>=14.0
 define("SYNC_POOMCAL_RESPONSEREQUESTED","POOMCAL:ResponseRequested");
 define("SYNC_POOMCAL_DISALLOWNEWTIMEPROPOSAL","POOMCAL:DisallowNewTimeProposal");
+define("SYNC_POOMCAL_CALENDARTYPE","POOMCAL:CalendarType");
+define("SYNC_POOMCAL_ISLEAPMONTH","POOMCAL:IsLeapMonth");
 // AS>=14.1
 define("SYNC_POOMCAL_FIRSTDAYOFWEEK","POOMCAL:FirstDayOfWeek");
 
@@ -491,6 +495,9 @@ define("SYNC_AIRSYNCBASE_NATIVEBODYTYPE", "AirSyncBase:NativeBodyType");
 define("SYNC_AIRSYNCBASE_CONTENTTYPE", "AirSyncBase:ContentType");
 define("SYNC_AIRSYNCBASE_PREVIEW", "AirSyncBase:Preview");
 // END ADDED dw2412 12.0 Support
+// START ADDED dw2312 14.1 Support
+define("SYNC_AIRSYNCBASE_BODYPARTPREFERENCE", "AirSyncBase:BodyPartPreference");
+// END ADDED dw2412 14.1 Support
 
 // START ADDED dw2412 12.0 DocumentLibrary Support
 define("SYNC_DOCUMENTLIBRARY_LINKID", "DocumentLibrary:LinkId");
@@ -537,6 +544,9 @@ define("SYNC_POOMMAIL2_SENDER","POOMMAIL2:Sender");
 define("SYNC_POOMMAIL2_CALENDARTYPE","POOMMAIL2:CalendarType");
 define("SYNC_POOMMAIL2_ISLEAPMONTH","POOMMAIL2:IsLeapMonth");
 // END ADDED dw2412 12.0 PoomMail2 Support
+// START ADDED dw2412 14.1 PoomMail2 Support
+define("SYNC_POOMMAIL2_FIRSTDAYOFWEEK","POOMMAIL2:FirstDayOfWeek");
+// END ADDED dw2412 14.1 PoomMail2 Support
 
 // START ADDED dw2412 14.0 ComposeMail Support
 

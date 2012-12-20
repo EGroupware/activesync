@@ -252,10 +252,15 @@ class BackendEGW extends BackendDiff
 					$not_uids[] = self::globalObjId2uid($message->meetingrequest->globalobjid);
 				}
 			}
-			$ret = $this->run_on_all_plugins('GetMeetingRequests', $ret, $not_uids, $cutoffdate);
-			debugLog(__METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret)-$before)." messages");
-			debugLog(array2string($ret));
+			$ret2 = $this->run_on_all_plugins('GetMeetingRequests', $ret, $not_uids, $cutoffdate);
+			if (is_array($ret2) && !empty($ret2))
+			{
+				debugLog(__METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret2)-$before)." messages");
+				debugLog(array2string($ret2));
+				$ret = $ret2; // should be already merged by run_on_all_plugins
+			}
 		}
+		debugLog(__METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate):".array2string($ret));
 		return $ret;
 	}
 

@@ -174,7 +174,7 @@ class activesync_hooks
 		{
 			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
 		}
-		self::debug_log(substr($filename,10));	// strip
+		self::debug_log($filename);
 	}
 
 	/**

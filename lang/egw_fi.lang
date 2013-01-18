@@ -7,3 +7,4 @@ global address search always searches in all addressbooks, so you dont need to s
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	fi	Kaikki laitteet eivät tue useiden kalentereiden synkronointia. Yksityinen kalenteri on aina synkronoitavissa.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	fi	Kaikki laitteet eivät tue useiden osoitekirjojen synkronointia. Yksityinen osoitekirja on aina synkronoitavissa.
 sync all addressbooks as one	activesync	fi	Synkronoi kaikki osoitekirjat yhtenä
+use addressbooks "own sorting" attribute	activesync	fi	Käytä osoitekirjan "oma lajittelu" vaihtoehtoa

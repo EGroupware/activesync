@@ -3,7 +3,9 @@ additional addressbooks to sync	activesync	en	Additional addressbooks to sync
 additional calendars to sync	activesync	en	Additional calendars to sync
 addressbooks to sync	activesync	en	Addressbooks to sync
 all users, admin only	activesync	en	All users, admin only
+allow sending of calendar invitations using this profile?	activesync	en	allow sending of calendar invitations using this profile?
 can not open imap connection	activesync	en	Can not open IMAP connection
+control the sending of calendar invitations while using this profile	activesync	en	control the sending of calendar invitations while using this profile
 deleting of profil %1 failed!	activesync	en	Deleting of profil %1 failed!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	en	Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.
 disabled	activesync	en	disabled

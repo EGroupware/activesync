@@ -95,7 +95,7 @@ class activesync_hooks
 			{
 				foreach($dirs as $dir)
 				{
-					if (file_exists($as_dir.'/'.$dir.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])))
+					if (is_dir($as_dir.'/'.$dir) && file_exists($as_dir.'/'.$dir.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])))
 					{
 						$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
 

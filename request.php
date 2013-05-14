@@ -2909,8 +2909,8 @@ function HandlePing($backend, $devid, $protocolversion) {
 
     if ($lifetime < 60) {
 		_HandlePingError("5","60");
-		debugLog("Lifetime below 60 Seconds. This violates the protocol spec. (STATUS = 5, LIMIT min = 60)");
-		return true;
+		debugLog("Lifetime below 60 Seconds (is $lifetime Seconds). This violates the protocol spec. (STATUS = 5, LIMIT min = 60)");
+		return false;
     }
     if ($lifetime > (REAL_SCRIPT_TIMEOUT-600)) {
 		_HandlePingError("5",(REAL_SCRIPT_TIMEOUT-600));

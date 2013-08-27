@@ -1,1 +1,26 @@
 activesync	common	fr	eSync
+additional addressbooks to sync	activesync	fr	Carnets d'adresses à synchroniser supplémentaires
+additional calendars to sync	activesync	fr	Calendriers à synchroniser supplémentaires
+addressbooks to sync	activesync	fr	Carnets d'adresses à synchroniser
+all users, admin only	activesync	fr	Tous les utilisateurs, seuls les administrateurs
+allow sending of calendar invitations using this profile?	activesync	fr	Autoriser l'envoi d'invitations de calendrier en utilisant ce profil ?
+can not open imap connection	activesync	fr	Ne peut pas ouvrir de connexion IMAP
+control the sending of calendar invitations while using this profile	activesync	fr	contrôle l'envoi d'invitation de calendrier à l'utilisation de ce profil
+deleting of profil %1 failed!	activesync	fr	Echec de la suppression du profil %1 !
+deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	fr	Supprimer le profil sur le serveur va supprimer toutes les traces des précédentes tentatives de synchronisation par l'appareil sélectionné.
+disabled	activesync	fr	désactivé
+email account to sync	activesync	fr	Compte email à synchroniser
+esync will fail without a working email configuration!	activesync	fr	eSync ne peut fonctionner sans une configuration email fonctionnelle !
+force sorting on device to	activesync	fr	Forcer le tri des appareils sur
+global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	fr	Une recherche globale d'adresse va cherche dans tous les carnets d'adresse, donc vous n'avez pas besoin de synchroniser tous les carnets d'adresses pour y accéder si vous êtes connectés...
+maintenance	activesync	fr	Maintenance
+no valid %1 folder configured!	activesync	fr	Aucun répertoire %1 valide configuré !
+not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	fr	Tous les appareil ne supportent pas les calendriers supplémentaire.  Votre calendrier personnel est toujours synchronisé.
+not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	fr	Tous les appareil ne supportent pas les carnets d'adresses supplémentaires aussi vous pouvez choisir de synchroniser tous les carnets vers un seul.
+profil %1 deleted.	activesync	fr	Profil % supprimé
+select serverside profile to delete<br>always delete account on device first!	activesync	fr	Sélection à supprimer le profil sur le serveur<br>TOUJOURS supprimer le compte sur l'appareil en premier !
+show log of following device	activesync	fr	Afficher les logs de l'appareil suivant
+shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	fr	Affiche les logs d'un appareil, et active les logs s'ils sont actuellement désactivés. Pour désactiver les logs, supprimer le fichier de logs dans le popup !
+some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	fr	Certains appareil (ie. Windows Mobile, mais pas iOS) vont trier les carnets d'adresses par un attribut tri perso" (own sorting), ce qui pourrait ne pas être ce que vous souhaitez. Avec ce paramètre, vous pouvez forcer l'appareil à utiliser un tri différent pour tous les contact, sans à le changer dans le carnet d'adresses.
+sync all addressbooks as one	activesync	fr	Synchroniser tous les carnets d'adresses comme un seul
+use addressbooks "own sorting" attribute	activesync	fr	Utiliser l'attribut "tri perso" (own sorting) du carnet d'adresses

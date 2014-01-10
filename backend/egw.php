@@ -1039,7 +1039,7 @@ class BackendEGW extends BackendDiff
 		$apps = array_keys($GLOBALS['egw_info']['user']['apps']);
 		if (!isset($apps))	// happens during setup
 		{
-			$apps = array('addressbook', 'calendar', 'felamimail', 'infolog', 'filemanager');
+			$apps = array('addressbook', 'calendar', 'mail', 'felamimail', 'infolog', 'filemanager');
 		}
 		// allow apps without user run-rights to hook into eSync
 		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps', array(), true)))	// true = no perms. check
@@ -1056,6 +1056,11 @@ class BackendEGW extends BackendDiff
 			{
 				$this->plugins[$app] = new $class($this);
 			}
+		}
+		// prefer new mail app over felamimail
+		if (isset($this->plugins['mail']) && isset($this->plugins['felamimail']))
+		{
+			unset($this->plugins['felamimail']);
 		}
 		//error_log(__METHOD__."() hook_data=".array2string($hook_data).' returning '.array2string(array_keys($this->plugins)));
 	}

@@ -443,7 +443,7 @@ class ExportChangesDiff extends DiffState {
                         if (!$folder || !$stat)
                         {
                             error_log(__METHOD__."() FATAL !folder || !stat->".(!$folder?'nofolder':'nostat').' Device:'.$this->_backend->_devid.' User:'.$this->_backend->_user);
-                            debugLog(__METHOD__.__LINE__."() FATAL !folder || !stat>".(!$folder?'nofolder':'nostat').':'.print_r($folder,true).'<-||->'.print_r($stat,true).'<-');
+                            debugLog(__METHOD__.__LINE__."() FATAL !folder || !stat>".(!$folder?'nofolder':'nostat').':'.print_r($folder,true).'<-||->'.print_r($stat,true).'<- => cange:'.print_r($change,true));
                         }
                         if(!$folder)
                             return;

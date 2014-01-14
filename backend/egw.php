@@ -16,7 +16,7 @@ include_once('diffbackend.php');
 /**
  * Z-Push backend for EGroupware
  *
- * Uses EGroupware application specific plugins, eg. felamimail_activesync class
+ * Uses EGroupware application specific plugins, eg. (felami-) mail_activesync class
  */
 class BackendEGW extends BackendDiff
 {
@@ -84,14 +84,20 @@ class BackendEGW extends BackendDiff
 	function GetFolderList()
 	{
 		$folderlist = $this->run_on_all_plugins(__FUNCTION__);
-
-		foreach(array('addressbook','calendar','felamimail') as $app)
+		$applist = array('addressbook','calendar','felamimail','mail');
+		$targetmailapp = 'mail';
+		if (isset($this->plugins['mail']) && isset($this->plugins['felamimail']))
+		{
+			unset($applist[array_search('felamimail',$applist)]);
+		}
+		if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $targetmailapp = 'felamimail';
+		foreach($applist as $app)
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
 				$folderlist[] = $folder = array(
 					'id'	=>	$this->createID($app,
-						$app == 'felamimail' ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
+						$app == $targetmailapp ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
 							$GLOBALS['egw_info']['user']['account_id']),
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
@@ -241,7 +247,7 @@ class BackendEGW extends BackendDiff
 			}
 		}
 		// allow other apps to insert meeting requests
-		if ($app == 'felamimail' && $folder == 0)
+		if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
 		{
 			$before = count($ret);
 			$not_uids = array();
@@ -312,7 +318,7 @@ class BackendEGW extends BackendDiff
 		if ($id < 0)
 		{
 			$this->splitID($folderid, $type, $folder, $app);
-			if ($app == 'felamimail' && $folder == 0)
+			if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
 			{
 
 				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
@@ -356,7 +362,7 @@ class BackendEGW extends BackendDiff
 		list($folderid, $uid) = explode(":", $entryid); // split name as it is constructed that way FOLDERID:UID:PARTID
 		$this->splitID($folderid, $type, $folder, $app);
 		//debugLog(__METHOD__.__LINE__."$folderid, $type, $folder, $app");
-		if ($app === 'felamimail')
+		if ($app === 'felamimail'||$app == 'mail')
 		{									// GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
 			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreferences[1]['TruncationSize']?$bodypreferences[1]['TruncationSize']:500), $bodypreference, $optionbodypreference=false, $mimesupport);
 		}
@@ -383,7 +389,7 @@ class BackendEGW extends BackendDiff
 		if ($id < 0)
 		{
 			$this->splitID($folderid, $type, $folder, $app);
-			if ($app == 'felamimail' && $folder == 0)
+			if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
 			{
 				return $this->run_on_all_plugins('StatMeetingRequest',array(),$id);
 			}
@@ -408,7 +414,11 @@ class BackendEGW extends BackendDiff
 
 		$this->splitID($folderid, $type, $folder);
 
-		if (is_numeric($type)) $type = 'felamimail';
+		if (is_numeric($type))
+		{
+			$type = 'mail';
+			if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $type = 'felamimail';
+		}
 
 		$ret = array();		// so unsupported or not enabled/installed backends return "no change"
 		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], __FUNCTION__))
@@ -434,7 +444,7 @@ class BackendEGW extends BackendDiff
 		if ($id < 0)
 		{
 			$this->splitID($folderid, $type, $folder, $app);
-			if ($app == 'felamimail' && $folder == 0)
+			if (($app == 'felamimail' || $app == 'mail') && $folder == 0)
 			{
 				return $this->run_on_all_plugins('DeleteMeetingRequest',array(),$id);
 			}
@@ -756,7 +766,8 @@ class BackendEGW extends BackendDiff
 			case 'infolog':
 				$type = self::TYPE_INFOLOG;
 				break;
-			case 'mail': case 'felamimail':
+			case 'mail':
+			case 'felamimail':
 				$type = self::TYPE_MAIL;
 				break;
 			default:
@@ -817,7 +828,8 @@ class BackendEGW extends BackendDiff
 				{
 					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
 				}
-				$app = 'felamimail';
+				$app = 'mail';
+				if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $app = 'felamimail';	
 				$type -= self::TYPE_MAIL;
 				break;
 		}
@@ -968,8 +980,11 @@ class BackendEGW extends BackendDiff
 
 		$this->splitID($id, $type, $folder);
 
-		if (is_numeric($type)) $type = 'felamimail';
-
+		if (is_numeric($type))
+		{
+			$type = 'mail';
+			if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $type = 'felamimail';
+		}
 		$params = func_get_args();
 		array_shift($params);	// remove $method
 
@@ -1019,7 +1034,8 @@ class BackendEGW extends BackendDiff
 				}
 				else
 				{
-					$agregate += $result;
+					//error_log(__METHOD__."('$method') agg:".array2string($agregate).' res:'.array2string($result));
+					$agregate += (is_bool($agregate)? (bool) $result:$result);
 				}
 			}
 		}

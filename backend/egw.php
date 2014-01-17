@@ -5,7 +5,7 @@
  * @link http://www.egroupware.org
  * @package esync
  * @author Ralf Becker <rb@stylite.de>
- * @author Klaus Leithoff <kl@stylite.de>
+ * @author Stylite AG <info@stylite.de>
  * @author Philip Herbert <philip@knauber.de>
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
  * @version $Id$
@@ -1067,6 +1067,7 @@ class BackendEGW extends BackendDiff
 		}
 		foreach($apps as $app)
 		{
+			if (strpos($app,'_')!==false) continue;
 			$class = $app.'_activesync';
 			if (class_exists($class))
 			{

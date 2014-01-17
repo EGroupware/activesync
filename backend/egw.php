@@ -84,13 +84,10 @@ class BackendEGW extends BackendDiff
 	function GetFolderList()
 	{
 		$folderlist = $this->run_on_all_plugins(__FUNCTION__);
-		$applist = array('addressbook','calendar','felamimail','mail');
+		$applist = array('addressbook','calendar');
 		$targetmailapp = 'mail';
-		if (isset($this->plugins['mail']) && isset($this->plugins['felamimail']))
-		{
-			unset($applist[array_search('felamimail',$applist)]);
-		}
 		if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $targetmailapp = 'felamimail';
+		$applist[] = $targetmailapp;
 		foreach($applist as $app)
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))

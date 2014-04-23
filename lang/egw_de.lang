@@ -18,6 +18,9 @@ no valid %1 folder configured!	activesync	de	Kein gültiger %1 Ordner konfigurie
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	de	Nicht alle Geräte unterstützen zusätzliche Kalender. Ihr persönlicher Kalender wird immer synchronisiert.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	de	Nicht alle Geräte unterstützen mehrere Adressbücher, deshalb können Sie alle oben ausgewählten Adressbücher in ein einziges synchronisieren.
 profil %1 deleted.	activesync	de	Profil %1 gelöscht.
+select serverside profile to delete
+always delete account on device first!	activesync	de	Wählen Sie hier das Serverseitige Sync-Profil aus, das gelöscht werden soll.
+Achtung: Immer zuerst das Profil auf dem Endgerät löschen!
 select serverside profile to delete<br>always delete account on device first!	activesync	de	Wähle serverseitiges Profil zum Löschen<br>IMMER zuerst Konto auf dem Geräte löschen!
 show log of following device	activesync	de	Zeige Log des folgenden Geräts
 shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	de	Zeigt das Log eines Gerätes und schaltet dieses ein, falls es aktuell ausgeschaltet ist. Logging durch löschen der Logdatei im Pop-up wieder ausschalten!

@@ -18,6 +18,9 @@ no valid %1 folder configured!	activesync	en	No valid %1 folder configured!
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	en	Not all devices support additonal calendars. Your personal calendar is always synchronised.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	en	Not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.
 profil %1 deleted.	activesync	en	Profil %1 deleted.
+select serverside profile to delete
+always delete account on device first!	activesync	en	Select serverside profile to delete
+ALWAYS delete account on device first!
 select serverside profile to delete<br>always delete account on device first!	activesync	en	Select serverside profile to delete<br>ALWAYS delete account on device first!
 show log of following device	activesync	en	Show log of following device
 shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	en	Shows log of a device, enabling it if currently disabled. To disable logging, delete the log file in popup!

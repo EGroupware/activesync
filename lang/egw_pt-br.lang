@@ -1,1 +1,18 @@
 activesync	common	pt-br	eSync
+additional addressbooks to sync	activesync	pt-br	Catálogo de endereços adicionais para sincronizar
+additional calendars to sync	activesync	pt-br	Calendários adicionais para sincronizar
+addressbooks to sync	activesync	pt-br	Addressbooks para sincronizar
+all users, admin only	activesync	pt-br	Tudo apenas usuários, admin
+always delete account on device first!	activesync	pt-br	SEMPRE apagar conta no dispositivo em primeiro lugar!
+can not open imap connection	activesync	pt-br	Não é possível abrir conexão IMAP
+deleting of profil %1 failed!	activesync	pt-br	Exclusão de profil% 1 falhou!
+disabled	activesync	pt-br	inválido
+email account to sync	activesync	pt-br	Conta-mail para sincronizar
+force sorting on device to	activesync	pt-br	Força triagem no dispositivo para
+maintenance	activesync	pt-br	Manutenção
+no valid %1 folder configured!	activesync	pt-br	Nenhuma pasta válido% 1 configurado!
+profil %1 deleted.	activesync	pt-br	Profil% 1 excluído.
+select serverside profile to delete	activesync	pt-br	Selecione o perfil serverside para apagar
+show log of following device	activesync	pt-br	Mostrar log do seguinte dispositivo
+sync all addressbooks as one	activesync	pt-br	Sincronize todos os catálogos de endereços como um
+use addressbooks "own sorting" attribute	activesync	pt-br	usar catálogos de endereços "possuir classificação" atributo

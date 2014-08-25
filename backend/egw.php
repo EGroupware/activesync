@@ -42,7 +42,8 @@ class BackendEGW extends BackendDiff
 	{
 		// check credentials and create session
    		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-		if (!($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)))	// true = no real session
+		if (!(($this->egw_sessionID = egw_session::get_sessionid(true)) && $GLOBALS['egw']->session->verify($this->egw_sessionID) ||
+			($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true))))	// true = no real session
 		{
 			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
 			return false;
@@ -70,9 +71,6 @@ class BackendEGW extends BackendDiff
 		if ($this->mail) $this->mail->closeConnection();
 		unset($this->mail);
 
-		if (!$GLOBALS['egw']->session->destroy($this->egw_sessionID,"")) {
-			debugLog ("nothing to destroy");
-		}
 		$this->_loggedin = FALSE;
 
 		debugLog ("LOGOFF");
@@ -826,7 +824,7 @@ class BackendEGW extends BackendDiff
 					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
 				}
 				$app = 'mail';
-				if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $app = 'felamimail';	
+				if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $app = 'felamimail';
 				$type -= self::TYPE_MAIL;
 				break;
 		}

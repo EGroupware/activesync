@@ -42,7 +42,8 @@ class BackendEGW extends BackendDiff
 	{
 		// check credentials and create session
    		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-		if (!(($this->egw_sessionID = egw_session::get_sessionid(true)) && $GLOBALS['egw']->session->verify($this->egw_sessionID) ||
+		if (!(($this->egw_sessionID = egw_session::get_sessionid(true)) && $GLOBALS['egw']->session->verify($this->egw_sessionID) &&
+				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
 			($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true))))	// true = no real session
 		{
 			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);

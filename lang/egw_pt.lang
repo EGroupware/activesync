@@ -1,1 +1,3 @@
 activesync	common	pt	eSync
+can not open imap connection	activesync	pt	Não é possível abrir conexão IMAP
+no valid %1 folder configured!	activesync	pt	Nenhuma pasta válido% 1 configurado!

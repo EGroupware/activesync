@@ -4,6 +4,7 @@ additional calendars to sync	activesync	it	Agende aggiuntive da sincronizzare
 addressbooks to sync	activesync	it	Rubrica da sincronizzare
 all users, admin only	activesync	it	Tutti gli utenti, solo admin
 allow sending of calendar invitations using this profile?	activesync	it	Permettere l'invio di inviti dell'agenda usando questo profilo?
+always delete account on device first!	activesync	it	Eliminare SEMPRE prima l'account sul dispositivo!
 can not open imap connection	activesync	it	Impossibile aprire la connessione IMAP
 control the sending of calendar invitations while using this profile	activesync	it	controllare l'invio di inviti dell'agenda, usando questo profilo
 deleting of profil %1 failed!	activesync	it	Non è stato possibile eliminare il profilo %1
@@ -18,6 +19,7 @@ no valid %1 folder configured!	activesync	it	La %1 non è una cartella valida!
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	it	Non tutti i dispositivi supportano agende aggiuntive. L'agenda personale è sempre sincronizzata.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	it	Non tutti i dispositivi supportano rubriche multiple, perciò si possono sincronizzare tutte le rubriche selezionate qui sopra come un'unica rubrica.
 profil %1 deleted.	activesync	it	Profilo %1 eliminato
+select serverside profile to delete	activesync	it	Seleziona il profilo lato server da eliminare
 select serverside profile to delete<br>always delete account on device first!	activesync	it	Selezionare il profilo lato server per eliminare<br>Eliminare SEMPRE  l'account sul dispositivo prima!
 show log of following device	activesync	it	Mostra il registro (log) del seguente dispositivo
 shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	it	Mostra il registro (log) di un dispositivo, abilitandolo se al momento disabilitato. Per disabilitare la registrazione (logging), eliminare il file di registro nella finestra popup!

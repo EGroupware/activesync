@@ -3,6 +3,8 @@ additional addressbooks to sync	activesync	sk	Prídavné adresáre pre synchroni
 additional calendars to sync	activesync	sk	Prídavné kalendáre pre synchronizáciu
 addressbooks to sync	activesync	sk	Adresáre pre synchronizáciu
 all users, admin only	activesync	sk	Všetci používatelia, iba admin
+allow sending of calendar invitations using this profile?	activesync	sk	Povoliť posielanie pozvánok Kalendára pomocou tohto profilu?
+always delete account on device first!	activesync	sk	VŽDY najskôr odstráňte účet na zariadení!
 can not open imap connection	activesync	sk	Nedá sa otvoriť spojenie IMAP
 deleting of profil %1 failed!	activesync	sk	Odstraňovanie profilu %1 zlyhalo!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	sk	Odstránením serverového profilu sa odstránia aj všetky pozostatky po predchádzajúcich pokusoch o synchronizáciu na vybranom zariadení.
@@ -16,6 +18,7 @@ no valid %1 folder configured!	activesync	sk	Nebol nastavený platný priečinok
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	sk	Nie všetky zariadenia podporujú prídavné kalendáre. Váš osobný kalendár sa synchronizuje vždy.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	sk	Nie všetky zariadenia podporujú viaceré adresáre, takže môžete vybrať synchronizáciu všetkých adresárov, ktoré ste vybrali, ako jeden.
 profil %1 deleted.	activesync	sk	Profil %1 odstránený.
+select serverside profile to delete	activesync	sk	Vyberte profil na strane servera ktorý chcete odstrániť
 select serverside profile to delete<br>always delete account on device first!	activesync	sk	Vyberte, ktorý serverový profil chcete odstrániť<br>VŽDY odstraňujte najprv účet na zariadení!
 show log of following device	activesync	sk	Zobraziť protokol nasledujúceho zariadenia
 shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	sk	Zobrazí protokol zariadenia, a povolí ho ak je v súčasnosti zakázaný. Ak chcete zakázať protokolovanie, odstráňte súbor protokolu v okienku, ktoré sa otvorí!

@@ -44,7 +44,7 @@ class StateMachine {
     var $_devid;
     var $oldsynccache;
     var $newsynccache;
-    
+
     // Gets the sync state for a specified sync key. Requesting a sync key also implies
     // that previous sync states for this sync key series are no longer needed, and the
     // state machine will tidy up these files.
@@ -55,7 +55,7 @@ class StateMachine {
         $dir = opendir(STATE_PATH. "/" .$this->_devid);
         if(!$dir) {
 	    	debugLog("StateMachine: created folder for device ".$this->_devid);
-	 		if (mkdir(STATE_PATH. "/" .$this->_devid, 0744) === false) 
+	 		if (mkdir(STATE_PATH. "/" .$this->_devid, 0744) === false)
 				debugLog("StateMachine: failed to create folder ".$this->_devid);
 		}
     }
@@ -70,7 +70,7 @@ class StateMachine {
 
         // Check if synckey is allowed
         if(!preg_match('/^(s|mi|SMS){0,1}\{([0-9A-Za-z-]+)\}([0-9]+)$/', $synckey, $matches)) {
-		    debugLog("GetSyncState: Sync key invalid formatted (".$syckey.")");
+		    debugLog("GetSyncState: Sync key invalid formatted (".$synckey.")");
             return -9;
         }
 
@@ -80,7 +80,7 @@ class StateMachine {
         $n = $matches[3];
 
         // Cleanup all older syncstates
-        // dw2412 removed. Doing this in request.php depending on synckeys we get from device (by this we know device 
+        // dw2412 removed. Doing this in request.php depending on synckeys we get from device (by this we know device
         // has got a cretain key!)
 
         // Read current sync state
@@ -242,11 +242,11 @@ class StateMachine {
         if(!is_dir($dir)) {
 	    	debugLog("StateMachine->setSyncCache: created folder ".$dir);
 			$initialconvert = true;
-	 		if (mkdir($dir, 0744) === false) 
+	 		if (mkdir($dir, 0744) === false)
 				debugLog("StateMachine->setSyncCache: failed to create folder ".$dir);
 		}
 		foreach($this->newsynccache as $k1=>$v1) {
-			if ($folders == false && 
+			if ($folders == false &&
 				$k1 == 'folders' &&
 				$initialconvert == false) continue;
 			if (is_array($v1)) {
@@ -255,7 +255,7 @@ class StateMachine {
 				foreach($v1 as $k2=>$v2) {
 					if (is_array($v2)) {
 						file_put_contents($dir."/".$k1."/".$k2,serialize($v2));
-					} else 
+					} else
 						file_put_contents($dir."/".$k1."/".$k2,serialize(array("singleValue" => $v2)));
 				}
 			} else {
@@ -269,9 +269,9 @@ class StateMachine {
 		$file = STATE_PATH. "/" .$this->_devid."/cache_".$this->_user."/confirmed_synckeys/".$key;
 		debugLog("try to unlink $file ".file_exists($file));
 		if (file_exists($file))
-			if (!unlink($file)) 
+			if (!unlink($file))
 				debugLog("StateMachine->deleteSyncCacheConfirmedSyncKey: Failed to unlink $file ".file_exists($file));
-		if (isset($cache['confirmed_synckeys'][$key])) 
+		if (isset($cache['confirmed_synckeys'][$key]))
 			unset($cache['confirmed_synckeys'][$key]);
 	}
 
@@ -301,9 +301,9 @@ class StateMachine {
 		if (!$dir) return false;
 		while (($file = readdir($dir)) !== false) {
 			if ($file == '.' || $file == '..') continue;
-			if (is_dir($folder."/".$file)) 
+			if (is_dir($folder."/".$file))
 				$res[$file] = $this->_readSyncCacheFromFolder($folder."/".$file);
-			else 
+			else
 				$res[$file] = (is_array($c1 = @unserialize(file_get_contents($folder."/".$file))) ? (isset($c1['singleValue']) ? $c1['singleValue'] : $c1) : false);
 		}
 		return $res;
@@ -315,7 +315,7 @@ class StateMachine {
     	    if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) {
     	    	$content1 = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
 				$content1 = ksort_recursive(unserialize($content1));
-			} else { 
+			} else {
 				$content1 = array();
 			}
 			$content2 = $this->_readSyncCacheFromFolder(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user);
@@ -333,7 +333,7 @@ class StateMachine {
 // just for compatibility to take old cache and apply it for new format
 			debugLog("StateMachine->getSyncCache: File Device based! (DEPRECIATED SINCE MORE THAN ONE USERPROFILE COULD BE CREATED ON SOME DEVICES! i.e. iPhone)");
     	    $content = file_get_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
-			if (file_put_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $content)) 
+			if (file_put_contents(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user, $content))
 				unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
     	    $this->oldsynccache=unserialize($content);
             return $content;
@@ -342,24 +342,24 @@ class StateMachine {
 
 
     function deleteSyncCache() {
-		// Remove the cache in case full sync is requested with a synckey 0. 
-		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid)) 
+		// Remove the cache in case full sync is requested with a synckey 0.
+		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid))
 			unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid);
-		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user)) 
+		if (file_exists(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user))
 			unlink(STATE_PATH . "/". $this->_devid . "/cache_".$this->_devid."_".$this->_user);
 		if (is_dir(STATE_PATH . "/". $this->_devid . "/cache_".$this->_user)) {
 			$dir = STATE_PATH . "/". $this->_devid . "/cache_".$this->_user;
        		$objects = scandir($dir);
            	foreach ($objects as $object) {
 				if ($object != "." && $object != "..") {
-					if (filetype($dir."/".$object) == "dir") 
-						rrmdir($dir."/".$object); 
-					else 
+					if (filetype($dir."/".$object) == "dir")
+						rrmdir($dir."/".$object);
+					else
 						unlink($dir."/".$object);
                 }
 			}
 			reset($objects);
-			rmdir($dir); 
+			rmdir($dir);
 		}
     }
 
@@ -374,18 +374,18 @@ class StateMachine {
 		    case 13	: $cache['folders'][$serverid]['class'] = "Calendar"; break;
 		    case 9	: // These are contact classes
 		    case 14	: $cache['folders'][$serverid]['class'] = "Contacts"; break;
-		    case 17	: 
+		    case 17	:
 		    case 10	: $cache['folders'][$serverid]['class'] = "Notes"; break;
 		    case 1	: // All other types map to Email
-		    case 2	: 
-		    case 3	: 
-		    case 4	: 
-		    case 5	: 
-		    case 6	: 
-		    case 11	: 
-		    case 12	: 
-		    case 16	: 
-		    case 18	: 
+		    case 2	:
+		    case 3	:
+		    case 4	:
+		    case 5	:
+		    case 6	:
+		    case 11	:
+		    case 12	:
+		    case 16	:
+		    case 18	:
 		    default	: $cache['folders'][$serverid]['class'] = "Email";
 		}
 		$cache['folders'][$serverid]['type'] = $type;

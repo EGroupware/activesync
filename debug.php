@@ -52,7 +52,5 @@ function zarafa_error_handler($errno, $errstr, $errfile, $errline, $errcontext) 
 // Only variables should be assigned by reference, eg. soetemplate::tree_walk()
 // Declaration of <extended method> should be compatible with <parent method>, varios places where method parameters change
 // --> switching it off for now, as it makes error-log unusable
-error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT);
-set_error_handler("zarafa_error_handler",E_ALL & ~E_NOTICE & ~E_STRICT);
-
-?>
+error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
+set_error_handler("zarafa_error_handler",E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);

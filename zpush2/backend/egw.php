@@ -1136,7 +1136,7 @@ class BackendEGW extends BackendDiff
 		foreach(/*$apps*/array('addressbook','mail') as $app)
 		{
 			if (strpos($app,'_')!==false) continue;
-			$class = $app.'_activesync';
+			$class = $app.'_zpush';
 			if (class_exists($class))
 			{
 				$this->plugins[$app] = new $class($this);

@@ -13,6 +13,13 @@
 * Consult LICENSE file for details
 ************************************************/
 
+/* uncomment this to enable zpush2
+$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/zpush2/index.php';
+chdir(__DIR__.'/zpush2');
+include('zpush2/src/index.php');
+exit;
+*/
+
 $sessionstarttime = microtime(true);
 //we handle connection aborts ourself. necessary to keep sync state clean in heartbeat/wait
 ignore_user_abort(true);

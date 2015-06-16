@@ -1191,7 +1191,7 @@ class BackendEGW extends BackendDiff
 		$apps = array_keys($GLOBALS['egw_info']['user']['apps']);
 		if (!isset($apps))	// happens during setup
 		{
-			$apps = array('addressbook', 'calendar', 'mail', 'infolog', 'filemanager');
+			$apps = array('addressbook', 'calendar', 'mail', 'infolog'/*, 'filemanager'*/);
 		}
 		// allow apps without user run-rights to hook into eSync
 		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps', array(), true)))	// true = no perms. check
@@ -1201,7 +1201,7 @@ class BackendEGW extends BackendDiff
 				if ($extra_apps) $apps = array_unique(array_merge($apps, (array)$extra_apps));
 			}
 		}
-		foreach(/*$apps*/array('addressbook','mail','infolog') as $app)
+		foreach($apps as $app)
 		{
 			if (strpos($app,'_')!==false) continue;
 			$class = $app.'_zpush';

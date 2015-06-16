@@ -139,7 +139,8 @@
     // devices which don't support provisioning (like WM 5 and HTC Android Mail) - dw2412 contribution
     // false (default) - Enforce provisioning for all devices
     // true - allow older devices, but enforce policies on devices which support it
-    define('LOOSE_PROVISIONING', false);
+	// BackendEGW defines int in it's constructor depending on (device-specific) policy
+    //define('LOOSE_PROVISIONING', false);
 
     // Default conflict preference
     // Some devices allow to set if the server or PIM (mobile)
@@ -300,5 +301,3 @@
         ),
 */
     );
-
-?>

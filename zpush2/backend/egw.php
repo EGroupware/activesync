@@ -40,6 +40,16 @@ class BackendEGW extends BackendDiff
 	var $exporter;
 
 	/**
+	 * Constructor, defines LOOSE_PROVISIONING, instead of setting it in config
+	 */
+	public function __construct()
+	{
+		$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
+
+		define('LOOSE_PROVISIONING', $response ? $response['policy_loose'] : false);
+	}
+
+	/**
 	 * Log into EGroupware
 	 *
 	 * @param string $username
@@ -596,60 +606,32 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
 	}
 
-
 	/**
-	 * START ADDED dw2412 Settings Support
+	 * Applies settings to and gets informations from the device
 	 *
-	 * Plugins either return array() to NOT change standard response or array('response' => value)
+	 * @param SyncObject    $settings (SyncOOF or SyncUserInformation possible)
 	 *
-	 * @param array $request
-	 * @param string $devid
-	 * @return array response
+	 * @access public
+	 * @return SyncObject   $settings
 	 */
-	function setSettings($request,$devid)
+	public function Settings($settings)
 	{
-		if (isset($request["oof"])) {
-			if ($request["oof"]["oofstate"] == 1) {
-				// in case oof should be switched on do it here
-				// store somehow your oofmessage in case your system supports.
-				// response["oof"]["status"] = true per default and should be false in case
-				// the oof message could not be set
-				$response["oof"]["status"] = true;
-			} else {
-				// in case oof should be switched off do it here
-				$response["oof"]["status"] = true;
-			}
+		parent::Settings($settings);
+
+		if ($settings instanceof SyncUserInformation)
+		{
+			$settings->emailaddresses[] = $GLOBALS['egw_info']['user']['account_email'];
+			$settings->Status = SYNC_SETTINGSSTATUS_SUCCESS;
 		}
-		if (isset($request["deviceinformation"])) {
-			//error_log(print_r($request["deviceinformation"]));
-			// in case you'd like to store device informations do it here.
-			$response["deviceinformation"]["status"] = true;
-		}
-		if (isset($request["devicepassword"])) {
-			// in case you'd like to store device informations do it here.
-			$response["devicepassword"]["status"] = true;
+		if ($settings instanceof SyncOOF)
+		{
+			$settings->oofstate = 0;	// OOF (out of office) not yet supported via AS
 		}
 
-		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $request, $devid);
+		// call all plugins with settings
+		$this->run_on_all_plugins(__FUNCTION__, array(), $settings);
 
-		//error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
-		return $response;
-	}
-
-	function getSettings ($request,$devid)
-	{
-		if (isset($request["userinformation"])) {
-			$response["userinformation"]["status"] = 1;
-			$response["userinformation"]["emailaddresses"][] = $GLOBALS['egw_info']['user']['email'];
-		} else {
-			$response["userinformation"]["status"] = false;
-		};
-		if (isset($request["oof"])) {
-			$response["oof"]["status"] 	= 0;
-		};
-		//error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
-		return $response;
+		return $settings;
 	}
 
 	/**
@@ -1107,7 +1089,7 @@ class BackendEGW extends BackendDiff
 	 * @param optional further parameters
 	 * @return mixed
 	 */
-	private function run_on_plugin_by_id($method,$id)
+	public function run_on_plugin_by_id($method,$id)
 	{
 		$this->setup_plugins();
 
@@ -1139,7 +1121,7 @@ class BackendEGW extends BackendDiff
 	 * @param optional parameters
 	 * @return mixed agregated result
 	 */
-	private function run_on_all_plugins($method,$agregate=array())
+	public function run_on_all_plugins($method,$agregate=array())
 	{
 		//error_log(__METHOD__."('$method', ".array2string($agregate).")");
 		$this->setup_plugins();
@@ -1251,12 +1233,23 @@ class BackendEGW extends BackendDiff
      * @access public
      * @return string       AS version constant
      */
-    public function GetSupportedASVersion() {
+    public function GetSupportedASVersion()
+	{
         return ZPush::ASV_14;
     }
+
+	/**
+	 * Returns a IStateMachine implementation used to save states
+	 * The default StateMachine should be used here, so, false is fine
+	 *
+	 * @access public
+	 * @return boolean/object
+	 */
+	public function GetStateMachine()
+	{
+		return new activesync_statemachine($this);
+	}
 }
-
-
 
 /**
  * Plugin interface for EGroupware application backends

@@ -23,6 +23,9 @@ include_once('lib/default/diffbackend/diffbackend.php');
  * Z-Push backend for EGroupware
  *
  * Uses EGroupware application specific plugins, eg. mail_zpush class
+ *
+ * @todo implement GetStateMaschine() to return own IStateMachine to be used instead of FileStateMachine to store states in DB
+ * @todo change AlterPingChanges method to GetFolderState in plugins, interfaces and egw backend directly returning state
  */
 class BackendEGW extends BackendDiff
 {
@@ -110,17 +113,6 @@ class BackendEGW extends BackendDiff
 		//debugLog(__METHOD__."() returning ".array2string($folderlist));
 
 		return $folderlist;
-	}
-
-	/**
-	 * Switches alter ping handling on or off
-	 *
-	 * @see BackendDiff::AlterPing()
-	 * @return boolean
-	 */
-	function AlterPing()
-	{
-		return true;
 	}
 
 	/**
@@ -395,6 +387,86 @@ class BackendEGW extends BackendDiff
 			}
 		}
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+	}
+
+	/**
+	 * Indicates if the backend has a ChangesSink.
+	 * A sink is an active notification mechanism which does not need polling.
+	 * The EGroupware backend simulates a sink by polling status information of the folder
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function HasChangesSink()
+	{
+		$this->sinkfolders = array();
+		$this->sinkstates = array();
+		return true;
+	}
+
+	/**
+	 * The folder should be considered by the sink.
+	 * Folders which were not initialized should not result in a notification
+	 * of IBacken->ChangesSink().
+	 *
+	 * @param string        $folderid
+	 *
+	 * @access public
+	 * @return boolean      false if found can not be found
+	 */
+	public function ChangesSinkInitialize($folderid)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($folderid)");
+
+		$this->sinkfolders[] = $folderid;
+
+		return true;
+	}
+
+	/**
+	 * The actual ChangesSink.
+	 * For max. the $timeout value this method should block and if no changes
+	 * are available return an empty array.
+	 * If changes are available a list of folderids is expected.
+	 *
+	 * @param int           $timeout        max. amount of seconds to block
+	 *
+	 * @access public
+	 * @return array
+	 */
+	public function ChangesSink($timeout = 30)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($timeout)");
+		$notifications = array();
+		$stopat = time() + $timeout - 1;
+
+		while($stopat > time() && empty($notifications))
+		{
+			foreach ($this->sinkfolders as $folderid)
+			{
+				$newstate = null;
+				$this->AlterPingChanges($folderid, $newstate);
+
+				if (!isset($this->sinkstates[$folderid]))
+					$this->sinkstates[$folderid] = $newstate;
+
+				if ($this->sinkstates[$folderid] != $newstate)
+				{
+					$notifications[] = $folderid;
+					$this->sinkstates[$folderid] = $newstate;
+				}
+			}
+
+			if (empty($notifications))
+			{
+				$sleep_time = min($timeout, 30);
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($timeout) no changes, going to sleep($sleep_time)");
+				sleep($sleep_time);
+			}
+		}
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($timeout) returning ".array2string($notifications));
+
+		return $notifications;
 	}
 
 	/**

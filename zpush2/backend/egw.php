@@ -11,7 +11,13 @@
  * @version $Id$
  */
 
-include_once('diffbackend.php');
+include_once('lib/interface/ibackend.php');
+include_once('lib/interface/ichanges.php');
+include_once('lib/interface/iexportchanges.php');
+include_once('lib/interface/iimportchanges.php');
+include_once('lib/interface/isearchprovider.php');
+include_once('lib/interface/istatemachine.php');
+include_once('lib/default/diffbackend/diffbackend.php');
 
 /**
  * Z-Push backend for EGroupware
@@ -37,6 +43,7 @@ class BackendEGW extends BackendDiff
 	 * @param string $domain
 	 * @param string $password
 	 * @return boolean TRUE if the logon succeeded, FALSE if not
+     * @throws FatalException   e.g. some required libraries are unavailable
 	 */
 	public function Logon($username, $domain, $password)
 	{
@@ -82,18 +89,17 @@ class BackendEGW extends BackendDiff
 	 */
 	function GetFolderList()
 	{
+		error_log(__METHOD__."()");
 		$folderlist = $this->run_on_all_plugins(__FUNCTION__);
-		$applist = array('addressbook','calendar');
-		$targetmailapp = 'mail';
-		if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $targetmailapp = 'felamimail';
-		$applist[] = $targetmailapp;
+		error_log(__METHOD__."() run_On_all_plugins() returned ".array2string($folderlist));
+		$applist = array('addressbook','calendar','mail');
 		foreach($applist as $app)
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
 				$folderlist[] = $folder = array(
 					'id'	=>	$this->createID($app,
-						$app == $targetmailapp ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
+						$app == 'mail' ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
 							$GLOBALS['egw_info']['user']['account_id']),
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
@@ -243,7 +249,7 @@ class BackendEGW extends BackendDiff
 			}
 		}
 		// allow other apps to insert meeting requests
-		if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
+		/*if ($app == 'mail' && $folder == 0)
 		{
 			$before = count($ret);
 			$not_uids = array();
@@ -261,7 +267,7 @@ class BackendEGW extends BackendDiff
 				debugLog(array2string($ret2));
 				$ret = $ret2; // should be already merged by run_on_all_plugins
 			}
-		}
+		}*/
 		debugLog(__METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate):".array2string($ret));
 		return $ret;
 	}
@@ -303,24 +309,22 @@ class BackendEGW extends BackendDiff
 	 *
 	 * @param string $folderid
 	 * @param string $id
-	 * @param int $truncsize
-	 * @param int $bodypreference
-	 * @param $optionbodypreference
-	 * @param bool $mimesupport
+     * @param ContentParameters $contentparameters  parameters of the requested message (truncation, mimesupport etc)
 	 * @return $messageobject|boolean false on error
 	 */
-	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
+	function GetMessage($folderid, $id, $contentparameters)
 	{
-		if ($id < 0)
+		debugLog(__METHOD__."($folderid, $id)");
+		/*if ($id < 0)
 		{
 			$this->splitID($folderid, $type, $folder, $app);
-			if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
+			if ($app == 'mail' && $folder == 0)
 			{
 
-				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
+				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $contentparameters);
 			}
-		}
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
+		}*/
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $contentparameters);
 	}
 
 	/**
@@ -425,32 +429,95 @@ class BackendEGW extends BackendDiff
 		return $ret;
 	}
 
-	function ChangeMessage($folderid, $id, $message)
+    /**
+     * Called when a message has been changed on the mobile. The new message must be saved to disk.
+     * The return value must be whatever would be returned from StatMessage() after the message has been saved.
+     * This way, the 'flags' and the 'mod' properties of the StatMessage() item may change via ChangeMessage().
+     * This method will never be called on E-mail items as it's not 'possible' to change e-mail items. It's only
+     * possible to set them as 'read' or 'unread'.
+     *
+     * @param string              $folderid            id of the folder
+     * @param string              $id                  id of the message
+     * @param SyncXXX             $message             the SyncObject containing a message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return array                        same return value as StatMessage()
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function ChangeMessage($folderid, $id, $message, $contentParameters)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $message);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $message, $contentParameters);
 	}
 
-	function MoveMessage($folderid, $id, $newfolderid)
+    /**
+     * Called when the user moves an item on the PDA from one folder to another. Whatever is needed
+     * to move the message on disk has to be done here. After this call, StatMessage() and GetMessageList()
+     * should show the items to have a new parent. This means that it will disappear from GetMessageList()
+     * of the sourcefolder and the destination folder will show the new message
+     *
+     * @param string              $folderid            id of the source folder
+     * @param string              $id                  id of the message
+     * @param string              $newfolderid         id of the destination folder
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_MOVEITEMSSTATUS_* exceptions
+     */
+    public function MoveMessage($folderid, $id, $newfolderid, $contentParameters)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $newfolderid);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $newfolderid, $contentParameters);
 	}
 
-	function DeleteMessage($folderid, $id)
+    /**
+     * Called when the user has requested to delete (really delete) a message. Usually
+     * this means just unlinking the file its in or somesuch. After this call has succeeded, a call to
+     * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the mobile
+     * as it will be seen as a 'new' item. This means that if this method is not implemented, it's possible to
+     * delete messages on the PDA, but as soon as a sync is done, the item will be resynched to the mobile
+     *
+     * @param string              $folderid             id of the folder
+     * @param string              $id                   id of the message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function DeleteMessage($folderid, $id, $contentParameters)
 	{
 		if ($id < 0)
 		{
 			$this->splitID($folderid, $type, $folder, $app);
-			if (($app == 'felamimail' || $app == 'mail') && $folder == 0)
+			if ($app == 'mail' && $folder == 0)
 			{
-				return $this->run_on_all_plugins('DeleteMeetingRequest',array(),$id);
+				return $this->run_on_all_plugins('DeleteMeetingRequest', array(), $id, $contentParameters);
 			}
 		}
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $contentParameters);
 	}
 
-	function SetReadFlag($folderid, $id, $flag)
+    /**
+     * Changes the 'read' flag of a message on disk. The $flags
+     * parameter can only be '1' (read) or '0' (unread). After a call to
+     * SetReadFlag(), GetMessageList() should return the message with the
+     * new 'flags' but should not modify the 'mod' parameter. If you do
+     * change 'mod', simply setting the message to 'read' on the mobile will trigger
+     * a full resync of the item from the server.
+     *
+     * @param string              $folderid            id of the folder
+     * @param string              $id                  id of the message
+     * @param int                 $flags               read flag of the message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function SetReadFlag($folderid, $id, $flags, $contentParameters)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flags, $contentParameters);
 	}
 
 	function ChangeMessageFlag($folderid, $id, $flag)
@@ -716,9 +783,10 @@ class BackendEGW extends BackendDiff
 	 * @param string $folderid folder of meeting request mail
 	 * @param int $response 1=accepted, 2=tentative, 3=decline
 	 * @param int &$calendarid on return id of calendar item
+	 * @todo handle commented calendarid
 	 * @return boolean true on success, false on error
 	 */
-	function MeetingResponse($requestid, $folderid, $response, &$calendarid)
+	function MeetingResponse($requestid, $folderid, $response)//, &$calendarid)
 	{
 		$calendarid = $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $requestid, $response);
 
@@ -785,7 +853,7 @@ class BackendEGW extends BackendDiff
 		if (strlen($folder_hex) > 8) $folder_hex = substr($folder_hex,-8);
 		$str = sprintf('%04X',$type).$folder_hex;
 
-		//debugLog(__METHOD__."('$t','$f') type=$type --> '$str'");
+		debugLog(__METHOD__."('$t','$folder') type=$type --> '$str'");
 
 		return $str;
 	}
@@ -835,15 +903,15 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Convert note to requested bodypreference format and truncate if requested
 	 *
-	 * @param $note string containing the plaintext message
-	 * @param $bodypreference object
-	 * @param &$airsyncbasebody the airsyncbasebody object to send to the client
+	 * @param string $note containing the plaintext message
+	 * @param array $bodypreference
+	 * @param SyncBaseBody $airsyncbasebody the airsyncbasebody object to send to the client
 	 *
 	 * @return string plain textbody for message or false
 	 */
-	public function note2messagenote($note, $bodypreference, &$airsyncbasebody)
+	public function note2messagenote($note, $bodypreference, SyncBaseBody $airsyncbasebody)
 	{
-		//error_log (__METHOD__);
+		//error_log (__METHOD__."('$note', ".array2string($bodypreference).", ...)");
 		if ($bodypreference == false)
 		{
 			return ($note);
@@ -894,9 +962,9 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Convert received messagenote to egroupware plaintext note
 	 *
-	 * @param $body the plain body received
-	 * @param $body the rtf body data
-	 * @param $airsyncbasebody  object received from client
+	 * @param string $body the plain body received
+	 * @param string $rtf the rtf body data
+	 * @param SyncBaseBody $airsyncbasebody  object received from client
 	 *
 	 * @return string plaintext for eGroupware
 	 */
@@ -917,7 +985,7 @@ class BackendEGW extends BackendDiff
 		// Nokia MfE 2.9.158 sends contact notes with RTF and Body element.
 		// The RTF is empty, the body contains the note therefore we need to unpack the rtf
 		// to see if it is realy empty and in case not, take the appointment body.
-		if (isset($message->rtf))
+		/*if (isset($message->rtf))
 		{
 			error_log("RTF Body");
 			$rtf_body = new rtf ();
@@ -929,7 +997,7 @@ class BackendEGW extends BackendDiff
 				unset($rtf);
 			}
 			if($rtf_body->out <> "") $body=$rtf_body->out;
-		}
+		}*/
 		return $body;
 	}
 
@@ -939,9 +1007,9 @@ class BackendEGW extends BackendDiff
 	 * @param array|string $hook_data
 	 * @return array with settings from all plugins
 	 */
-	public function settings($hook_data)
+	public function egw_settings($hook_data)
 	{
-		return $this->run_on_all_plugins('settings',array(),$hook_data);
+		return $this->run_on_all_plugins('egw_settings',array(),$hook_data);
 	}
 
 	/**
@@ -1005,6 +1073,7 @@ class BackendEGW extends BackendDiff
 	 */
 	private function run_on_all_plugins($method,$agregate=array())
 	{
+		//error_log(__METHOD__."('$method', ".array2string($agregate).")");
 		$this->setup_plugins();
 
 		$params = func_get_args();
@@ -1014,11 +1083,14 @@ class BackendEGW extends BackendDiff
 		{
 			if (method_exists($plugin, $method))
 			{
+				debugLog(__METHOD__."() callig ".get_class($plugin).'::'.$method);
 				$result = call_user_func_array(array($plugin, $method),$params);
+				debugLog(__METHOD__."() callig ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+
 				if (is_array($agregate))
 				{
 					$agregate = array_merge($agregate,$result);
-					//error_log(__METHOD__."('$method', , ".array2string($params).") result $plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
+					error_log(__METHOD__."('$method', , ".array2string($params).") result plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
 				}
 				elseif ($agregate === 'return-first')
 				{
@@ -1030,13 +1102,13 @@ class BackendEGW extends BackendDiff
 				}
 				else
 				{
-					//error_log(__METHOD__."('$method') agg:".array2string($agregate).' res:'.array2string($result));
+					error_log(__METHOD__."('$method') agg:".array2string($agregate).' res:'.array2string($result));
 					$agregate += (is_bool($agregate)? (bool) $result:$result);
 				}
 			}
 		}
 		if ($agregate === 'return-first') $agregate = false;
-		//error_log(__METHOD__."('$method') returning ".array2string($agregate));
+		error_log(__METHOD__."('$method') returning ".array2string($agregate));
 		return $agregate;
 	}
 
@@ -1051,7 +1123,7 @@ class BackendEGW extends BackendDiff
 		$apps = array_keys($GLOBALS['egw_info']['user']['apps']);
 		if (!isset($apps))	// happens during setup
 		{
-			$apps = array('addressbook', 'calendar', 'mail', 'felamimail', 'infolog', 'filemanager');
+			$apps = array('addressbook', 'calendar', 'mail', 'infolog', 'filemanager');
 		}
 		// allow apps without user run-rights to hook into eSync
 		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps', array(), true)))	// true = no perms. check
@@ -1061,7 +1133,7 @@ class BackendEGW extends BackendDiff
 				if ($extra_apps) $apps = array_unique(array_merge($apps, (array)$extra_apps));
 			}
 		}
-		foreach($apps as $app)
+		foreach(/*$apps*/array('addressbook','mail') as $app)
 		{
 			if (strpos($app,'_')!==false) continue;
 			$class = $app.'_activesync';
@@ -1070,13 +1142,50 @@ class BackendEGW extends BackendDiff
 				$this->plugins[$app] = new $class($this);
 			}
 		}
-		// prefer new mail app over felamimail
-		if (isset($this->plugins['mail']) && isset($this->plugins['felamimail']))
-		{
-			unset($this->plugins['felamimail']);
-		}
 		//error_log(__METHOD__."() hook_data=".array2string($hook_data).' returning '.array2string(array_keys($this->plugins)));
 	}
+
+    /**
+     * Returns the waste basket
+     *
+     * The waste basked is used when deleting items; if this function returns a valid folder ID,
+     * then all deletes are handled as moves and are sent to the backend as a move.
+     * If it returns FALSE, then deletes are handled as real deletes
+     *
+     * @access public
+     * @return string
+     */
+    public function GetWasteBasket()
+	{
+
+	}
+
+	/**
+     * Deletes a folder
+     *
+     * @param string        $id
+     * @param string        $parent         is normally false
+     *
+     * @access public
+     * @return boolean                      status - false if e.g. does not exist
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
+     */
+    public function DeleteFolder($id, $parentid)
+	{
+
+	}
+
+    /**
+     * Indicates which AS version is supported by the backend.
+     * By default AS version 2.5 (ASV_25) is returned (Z-Push 1 standard).
+     * Subclasses can overwrite this method to set another AS version
+     *
+     * @access public
+     * @return string       AS version constant
+     */
+    public function GetSupportedASVersion() {
+        return ZPush::ASV_14;
+    }
 }
 
 
@@ -1118,7 +1227,8 @@ interface activesync_plugin_write extends activesync_plugin_read
 	 *
 	 * @param $folderid
 	 * @param $id for change | empty for create new
-	 * @param $message object to SyncObject to create
+	 * @param SyncXXX $message object to SyncObject to create
+     * @param ContentParameters   $contentParameters
 	 *
 	 * @return $stat whatever would be returned from StatMessage
 	 *
@@ -1129,7 +1239,7 @@ interface activesync_plugin_write extends activesync_plugin_read
 	 * Note that this function will never be called on E-mail items as you can't change e-mail items, you
 	 * can only set them as 'read'.
 	 */
-	public function ChangeMessage($folderid, $id, $message);
+	public function ChangeMessage($folderid, $id, $message, $contentParameters);
 
 	/**
 	 * Moves a message from one folder to another
@@ -1137,6 +1247,7 @@ interface activesync_plugin_write extends activesync_plugin_read
 	 * @param $folderid of the current folder
 	 * @param $id of the message
 	 * @param $newfolderid
+     * @param ContentParameters   $contentParameters
 	 *
 	 * @return $newid as a string | boolean false on error
 	 *
@@ -1145,34 +1256,43 @@ interface activesync_plugin_write extends activesync_plugin_read
 	 * at all on the source folder, and the destination folder will show the new message
 	 *
 	 */
-	public function MoveMessage($folderid, $id, $newfolderid);
+	public function MoveMessage($folderid, $id, $newfolderid, $contentParameters);
 
-	/**
-	 * Delete (really delete) a message in a folder
-	 *
-	 * @param $folderid
-	 * @param $id
-	 *
-	 * @TODO check what is to be returned
-	 *
-	 * @DESC After this call has succeeded, a call to
-	 * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the PDA
-	 * as it will be seen as a 'new' item. This means that if you don't implement this function, you will
-	 * be able to delete messages on the PDA, but as soon as you sync, you'll get the item back
-	 */
-	public function DeleteMessage($folderid, $id);
+    /**
+     * Called when the user has requested to delete (really delete) a message. Usually
+     * this means just unlinking the file its in or somesuch. After this call has succeeded, a call to
+     * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the mobile
+     * as it will be seen as a 'new' item. This means that if this method is not implemented, it's possible to
+     * delete messages on the PDA, but as soon as a sync is done, the item will be resynched to the mobile
+     *
+     * @param string              $folderid             id of the folder
+     * @param string              $id                   id of the message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function DeleteMessage($folderid, $id, $contentParameters);
 
-	/**
-	 * modify read flag of a message
-	 *
-	 * @param $folderid
-	 * @param $id
-	 * @param $flags
-	 *
-	 *
-	 * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
-	 */
-	public function SetReadFlag($folderid, $id, $flags);
+    /**
+     * Changes the 'read' flag of a message on disk. The $flags
+     * parameter can only be '1' (read) or '0' (unread). After a call to
+     * SetReadFlag(), GetMessageList() should return the message with the
+     * new 'flags' but should not modify the 'mod' parameter. If you do
+     * change 'mod', simply setting the message to 'read' on the mobile will trigger
+     * a full resync of the item from the server.
+     *
+     * @param string              $folderid            id of the folder
+     * @param string              $id                  id of the message
+     * @param int                 $flags               read flag of the message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+	public function SetReadFlag($folderid, $id, $flags, $contentParameters);
 
 	/**
 	 * modify olflags (outlook style) flag of a message
@@ -1282,13 +1402,10 @@ interface activesync_plugin_read
 	 * Get specified item from specified folder.
 	 * @param string $folderid
 	 * @param string $id
-	 * @param int $truncsize
-	 * @param int $bodypreference
-	 * @param $optionbodypreference
-	 * @param bool $mimesupport
+     * @param ContentParameters $contentparameters  parameters of the requested message (truncation, mimesupport etc)
 	 * @return $messageobject|boolean false on error
 	 */
-	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0);
+	function GetMessage($folderid, $id, $contentparameters);
 
 	/**
 	 * Settings / Preferences like the usualy settings hook in egroupware
@@ -1297,7 +1414,7 @@ interface activesync_plugin_read
 	 *
 	 * @return array name => array with values for keys: type, label, name, help, values, default, ...
 	 */
-	function settings($hook_data);
+	function egw_settings($hook_data);
 }
 
 /**

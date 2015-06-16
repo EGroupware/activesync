@@ -22,7 +22,7 @@ include_once('lib/default/diffbackend/diffbackend.php');
 /**
  * Z-Push backend for EGroupware
  *
- * Uses EGroupware application specific plugins, eg. (felami-) mail_activesync class
+ * Uses EGroupware application specific plugins, eg. mail_zpush class
  */
 class BackendEGW extends BackendDiff
 {
@@ -362,7 +362,7 @@ class BackendEGW extends BackendDiff
 		list($folderid, $uid) = explode(":", $entryid); // split name as it is constructed that way FOLDERID:UID:PARTID
 		$this->splitID($folderid, $type, $folder, $app);
 		//debugLog(__METHOD__.__LINE__."$folderid, $type, $folder, $app");
-		if ($app === 'felamimail'||$app == 'mail')
+		if ($app == 'mail')
 		{									// GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
 			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreferences[1]['TruncationSize']?$bodypreferences[1]['TruncationSize']:500), $bodypreference, $optionbodypreference=false, $mimesupport);
 		}
@@ -389,7 +389,7 @@ class BackendEGW extends BackendDiff
 		if ($id < 0)
 		{
 			$this->splitID($folderid, $type, $folder, $app);
-			if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
+			if (($app == 'mail') && $folder == 0)
 			{
 				return $this->run_on_all_plugins('StatMeetingRequest',array(),$id);
 			}
@@ -417,7 +417,6 @@ class BackendEGW extends BackendDiff
 		if (is_numeric($type))
 		{
 			$type = 'mail';
-			if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $type = 'felamimail';
 		}
 
 		$ret = array();		// so unsupported or not enabled/installed backends return "no change"
@@ -831,7 +830,6 @@ class BackendEGW extends BackendDiff
 				$type = self::TYPE_INFOLOG;
 				break;
 			case 'mail':
-			case 'felamimail':
 				$type = self::TYPE_MAIL;
 				break;
 			default:
@@ -893,7 +891,6 @@ class BackendEGW extends BackendDiff
 					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
 				}
 				$app = 'mail';
-				if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $app = 'felamimail';
 				$type -= self::TYPE_MAIL;
 				break;
 		}
@@ -1047,7 +1044,6 @@ class BackendEGW extends BackendDiff
 		if (is_numeric($type))
 		{
 			$type = 'mail';
-			if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $type = 'felamimail';
 		}
 		$params = func_get_args();
 		array_shift($params);	// remove $method
@@ -1133,7 +1129,7 @@ class BackendEGW extends BackendDiff
 				if ($extra_apps) $apps = array_unique(array_merge($apps, (array)$extra_apps));
 			}
 		}
-		foreach(/*$apps*/array('addressbook','mail') as $app)
+		foreach(/*$apps*/array('addressbook','mail','infolog') as $app)
 		{
 			if (strpos($app,'_')!==false) continue;
 			$class = $app.'_zpush';

@@ -1170,7 +1170,7 @@ class BackendEGW extends BackendDiff
 		if (isset($this->plugins)) return;
 
 		$this->plugins = array();
-		$apps = array_keys($GLOBALS['egw_info']['user']['apps']);
+		if (isset($GLOBALS['egw_info']['user']['apps'])) $apps = array_keys($GLOBALS['egw_info']['user']['apps']);
 		if (!isset($apps))	// happens during setup
 		{
 			$apps = array('addressbook', 'calendar', 'mail', 'infolog'/*, 'filemanager'*/);

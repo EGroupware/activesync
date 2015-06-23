@@ -1133,9 +1133,9 @@ class BackendEGW extends BackendDiff
 		{
 			if (method_exists($plugin, $method))
 			{
-				debugLog(__METHOD__."() callig ".get_class($plugin).'::'.$method);
+				debugLog(__METHOD__."() calling ".get_class($plugin).'::'.$method);
 				$result = call_user_func_array(array($plugin, $method),$params);
-				debugLog(__METHOD__."() callig ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+				debugLog(__METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
 
 				if (is_array($agregate))
 				{
@@ -1491,21 +1491,33 @@ interface activesync_plugin_sendmail
 	 * want it in 'sent items', then the next sync on the 'sent items' folder should return
 	 * the new message as any other new message in a folder.
 	 *
-	 * @param string $rfc822 mail
-	 * @param array $smartdata=array() values for keys:
-	 * 	'task': 'forward', 'new', 'reply'
-	 *  'itemid': id of message if it's an reply or forward
-	 *  'folderid': folder
-	 *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
-	 *	'saveinsentitems': 1 or absent?
-	 * @param boolean|double $protocolversion=false
-	 * @return boolean true on success, false on error
+     * @param array $smartdata = IMAP-SendMail: SyncSendMail (
+     *        (S) clientid => SendMail-xyz123456789
+     *        (S) saveinsent => empty
+     *        (S) replacemime => null
+     *        (S) accountid => null
+     *        (S) source => SyncSendMailSource (
+     *                                (S) folderid => FOLDERID
+     *                                (S) itemid => 1234567
+     *                                (S) longid => null
+     *                                (S) instanceid => null
+     *                                unsetVars(Array) size: 0
+     *                                flags => false
+     *                                content => null
+     *                        )
+     *        (S) mime => MIMEMESSAGE
+     *        (S) replyflag => boolean or null
+     *        (S) forwardflag => boolean or null
+     *        unsetVars(Array) size: 0
+     *        flags => false
+     *        content => null
+     *)
 	 *
 	 * @see eg. BackendIMAP::SendMail()
 	 * @todo implement either here or in fmail backend
 	 * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
 	 */
-	function SendMail($rfc822, $smartdata=array(), $protocolversion = false);
+	function SendMail($smartdata);
 }
 
 /**

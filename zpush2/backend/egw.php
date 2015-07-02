@@ -40,16 +40,6 @@ class BackendEGW extends BackendDiff
 	var $exporter;
 
 	/**
-	 * Constructor, defines LOOSE_PROVISIONING, instead of setting it in config
-	 */
-	public function __construct()
-	{
-		$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
-
-		define('LOOSE_PROVISIONING', $response ? $response['policy_loose'] : false);
-	}
-
-	/**
 	 * Log into EGroupware
 	 *
 	 * @param string $username
@@ -80,6 +70,10 @@ class BackendEGW extends BackendDiff
    		$this->run_on_all_plugins(__FUNCTION__, array(), $username, $domain, $password);
 
    		$this->_loggedin = TRUE;
+
+		// check if we support loose provisioning for that device
+		$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
+		define('LOOSE_PROVISIONING', $response ? $response['policy_loose'] : false);
 
 		return true;
 	}

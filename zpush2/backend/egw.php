@@ -39,6 +39,34 @@ class BackendEGW extends BackendDiff
 	var $contentsimporter;
 	var $exporter;
 
+	var $authenticated = false;
+
+	/**
+	 * Constructor
+	 *
+	 * We create/verify EGroupware session here, as we need our plugins before Logon get called
+	 */
+	function __construct()
+	{
+		Request::AuthenticationInfo();
+		$username = Request::GetAuthUser();
+		$password = Request::GetAuthPassword();
+
+		// check credentials and create session
+   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
+		$this->authenticated = (($this->egw_sessionID = egw_session::get_sessionid(true)) &&
+			$GLOBALS['egw']->session->verify($this->egw_sessionID) &&
+			base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
+			($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)));	// true = no real session
+
+		// check if we support loose provisioning for that device
+		$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
+		$loose_provisioning = $response ? (boolean)$response['response'] : false;
+		define('LOOSE_PROVISIONING', $loose_provisioning);
+
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=$loose_provisioning autheticated=".array2string($this->authenticated));
+	}
+
 	/**
 	 * Log into EGroupware
 	 *
@@ -50,11 +78,7 @@ class BackendEGW extends BackendDiff
 	 */
 	public function Logon($username, $domain, $password)
 	{
-		// check credentials and create session
-   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-		if (!(($this->egw_sessionID = egw_session::get_sessionid(true)) && $GLOBALS['egw']->session->verify($this->egw_sessionID) &&
-				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
-			($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true))))	// true = no real session
+		if (!$this->authenticated)
 		{
 			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
 			return false;
@@ -68,12 +92,6 @@ class BackendEGW extends BackendDiff
 
    		// call plugins in case they are interested in being call on each command
    		$this->run_on_all_plugins(__FUNCTION__, array(), $username, $domain, $password);
-
-   		$this->_loggedin = TRUE;
-
-		// check if we support loose provisioning for that device
-		$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
-		define('LOOSE_PROVISIONING', $response ? $response['policy_loose'] : false);
 
 		return true;
 	}
@@ -672,27 +690,6 @@ class BackendEGW extends BackendDiff
 		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $policykey, $devid);
 
 		//error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
-		return $response['response'];
-	}
-
-	/**
-	 * Checks if policy of device allows loose provisioning
-	 *
-	 * Plugins either return array() to NOT change standard response or array('response' => value)
-	 *
-	 * @param string $policykey
-	 * @param string $devid
-	 *
-	 * @return boolean
-	 */
-	function LooseProvisioning($devid)
-	{
-		$response = array('response' => true);	// allow loose provisioning by default
-
-		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $devid);
-
-		//error_log(__METHOD__."('$devid') returning ".array2string($response['response']));
 		return $response['response'];
 	}
 

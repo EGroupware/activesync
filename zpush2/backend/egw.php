@@ -456,6 +456,7 @@ class BackendEGW extends BackendDiff
 
 				if ($this->sinkstates[$folderid] != $newstate)
 				{
+					ZLog::Write(LOGLEVEL_DEBUG, "ChangeSink() found change for folderid=$folderid from ".array2string($this->sinkstates[$folderid])." to ".array2string($newstate));
 					$notifications[] = $folderid;
 					$this->sinkstates[$folderid] = $newstate;
 				}
@@ -619,7 +620,18 @@ class BackendEGW extends BackendDiff
 		}
 		if ($settings instanceof SyncOOF)
 		{
-			$settings->oofstate = 0;	// OOF (out of office) not yet supported via AS
+			// OOF (out of office) not yet supported via AS, but required parameter
+			$settings->oofstate = 0;
+
+			// seems bodytype is not allowed in outgoing SyncOOF message
+			// iOS 8.3 shows Oof Response as "Loading ..." instead of "Off"
+			unset($settings->bodytype);
+
+			// iOS console shows: received results for an unknown oof settings request
+			// setting following parameters do not help
+			//$settings->starttime = $settings->endtime = time();
+			//$settings->oofmessage = array();
+
 		}
 
 		// call all plugins with settings
@@ -1201,14 +1213,15 @@ class BackendEGW extends BackendDiff
      */
     public function GetWasteBasket()
 	{
-
+		//return $this->run_on_all_plugins(__FUNCTION__, 'return-first');
+		return false;
 	}
 
 	/**
      * Deletes a folder
      *
      * @param string        $id
-     * @param string        $parent         is normally false
+     * @param string        $parentid         is normally false
      *
      * @access public
      * @return boolean                      status - false if e.g. does not exist
@@ -1216,7 +1229,8 @@ class BackendEGW extends BackendDiff
      */
     public function DeleteFolder($id, $parentid)
 	{
-
+		debugLog(__METHOD__."('$parentid', '$id') NOT supported!");
+		//return false;
 	}
 
     /**

@@ -27,7 +27,7 @@ include_once('lib/default/diffbackend/diffbackend.php');
  * @todo implement GetStateMaschine() to return own IStateMachine to be used instead of FileStateMachine to store states in DB
  * @todo change AlterPingChanges method to GetFolderState in plugins, interfaces and egw backend directly returning state
  */
-class BackendEGW extends BackendDiff
+class BackendEGW extends BackendDiff implements ISearchProvider
 {
 	var $egw_sessionID;
 
@@ -769,6 +769,74 @@ class BackendEGW extends BackendDiff
 	}
 
 	/**
+	 * Searches the GAL
+	 *
+	 * @param string        $searchquery
+	 * @param string        $searchrange
+	 *
+	 * @access public
+	 * @return array
+	 * @throws StatusException
+	 */
+	public function GetGALSearchResults($searchquery, $searchrange)
+	{
+		debugLog(__METHOD__.__LINE__.':'.array2string(array('query'=>$searchquery, 'range'=>$searchrange)));
+		return $this->getSearchResults(array('query'=>$searchquery, 'range'=>$searchrange),'GAL');
+	}
+
+	/**
+	 * Searches for the emails on the server
+	 *
+	 * @param ContentParameter $cpo
+	 *
+	 * @return array
+	 */
+	public function GetMailboxSearchResults($cpo)
+	{
+		debugLog(__METHOD__.__LINE__.':'.array2string($cpo));
+		return $this->getSearchResults($cpo,'MAILBOX');
+	}
+
+	/**
+	 * Indicates if a search type is supported by this SearchProvider
+	 * Currently only the type SEARCH_GAL (Global Address List) is implemented
+	 *
+	 * @param string        $searchtype
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function SupportsType($searchtype)
+	{
+		debugLog(__METHOD__.__LINE__.'='.array2string($searchtype));
+		return ($searchtype == ISearchProvider::SEARCH_MAILBOX) || ($searchtype == ISearchProvider::SEARCH_GAL);
+	}
+
+	/**
+	 * Terminates a search for a given PID
+	 *
+	 * @param int $pid
+	 *
+	 * @return boolean
+	 */
+	public function TerminateSearch($pid)
+	{
+		debugLog(__METHOD__.__LINE__.' PID:'.array2string($pid));
+		return true;
+	}
+
+	/**
+	 * Disconnects from the current search provider
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function Disconnect()
+	{
+		return true;
+	}
+
+	/**
 	 * Returns array of items which contain searched for information
 	 *
 	 * @param string $searchquery
@@ -778,7 +846,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function getSearchResults($searchquery,$searchname)
 	{
-		//debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
+		debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
 				$rows = $this->run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);

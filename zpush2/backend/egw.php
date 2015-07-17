@@ -863,11 +863,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		}
 		if (is_array($rows))
 		{
-			$result = array(
-				'rows' => &$rows,
-				'status' => 1,
-				'global_search_status' => 1,
-			);
+			$result =  &$rows;
 		}
 		//error_log(__METHOD__."('$searchquery', '$searchname') returning ".count($result['rows']).' rows = '.array2string($result));
 		return $result;

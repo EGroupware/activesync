@@ -48,23 +48,28 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function __construct()
 	{
-		Request::AuthenticationInfo();
-		$username = Request::GetAuthUser();
-		$password = Request::GetAuthPassword();
+		// AS preferences needs to instanciate this class too, but has no running AS request
+		// regular AS still runs as "login", when it instanciates our backend
+		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')
+		{
+			Request::AuthenticationInfo();
+			$username = Request::GetAuthUser();
+			$password = Request::GetAuthPassword();
 
-		// check credentials and create session
-   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-		$this->authenticated = (($this->egw_sessionID = egw_session::get_sessionid(true)) &&
-			$GLOBALS['egw']->session->verify($this->egw_sessionID) &&
-			base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
-			($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)));	// true = no real session
+			// check credentials and create session
+			$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
+			$this->authenticated = (($this->egw_sessionID = egw_session::get_sessionid(true)) &&
+				$GLOBALS['egw']->session->verify($this->egw_sessionID) &&
+				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
+				($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)));	// true = no real session
 
-		// check if we support loose provisioning for that device
-		$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
-		$loose_provisioning = $response ? (boolean)$response['response'] : false;
-		define('LOOSE_PROVISIONING', $loose_provisioning);
+			// check if we support loose provisioning for that device
+			$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
+			$loose_provisioning = $response ? (boolean)$response['response'] : false;
+			define('LOOSE_PROVISIONING', $loose_provisioning);
 
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=$loose_provisioning autheticated=".array2string($this->authenticated));
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=$loose_provisioning autheticated=".array2string($this->authenticated));
+		}
 	}
 
 	/**
@@ -80,15 +85,15 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		if (!$this->authenticated)
 		{
-			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
 			return false;
 		}
 		if (!isset($GLOBALS['egw_info']['user']['apps']['activesync']))
 		{
-			debugLog(__METHOD__."() z-push authentication failed: NO run rights for E-Push application!");
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() z-push authentication failed: NO run rights for E-Push application!");
 			return false;
 		}
-   		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
+   		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$username','$domain',...) logon SUCCESS");
 
    		// call plugins in case they are interested in being call on each command
    		$this->run_on_all_plugins(__FUNCTION__, array(), $username, $domain, $password);
@@ -129,10 +134,10 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
 				);
-				debugLog(__METHOD__."() adding for disabled $app ".array2string($folder));
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() adding for disabled $app ".array2string($folder));
 			}
 		}
-		//debugLog(__METHOD__."() returning ".array2string($folderlist));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() returning ".array2string($folderlist));
 
 		return $folderlist;
 	}
@@ -147,6 +152,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id)))
 		{
+			$type = $folder = $app = null;
 			$this->splitID($id, $type, $folder, $app);
 
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
@@ -171,10 +177,10 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 						$ret->type = $folder == 0 ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
 						break;
 				}
-				debugLog(__METHOD__."($id) return ".array2string($ret)." for disabled app!");
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id) return ".array2string($ret)." for disabled app!");
 			}
 		}
-		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -195,6 +201,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id)))
 		{
+			$type = $folder = $app = null;
 			$this->splitID($id, $type, $folder, $app);
 
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
@@ -204,10 +211,10 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
 				);
-				debugLog(__METHOD__."($id) return ".array2string($ret)." for disabled app!");
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id) return ".array2string($ret)." for disabled app!");
 			}
 		}
-		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -229,8 +236,8 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function ChangeFolder($id, $oldid, $displayname, $type)
 	{
-		debugLog(__METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
-		debugLog(__METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
 		return (false);
 	}
 
@@ -247,18 +254,19 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 * will work OK apart from that.
 	 *
 	 * @param string $id folder id
-	 * @param int $cutoffdate=null
+	 * @param int $cutoffdate =null
 	 * @return array
   	 */
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
+		$type = $folder = $app = null;
 		$this->splitID($id, $type, $folder, $app);
-		debugLog(__METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate)))
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
-				debugLog(__METHOD__."($id, $cutoffdate) return array() for disabled app!");
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) return array() for disabled app!");
 				$ret = array();
 			}
 		}
@@ -277,12 +285,12 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 			$ret2 = $this->run_on_all_plugins('GetMeetingRequests', $ret, $not_uids, $cutoffdate);
 			if (is_array($ret2) && !empty($ret2))
 			{
-				debugLog(__METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret2)-$before)." messages");
-				debugLog(array2string($ret2));
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret2)-$before)." messages");
+				ZLog::Write(LOGLEVEL_DEBUG, array2string($ret2));
 				$ret = $ret2; // should be already merged by run_on_all_plugins
 			}
 		}*/
-		debugLog(__METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate):".array2string($ret));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate):".array2string($ret));
 		return $ret;
 	}
 
@@ -301,7 +309,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 			/* Bytes 37-­40: */	pack('V',13+bytes($uid)).	// binary length + 13 for next line and terminating \x00
 			/* Bytes 41-­52: */	'vCal-Uid'."\x01\x00\x00\x00".
 			$uid."\x00");
-		debugLog(__METHOD__."('$uid') returning '$objid'");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$uid') returning '$objid'");
 		return $objid;
 	}
 
@@ -314,7 +322,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	public static function globalObjId2uid($objid)
 	{
 		$uid = cut_bytes(base64_decode($objid), 52, -1);	// -1 to cut off terminating \0x00
-		debugLog(__METHOD__."('$objid') returning '$uid'");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$objid') returning '$uid'");
 		return $uid;
 	}
 
@@ -328,9 +336,10 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function GetMessage($folderid, $id, $contentparameters)
 	{
-		debugLog(__METHOD__."($folderid, $id)");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($folderid, $id)");
 		/*if ($id < 0)
 		{
+			$type = $folder = $app = null;
 			$this->splitID($folderid, $type, $folder, $app);
 			if ($app == 'mail' && $folder == 0)
 			{
@@ -352,7 +361,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function GetAttachmentData($attname)
 	{
-		list($id, $uid, $part) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
+		list($id) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
 	}
 
@@ -367,18 +376,19 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function ItemOperationsGetAttachmentData($attname)
 	{
-		list($id, $uid, $part) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
+		list($id) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
 	}
 
 	function ItemOperationsFetchMailbox($entryid, $bodypreference, $mimesupport = 0) {
-		debugLog(__METHOD__.__LINE__.'Entry:'.$entryid.', BodyPref:'.array2string( $bodypreference).', MimeSupport:'.array2string($mimesupport));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.'Entry:'.$entryid.', BodyPref:'.array2string( $bodypreference).', MimeSupport:'.array2string($mimesupport));
 		list($folderid, $uid) = explode(":", $entryid); // split name as it is constructed that way FOLDERID:UID:PARTID
+		$type = $folder = $app = null;
 		$this->splitID($folderid, $type, $folder, $app);
-		//debugLog(__METHOD__.__LINE__."$folderid, $type, $folder, $app");
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__."$folderid, $type, $folder, $app");
 		if ($app == 'mail')
 		{									// GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
-			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreferences[1]['TruncationSize']?$bodypreferences[1]['TruncationSize']:500), $bodypreference, $optionbodypreference=false, $mimesupport);
+			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreference[1]['TruncationSize']?$bodypreference[1]['TruncationSize']:500), $bodypreference, false, $mimesupport);
 		}
 		else
 		{
@@ -402,6 +412,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		if ($id < 0)
 		{
+			$type = $folder = $app = null;
 			$this->splitID($folderid, $type, $folder, $app);
 			if (($app == 'mail') && $folder == 0)
 			{
@@ -507,6 +518,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		$this->setup_plugins();
 
+		$type = $folder = null;
 		$this->splitID($folderid, $type, $folder);
 
 		if (is_numeric($type))
@@ -519,7 +531,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		{
 			$ret = call_user_func_array(array($this->plugins[$type], __FUNCTION__), array($folderid, &$syncstate));
 		}
-		debugLog(__METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -583,6 +595,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		if ($id < 0)
 		{
+			$type = $folder = $app = null;
 			$this->splitID($folderid, $type, $folder, $app);
 			if ($app == 'mail' && $folder == 0)
 			{
@@ -684,10 +697,10 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function CheckPolicy($policykey, $devid)
 	{
-		$response = array('response' => parent::CheckPolicy($policykey, $devid));
+		$response_in = array('response' => parent::CheckPolicy($policykey, $devid));
 
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $policykey, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response_in, $policykey, $devid);
 
 		//error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
@@ -707,9 +720,9 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function getDeviceRWStatus($user, $pass, $devid)
 	{
-		$response = array('response' => false);
+		$response_in = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response_in, $user, $pass, $devid);
 
 		//error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
@@ -731,9 +744,9 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function setDeviceRWStatus($user, $pass, $devid, $status)
 	{
-		$response = array('response' => false);
+		$response_in = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid, $status);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response_in, $user, $pass, $devid, $status);
 
 		//error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning ".array2string($response['response']));
 		return $response['response'];
@@ -748,13 +761,13 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 * the new message as any other new message in a folder.
 	 *
 	 * @param string $rfc822 mail
-	 * @param array $smartdata=array() values for keys:
+	 * @param array $smartdata =array() values for keys:
 	 * 	'task': 'forward', 'new', 'reply'
 	 *  'itemid': id of message if it's an reply or forward
 	 *  'folderid': folder
 	 *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
 	 *	'saveinsentitems': 1 or absent?
-	 * @param boolean|double $protocolversion=false
+	 * @param boolean|double $protocolversion =false
 	 * @return boolean true on success, false on error
 	 *
 	 * @see eg. BackendIMAP::SendMail()
@@ -764,7 +777,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
 		$ret = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $rfc822, $smartdata, $protocolversion);
-		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) returning ".array2string($ret));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -780,7 +793,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	public function GetGALSearchResults($searchquery, $searchrange)
 	{
-		debugLog(__METHOD__.__LINE__.':'.array2string(array('query'=>$searchquery, 'range'=>$searchrange)));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.':'.array2string(array('query'=>$searchquery, 'range'=>$searchrange)));
 		return $this->getSearchResults(array('query'=>$searchquery, 'range'=>$searchrange),'GAL');
 	}
 
@@ -793,7 +806,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	public function GetMailboxSearchResults($cpo)
 	{
-		debugLog(__METHOD__.__LINE__.':'.array2string($cpo));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.':'.array2string($cpo));
 		return $this->getSearchResults($cpo,'MAILBOX');
 	}
 
@@ -808,7 +821,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	public function SupportsType($searchtype)
 	{
-		debugLog(__METHOD__.__LINE__.'='.array2string($searchtype));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.'='.array2string($searchtype));
 		return ($searchtype == ISearchProvider::SEARCH_MAILBOX) || ($searchtype == ISearchProvider::SEARCH_GAL);
 	}
 
@@ -821,7 +834,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	public function TerminateSearch($pid)
 	{
-		debugLog(__METHOD__.__LINE__.' PID:'.array2string($pid));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.' PID:'.array2string($pid));
 		return true;
 	}
 
@@ -846,7 +859,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function getSearchResults($searchquery,$searchname)
 	{
-		debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
+		ZLog::Write(LOGLEVEL_DEBUG, "EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
 				$rows = $this->run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
@@ -910,7 +923,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		$calendarid = $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $requestid, $response);
 
-		debugLog(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning ".array2string((bool)$calendarid));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning ".array2string((bool)$calendarid));
 		return (bool)$calendarid;
 	}
 
@@ -972,7 +985,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		if (strlen($folder_hex) > 8) $folder_hex = substr($folder_hex,-8);
 		$str = sprintf('%04X',$type).$folder_hex;
 
-		debugLog(__METHOD__."('$t','$folder') type=$type --> '$str'");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$t','$folder') type=$type --> '$str'");
 
 		return $str;
 	}
@@ -1015,7 +1028,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 				$type -= self::TYPE_MAIL;
 				break;
 		}
-		// debugLog(__METHOD__."('$str','$type','$folder')");
+		// ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$str','$type','$folder')");
 	}
 
 	/**
@@ -1038,7 +1051,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		{
 			if (isset($bodypreference[2]))
 			{
-				debugLog("HTML Body");
+				ZLog::Write(LOGLEVEL_DEBUG, "HTML Body");
 				$airsyncbasebody->type = 2;
 				$html = '<html>'.
 						'<head>'.
@@ -1059,7 +1072,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 			}
 			else
 			{
-				debugLog("Plaintext Body");
+				ZLog::Write(LOGLEVEL_DEBUG, "Plaintext Body");
 				$airsyncbasebody->type = 1;
 				$plainnote = str_replace("\n","\r\n",str_replace("\r","",$note));
 				if(isset($bodypreference[1]["TruncationSize"]) && strlen($plainnote) > $bodypreference[1]["TruncationSize"])
@@ -1160,6 +1173,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		$this->setup_plugins();
 
+		$type = $folder = null;
 		$this->splitID($id, $type, $folder);
 
 		if (is_numeric($type))
@@ -1200,9 +1214,9 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		{
 			if (method_exists($plugin, $method))
 			{
-				debugLog(__METHOD__."() calling ".get_class($plugin).'::'.$method);
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method);
 				$result = call_user_func_array(array($plugin, $method),$params);
-				debugLog(__METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
 
 				if (is_array($agregate))
 				{
@@ -1290,7 +1304,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
      */
     public function DeleteFolder($id, $parentid)
 	{
-		debugLog(__METHOD__."('$parentid', '$id') NOT supported!");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$parentid', '$id') NOT supported!");
 		//return false;
 	}
 
@@ -1461,8 +1475,8 @@ interface activesync_plugin_read
 	 *
 	 * if changes occurr default diff engine computes the actual changes
 	 *
-	 * @param string $folderid
-	 * @param string &$syncstate on call old syncstate, on return new syncstate
+	 * @param string $id
+	 * @param string& $synckey call old syncstate, on return new syncstate
 	 * @return array|boolean false if $folderid not found, array() if no changes or array(array("type" => "fakeChange"))
 	 */
 	public function AlterPingChanges($id, &$synckey);
@@ -1494,7 +1508,7 @@ interface activesync_plugin_read
 	 * Return an list (array) of all messages in a folder
 	 *
 	 * @param $folderid
-	 * @param $cutoffdate=NULL
+	 * @param $cutoffdate =NULL
 	 *
 	 * @return $array
 	 *
@@ -1621,7 +1635,7 @@ interface activesync_plugin_meeting_requests extends activesync_plugin_meeting_r
 	 * List all meeting requests / invitations of user NOT having a UID in $not_uids (already received by email)
 	 *
 	 * @param array $not_uids
-	 * @param int $cutoffdate=null
+	 * @param int $cutoffdate =null
 	 * @return array
 	 */
 	function GetMeetingRequests(array $not_uids, $cutoffdate=NULL);

@@ -14,9 +14,17 @@
 ************************************************/
 
 /* uncomment this to enable zpush2
-$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/zpush2/index.php';
-chdir(__DIR__.'/zpush2');
-include('zpush2/src/index.php');
+$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/vendor/z-push/z-push/src/index.php';
+chdir(__DIR__.'/vendor/z-push/z-push/src');
+define('ZPUSH_CONFIG', __DIR__.'/inc/config.php');
+spl_autoload_register(function($class)
+{
+	if ($class == 'BackendEGW')
+	{
+		require_once(__DIR__.'/inc/egw.php');
+	}
+});
+include('vendor/z-push/z-push/src/index.php');
 exit;
 */
 

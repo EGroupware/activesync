@@ -54,7 +54,7 @@
 			'no_exception_handler' => 'errorlog',	// only logs exceptions
 	));
 
-	require('../../header.inc.php');
+	require(__DIR__.'/../../header.inc.php');
 
 /**********************************************************************************
  *  Default settings

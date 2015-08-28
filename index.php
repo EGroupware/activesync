@@ -21,7 +21,7 @@ spl_autoload_register(function($class)
 {
 	if ($class == 'BackendEGW')
 	{
-		require_once(__DIR__.'/inc/egw.php');
+		require_once(__DIR__.'/inc/class.BackendEGW.inc.php');
 	}
 });
 include('vendor/z-push/z-push/src/index.php');

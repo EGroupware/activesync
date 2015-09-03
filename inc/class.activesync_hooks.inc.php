@@ -185,6 +185,10 @@ class activesync_hooks
 	 */
 	public static function debug_log($filename)
 	{
+		if (!file_exists($GLOBALS['egw_info']['server']['files_dir'].'/activesync'))
+		{
+			mkdir($GLOBALS['egw_info']['server']['files_dir'].'/activesync');
+		}
 		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.dirname($filename);
 		if (!file_exists($profile_dir) || !is_dir($profile_dir) || strpos($filename, '..') !== false ||
 			basename($filename) != 'debug.txt')

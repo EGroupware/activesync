@@ -45,16 +45,18 @@
 	// z-push handles output compression
 	ini_set("zlib.output_compression",0);
 
-	$GLOBALS['egw_info'] = array(
-		'flags' => array(
-			'disable_Template_class'  => true,
-	//		'login'                   => true,
-			'noheader'                => true,
-			'currentapp'              => 'login',
-			'no_exception_handler' => 'errorlog',	// only logs exceptions
-	));
+	if (!isset($GLOBALS['egw_info']))
+	{
+		$GLOBALS['egw_info'] = array(
+			'flags' => array(
+				'disable_Template_class'  => true,
+				'noheader'                => true,
+				'currentapp'              => 'login',
+				'no_exception_handler' => 'errorlog',	// only logs exceptions
+		));
 
-	require(__DIR__.'/../../header.inc.php');
+		require(__DIR__.'/../../header.inc.php');
+	}
 
 /**********************************************************************************
  *  Default settings
@@ -124,6 +126,11 @@
     //   $specialLogUsers = array('info@domain.com', 'myusername');
     define('LOGUSERLEVEL', LOGLEVEL_DEVICEID);
     $specialLogUsers = array();
+	// add current user, if he has logging enabled in his preferences
+	if ($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == 'user')
+	{
+		$specialLogUsers[] = $GLOBALS['egw_info']['user']['account_lid'];
+	}
 
     // Location of the trusted CA, e.g. '/etc/ssl/certs/EmailCA.pem'
     // Uncomment and modify the following line if the validation of the certificates fails.

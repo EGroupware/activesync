@@ -45,6 +45,25 @@ class activesync_hooks
 	}
 
 	/**
+	 * Instanciate EGroupware backend
+	 *
+	 * @staticvar BackendEGW $backend
+	 * @return BackendEGW
+	 */
+	static function backend()
+	{
+		static $backend=null;
+		if (!isset($backend))
+		{
+			set_include_path(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src' . PATH_SEPARATOR . get_include_path());
+			include(EGW_SERVER_ROOT.'/activesync/inc/config.php');
+			require_once __DIR__.'/class.BackendEGW.inc.php';
+			$backend = new BackendEGW();
+		}
+		return $backend;
+	}
+
+	/**
 	 * Populates $settings for the preferences
 	 *
 	 * Settings are gathered from all plugins and grouped in sections for each application/plugin.
@@ -55,13 +74,9 @@ class activesync_hooks
 	static function settings($hook_data)
 	{
 		$settings = array();
-
-		set_include_path(EGW_SERVER_ROOT.'/activesync' . PATH_SEPARATOR . get_include_path());
-		require_once EGW_INCLUDE_ROOT.'/activesync/backend/egw.php';
-		$backend = new BackendEGW();
-
+		$backend = self::backend();
 		$last_app = '';
-		foreach($backend->settings($hook_data) as $name => $data)
+		foreach($backend->egw_settings($hook_data) as $name => $data)
 		{
 			// check if we are on a different app --> create a section header
 			list($app) = explode('-',$name);
@@ -80,7 +95,7 @@ class activesync_hooks
 		if (!isset($hooks->locations['verify_settings']['activesync']))
 		{
 			$f = EGW_SERVER_ROOT . '/activesync/setup/setup.inc.php';
-			$setup_info = array($appname => array());
+			$setup_info = array('activesync' => array());
 			if(@file_exists($f)) include($f);
 			$hooks->register_hooks('activesync', $setup_info['activesync']['hooks']);
 			if (method_exists($GLOBALS['egw'], 'invalidate_session_cache'))
@@ -90,35 +105,34 @@ class activesync_hooks
 		}
 		if ($GLOBALS['type'] === 'user')
 		{
-			$profiles = $logs = array();
-			if (($dirs = scandir($as_dir=$GLOBALS['egw_info']['server']['files_dir'].'/activesync')))
+			$logs = array(
+				'off' => lang('No user-specific logging'),
+				'user' => lang('User-specific logging enabled'),
+				$GLOBALS['egw_info']['user']['account_lid'].'.log' => lang('View and enable user-specific log'),
+			);
+			if ($GLOBALS['egw_info']['user']['apps']['admin'])
 			{
-				foreach($dirs as $dir)
-				{
-					if (is_dir($as_dir.'/'.$dir) && file_exists($as_dir.'/'.$dir.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])))
-					{
-						$profiles[$dir] = $dir.' ('.egw_time::to(filectime($as_dir.'/'.$dir)).')';
-
-						$logs[$dir.'/debug.txt'] = (file_exists($log = $as_dir.'/'.$dir.'/debug.txt') && !is_link($log) ?
-								egw_time::to(filemtime($log)) : lang('disabled')).': '.$dir;
-					}
-				}
-				if ($GLOBALS['egw_info']['user']['apps']['admin'])
-				{
-					$logs['debug.txt'] = (file_exists($log = $as_dir.'/debug.txt') && !is_link($log) ?
-							egw_time::to(filemtime($log)) : lang('disabled')).': '.lang('All users, admin only');
-				}
+				$logs['z-push.log'] = lang('View global z-push log').' ('.lang('admin only').')';
+				$logs['z-push-error.log'] = lang('View glogal z-push error log').' ('.lang('admin only').')';
 			}
 			$link = egw::link('/index.php',array(
 				'menuaction' => 'activesync.activesync_hooks.log',
 				'filename' => '',
 			));
-			$onchange = "egw_openWindowCentered('$link'+encodeURIComponent(this.value), '_blank', 1000, 500); this.value=''";
+			$onchange = "if (this.value.substr(-4) == '.log') egw_openWindowCentered('$link'+encodeURIComponent(this.value), '_blank', 1000, 500)";
+			$profiles = array();
+			$statemachine = $backend->GetStateMachine();
+			foreach($statemachine->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']) as $devid)
+			{
+
+				$profiles[$devid] = $devid.' ('.egw_time::to($statemachine->DeviceDataTime($devid)).')';
+			}
 		}
 		else	// allow to force users to NOT be able to delete their profiles
 		{
 			$profiles = $logs = array('never' => lang('Never'));
 		}
+
 		if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
 			($GLOBALS['egw_info']['user']['preferences']['activesync']['show-log'] !== 'never' ||
 			$GLOBALS['egw_info']['user']['preferences']['activesync']['delete-profile'] !== 'never'))
@@ -130,11 +144,11 @@ class activesync_hooks
 			if ($GLOBALS['type'] === 'forced' || $GLOBALS['type'] === 'user' &&
 				$GLOBALS['egw_info']['user']['preferences']['activesync']['show-log'] !== 'never')
 			{
-				$settings['show-log'] = array(
+				$settings['logging'] = array(
 					'type'   => 'select',
-					'label'  => 'Show log of following device',
-					'name'   => 'show-log',
-					'help'   => 'Shows log of a device, enabling it if currently disabled. To disable logging, delete the log file in popup!',
+					'label'  => 'Enable or show logs',
+					'name'   => 'logging',
+					'help'   => 'Shows and enables user-specific logs. For admins global z-push logs can be viewed too.',
 					'values' => $logs,
 					'xmlrpc' => True,
 					'admin'  => False,
@@ -167,10 +181,9 @@ class activesync_hooks
 	 */
 	public function log()
 	{
-		$filename = $_GET['filename'];
-		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.dirname($filename);
-		if (!file_exists($profile_dir.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])) &&
-			!($GLOBALS['egw_info']['user']['apps']['admin'] && $filename == 'debug.txt'))
+		$filename = basename($_GET['filename']);
+		if (!($filename == $GLOBALS['egw_info']['user']['account_lid'].'.log' ||
+			$GLOBALS['egw_info']['user']['apps']['admin'] && in_array($filename, array('z-push.log', 'z-push-error.log'))))
 		{
 			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
 		}
@@ -185,23 +198,16 @@ class activesync_hooks
 	 */
 	public static function debug_log($filename)
 	{
-		$profile_dir = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.dirname($filename);
-		if (!file_exists($profile_dir) || !is_dir($profile_dir) || strpos($filename, '..') !== false ||
-			basename($filename) != 'debug.txt')
-		{
-			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
-		}
+		// ZLog replaces all non-alphanumerical chars to understore
+		$filename = preg_replace('/[^a-z0-9]/', '_', strtolower(basename($filename, '.log'))).'.log';
+		$debug_file = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$filename;
+
 		$GLOBALS['egw_info']['flags']['css'] = '
 body { background-color: #e0e0e0; overflow: hidden; }
 pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 ';
-		if (!file_exists($debug_file=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$filename))
+		if (!file_exists($debug_file))
 		{
-			touch($debug_file);
-		}
-		elseif (is_link($debug_file))
-		{
-			unlink($debug_file);
 			touch($debug_file);
 		}
 		$tail = new egw_tail('activesync/'.$filename);
@@ -216,51 +222,45 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 	 */
 	static function verify_settings($hook_data)
 	{
-		if ($hook_data['prefs']['delete-profile'] && preg_match('/^[a-z0-9]+$/',$hook_data['prefs']['delete-profile']) &&
-			file_exists($profil=$GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$hook_data['prefs']['delete-profile']) &&
-			file_exists($profil.'/device_info_'.strtolower($GLOBALS['egw_info']['user']['account_lid'])))
+		switch ($hook_data['prefs']['logging'])
 		{
-			return self::rm_recursive($profil) ? lang ('Profil %1 deleted.',$hook_data['prefs']['delete-profile']) :
-				lang('Deleting of profil %1 failed!',$hook_data['prefs']['delete-profile']);
+			case 'z-push.log':
+			case 'z-push-error.log':
+				$hook_data['prefs']['logging'] = $GLOBALS['egw_info']['user']['preferences']['activesync']['logging'];
+				break;
+			default:
+				if ($hook_data['prefs']['logging'] == $GLOBALS['egw_info']['user']['account_lid'].'.log')
+				{
+					$hook_data['prefs']['logging'] = 'user';
+				}
+				break;
+		}
+		if ($hook_data['prefs']['delete-profile'] && $hook_data['prefs']['delete-profile'] !== 'never' &&
+			($statemachine = self::backend()->GetStateMachine()) &&
+			in_array($hook_data['prefs']['delete-profile'], $statemachine->GetAllDevices($GLOBALS['egw_info']['user']['account_lid'])))
+		{
+			$statemachine->CleanStates($hook_data['prefs']['delete-profile'], '', false);
 		}
 		// call verification hook of eSync backends
-		set_include_path(EGW_SERVER_ROOT.'/activesync' . PATH_SEPARATOR . get_include_path());
-		require_once EGW_INCLUDE_ROOT.'/activesync/backend/egw.php';
-		$backend = new BackendEGW();
-
-		return implode("<br/>\n", $backend->verify_settings($hook_data));
-	}
-
-	/**
-	 * Recursivly remove a whole directory (or file)
-	 *
-	 * @param string $path
-	 * @return boolean true on success, false on failure
-	 */
-	public static function rm_recursive($path)
-	{
-		$ok = true;
-		if (is_dir($path))
-		{
-			foreach(scandir($path) as $file)
-			{
-				if ($file != '.' && $file != '..' && !($ok = self::rm_recursive($path.'/'.$file))) break;
-			}
-			if ($ok) $ok = rmdir($path);
-		}
-		else
-		{
-			$ok = unlink($path);
-		}
-		return $ok;
+		return implode("<br/>\n", self::backend()->verify_settings($hook_data));
 	}
 }
 
 // to not fail, if any backend calls z-push debugLog, simply ignore it
+if (!class_exists('ZLog'))
+{
+	class ZLog
+	{
+		static public function Write($level, $msg, $truncate = false)
+		{
+			unset($level, $msg, $truncate);
+		}
+	}
+}
 if (!function_exists('debugLog'))
 {
 	function debugLog($message)
 	{
-
+		ZLog::Write(LOGLEVEL_DEBUG, $message);
 	}
 }

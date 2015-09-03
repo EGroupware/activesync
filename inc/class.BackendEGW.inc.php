@@ -18,6 +18,8 @@ include_once('lib/interface/iimportchanges.php');
 include_once('lib/interface/isearchprovider.php');
 include_once('lib/interface/istatemachine.php');
 include_once('lib/default/diffbackend/diffbackend.php');
+include_once('lib/request/request.php');
+include_once('lib/utils/utils.php');
 
 /**
  * Z-Push backend for EGroupware
@@ -48,6 +50,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function __construct()
 	{
+error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 		// AS preferences needs to instanciate this class too, but has no running AS request
 		// regular AS still runs as "login", when it instanciates our backend
 		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')

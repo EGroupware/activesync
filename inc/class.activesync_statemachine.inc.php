@@ -85,4 +85,45 @@ class activesync_statemachine extends FileStateMachine
 		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(".array2string($state).", '$devid', '$type', '$key', '$counter')");
 		return parent::SetState($state, $devid, $type, $key, $counter);
 	}
+
+	/**
+	 * Get directory for given device
+	 *
+	 * Can NOT use FileStateMachine::getDirectoryForDevice($devid, true) as it's private
+	 *
+	 * @param type $devid
+	 * @return type
+	 */
+	protected function getDeviceDirectory($devid)
+	{
+		$firstLevel = substr(strtolower($devid), -1, 1);
+		$secondLevel = substr(strtolower($devid), -2, 1);
+
+		return $GLOBALS['egw_info']['server']['files_dir'] . '/activesync/' . $firstLevel . "/" . $secondLevel;
+	}
+
+	/**
+	 * Get creation time of device-data
+	 *
+	 * @param string $devid
+	 * @return int
+	 */
+	public function DeviceDataTime($devid)
+	{
+		$dir = $this->getDeviceDirectory($devid);
+
+		return filectime($dir.'/'.$devid.'-devicedata');
+	}
+
+	public function DeleteState($devid)
+	{
+		if (!preg_match('/^[a-z0-9]+$/', $devid))
+		{
+			throw new egw_exception_wrong_parameter("Invalid device-ID '$devid'!");
+		}
+		foreach(glob($this->getDeviceDirectory($devid).'/'.$devid.'-*') as $file)
+		{
+			unlinke($file);
+		}
+	}
 }

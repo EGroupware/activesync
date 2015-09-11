@@ -50,7 +50,6 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	function __construct()
 	{
-error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 		// AS preferences needs to instanciate this class too, but has no running AS request
 		// regular AS still runs as "login", when it instanciates our backend
 		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')
@@ -240,8 +239,8 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 	function ChangeFolder($id, $oldid, $displayname, $type)
 	{
 		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
-		return (false);
+		ZLog::Write(LOGLEVEL_ERROR, __METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
+		return false;
 	}
 
 
@@ -264,12 +263,12 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 	{
 		$type = $folder = $app = null;
 		$this->splitID($id, $type, $folder, $app);
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate)))
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
-				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) return array() for disabled app!");
+				ZLog::Write(LOGLEVEL_ERROR, __METHOD__."($id, $cutoffdate) return array() for disabled app!");
 				$ret = array();
 			}
 		}
@@ -293,7 +292,7 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 				$ret = $ret2; // should be already merged by run_on_all_plugins
 			}
 		}*/
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate):".array2string($ret));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate)");//.array2string($ret));
 		return $ret;
 	}
 
@@ -393,10 +392,7 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 		{									// GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
 			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreference[1]['TruncationSize']?$bodypreference[1]['TruncationSize']:500), $bodypreference, false, $mimesupport);
 		}
-		else
-		{
-			return false;
-		}
+		return false;
 	}
 
 	/**
@@ -988,8 +984,7 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 		if (strlen($folder_hex) > 8) $folder_hex = substr($folder_hex,-8);
 		$str = sprintf('%04X',$type).$folder_hex;
 
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$t','$folder') type=$type --> '$str'");
-
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$t','$folder') type=$type --> '$str'");
 		return $str;
 	}
 
@@ -1157,6 +1152,38 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 		return $this->run_on_all_plugins('verify_settings', array(), $hook_data);
 	}
 
+    /**
+     * Returns the waste basket
+     *
+     * The waste basked is used when deleting items; if this function returns a valid folder ID,
+     * then all deletes are handled as moves and are sent to the backend as a move.
+     * If it returns FALSE, then deletes are handled as real deletes
+     *
+     * @access public
+     * @return string
+     */
+    public function GetWasteBasket()
+	{
+		//return $this->run_on_all_plugins(__FUNCTION__, 'return-first');
+		return false;
+	}
+
+	/**
+     * Deletes a folder
+     *
+     * @param string        $id
+     * @param string        $parentid         is normally false
+     *
+     * @access public
+     * @return boolean                      status - false if e.g. does not exist
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
+     */
+    public function DeleteFolder($id, $parentid)
+	{
+		ZLog::Write(LOGLEVEL_ERROR, __METHOD__."('$parentid', '$id') NOT supported!");
+		//return false;
+	}
+
 	/**
 	 * Plugins to use, filled by setup_plugins
 	 *
@@ -1217,14 +1244,14 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 		{
 			if (method_exists($plugin, $method))
 			{
-				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method);
+				//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method);
 				$result = call_user_func_array(array($plugin, $method),$params);
-				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+				//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
 
 				if (is_array($agregate))
 				{
 					$agregate = array_merge($agregate,$result);
-					error_log(__METHOD__."('$method', , ".array2string($params).") result plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
+					//error_log(__METHOD__."('$method', , ".array2string($params).") result plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
 				}
 				elseif ($agregate === 'return-first')
 				{
@@ -1236,13 +1263,13 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 				}
 				else
 				{
-					error_log(__METHOD__."('$method') agg:".array2string($agregate).' res:'.array2string($result));
+					//error_log(__METHOD__."('$method') agg:".array2string($agregate).' res:'.array2string($result));
 					$agregate += (is_bool($agregate)? (bool) $result:$result);
 				}
 			}
 		}
 		if ($agregate === 'return-first') $agregate = false;
-		error_log(__METHOD__."('$method') returning ".array2string($agregate));
+		//error_log(__METHOD__."('$method') returning ".array2string($agregate));
 		return $agregate;
 	}
 
@@ -1277,38 +1304,6 @@ error_log('egw_info[flags]='.array2string($GLOBALS['egw_info']['flags']));
 			}
 		}
 		//error_log(__METHOD__."() hook_data=".array2string($hook_data).' returning '.array2string(array_keys($this->plugins)));
-	}
-
-    /**
-     * Returns the waste basket
-     *
-     * The waste basked is used when deleting items; if this function returns a valid folder ID,
-     * then all deletes are handled as moves and are sent to the backend as a move.
-     * If it returns FALSE, then deletes are handled as real deletes
-     *
-     * @access public
-     * @return string
-     */
-    public function GetWasteBasket()
-	{
-		//return $this->run_on_all_plugins(__FUNCTION__, 'return-first');
-		return false;
-	}
-
-	/**
-     * Deletes a folder
-     *
-     * @param string        $id
-     * @param string        $parentid         is normally false
-     *
-     * @access public
-     * @return boolean                      status - false if e.g. does not exist
-     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
-     */
-    public function DeleteFolder($id, $parentid)
-	{
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$parentid', '$id') NOT supported!");
-		//return false;
 	}
 
     /**

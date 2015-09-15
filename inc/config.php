@@ -116,7 +116,7 @@
     define('LOGFILEDIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync/');
     define('LOGFILE', LOGFILEDIR . 'z-push.log');
     define('LOGERRORFILE', LOGFILEDIR . 'z-push-error.log');
-    define('LOGLEVEL', LOGLEVEL_WBXML);
+    define('LOGLEVEL', LOGLEVEL_DEVICEID);
     define('LOGAUTHFAIL', false);
 
 
@@ -241,6 +241,11 @@
     // the backend data provider
     define('BACKEND_PROVIDER', 'BackendEGW');
 
+	// IPC backend to use, default IpcBackendShm
+    if (!function_exists('sem_get') || !function_exists('shm_attach') || !function_exists('sem_acquire')|| !function_exists('shm_get_var')) {
+        define('IPC_BACKEND_CLASS', 'activesync_ipc_backend');
+    }
+
 /**********************************************************************************
  *  Search provider settings
  *
@@ -249,7 +254,7 @@
  *  If set, the Search Provider will always be preferred.
  *  Use 'BackendSearchLDAP' to search in a LDAP directory (see backend/searchldap/config.php)
  */
-    define('SEARCH_PROVIDER', 'BackendEGW');
+    define('SEARCH_PROVIDER', '');
     // Time in seconds for the server search. Setting it too high might result in timeout.
     // Setting it too low might not return all results. Default is 10.
     define('SEARCH_WAIT', 10);

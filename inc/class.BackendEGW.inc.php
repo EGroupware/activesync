@@ -108,9 +108,6 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	public function Logoff()
 	{
-		if ($this->mail) $this->mail->closeConnection();
-		unset($this->mail);
-
 		$this->_loggedin = FALSE;
 
 		debugLog ("LOGOFF");

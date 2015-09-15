@@ -94,7 +94,7 @@ class activesync_statemachine extends FileStateMachine
 	 * @param type $devid
 	 * @return type
 	 */
-	public function getDeviceDirectory($devid)
+	public static function getDeviceDirectory($devid)
 	{
 		$firstLevel = substr(strtolower($devid), -1, 1);
 		$secondLevel = substr(strtolower($devid), -2, 1);

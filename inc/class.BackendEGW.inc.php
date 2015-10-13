@@ -806,6 +806,17 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		return $this->getSearchResults($cpo,'MAILBOX');
 	}
 
+    /**
+     * Returns a ISearchProvider implementation used for searches
+     *
+     * @access public
+     * @return object       Implementation of ISearchProvider
+     */
+    public function GetSearchProvider()
+	{
+		return $this;
+	}
+
 	/**
 	 * Indicates if a search type is supported by this SearchProvider
 	 * Currently only the type SEARCH_GAL (Global Address List) is implemented

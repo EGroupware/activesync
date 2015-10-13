@@ -33,10 +33,6 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 {
 	var $egw_sessionID;
 
-	var $_user;
-	var $_devid;
-	var $_protocolversion;
-
 	var $hierarchyimporter;
 	var $contentsimporter;
 	var $exporter;

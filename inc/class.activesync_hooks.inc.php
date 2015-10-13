@@ -199,7 +199,7 @@ class activesync_hooks
 	public static function debug_log($filename)
 	{
 		// ZLog replaces all non-alphanumerical chars to understore
-		$filename = preg_replace('/[^a-z0-9]/', '_', strtolower(basename($filename, '.log'))).'.log';
+		$filename = preg_replace('/[^a-z0-9-]/', '_', strtolower(basename($filename, '.log'))).'.log';
 		$debug_file = $GLOBALS['egw_info']['server']['files_dir'].'/activesync/'.$filename;
 
 		$GLOBALS['egw_info']['flags']['css'] = '

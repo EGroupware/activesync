@@ -66,7 +66,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 			$loose_provisioning = $response ? (boolean)$response['response'] : false;
 			define('LOOSE_PROVISIONING', $loose_provisioning);
 
-			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=$loose_provisioning autheticated=".array2string($this->authenticated));
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=".array2string($loose_provisioning).", autheticated=".array2string($this->authenticated));
 		}
 	}
 
@@ -918,16 +918,14 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 * @param int $requestid uid of mail with meeting request
 	 * @param string $folderid folder of meeting request mail
 	 * @param int $response 1=accepted, 2=tentative, 3=decline
-	 * @param int &$calendarid on return id of calendar item
-	 * @todo handle commented calendarid
-	 * @return boolean true on success, false on error
+	 * @return boolean calendar-id on success, false on error
 	 */
-	function MeetingResponse($requestid, $folderid, $response)//, &$calendarid)
+	function MeetingResponse($requestid, $folderid, $response)
 	{
 		$calendarid = $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $requestid, $response);
 
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning ".array2string((bool)$calendarid));
-		return (bool)$calendarid;
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$requestid', '$folderid', '$response') returning ".array2string($calendarid));
+		return $calendarid;
 	}
 
 	/**
@@ -1131,6 +1129,7 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 			}
 			if($rtf_body->out <> "") $body=$rtf_body->out;
 		}*/
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(body=".array2string($body).", rtf=".array2string($rtf).", airsyncbasebody=".array2string($airsyncbasebody).") returning ".array2string($body));
 		return $body;
 	}
 

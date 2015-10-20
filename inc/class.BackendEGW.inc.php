@@ -40,6 +40,20 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	var $authenticated = false;
 
 	/**
+	 * Integer waitOnFailureDefault how long (in seconds) to wait on connection failure
+	 *
+	 * @var int
+	 */
+	static $waitOnFailureDefault = 30;
+
+	/**
+	 * Integer waitOnFailureLimit how long (in seconds) to wait on connection failure until a 500 is raised
+	 *
+	 * @var int
+	 */
+	static $waitOnFailureLimit = 7200;
+
+	/**
 	 * Constructor
 	 *
 	 * We create/verify EGroupware session here, as we need our plugins before Logon get called
@@ -1206,6 +1220,9 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	{
 		$this->setup_plugins();
 
+		// check if device is still blocked
+		$this->device_wait_on_failure($method);
+
 		$type = $folder = null;
 		$this->splitID($id, $type, $folder);
 
@@ -1219,8 +1236,14 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 		$ret = false;
 		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
 		{
-			//error_log($method.' called with Params:'.array2string($params));
-			$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
+			try {
+				//error_log($method.' called with Params:'.array2string($params));
+				$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
+			}
+			catch(Exception $e) {
+				// log error and block device
+				$this->device_wait_on_failure($method, $type, $e);
+			}
 		}
 		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
@@ -1237,19 +1260,27 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 	 */
 	public function run_on_all_plugins($method,$agregate=array())
 	{
-		//error_log(__METHOD__."('$method', ".array2string($agregate).")");
 		$this->setup_plugins();
+
+		// check if device is still blocked
+		$this->device_wait_on_failure($method);
 
 		$params = func_get_args();
 		array_shift($params); array_shift($params);	// remove $method+$agregate
 
-		foreach($this->plugins as $plugin)
+		foreach($this->plugins as $app => $plugin)
 		{
 			if (method_exists($plugin, $method))
 			{
-				//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method);
-				$result = call_user_func_array(array($plugin, $method),$params);
-				//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+				try {
+					//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method);
+					$result = call_user_func_array(array($plugin, $method),$params);
+					//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+				}
+				catch(Exception $e) {
+					// log error and block device
+					$this->device_wait_on_failure($method, $app, $e);
+				}
 
 				if (is_array($agregate))
 				{
@@ -1307,6 +1338,89 @@ class BackendEGW extends BackendDiff implements ISearchProvider
 			}
 		}
 		//error_log(__METHOD__."() hook_data=".array2string($hook_data).' returning '.array2string(array_keys($this->plugins)));
+	}
+
+	/**
+	 * Name of log for blocked devices within instances files dir or null to not log blocking
+	 */
+	const BLOCKING_LOG = 'esync-blocking.log';
+
+	/**
+	 * Check or set device failure mode: in failure mode we only return 503 Service unavailble
+	 *
+	 * Behavior on exceptions eg. connection failures (flags stored by user and device-ID):
+	 * a) if connections fails initialy:
+	 *    we log time under "lastattempt" and initial blocking-time of self::$waitOnFailureDefault=30 as "howlong" and
+	 *    send a "Retry-After: 30" header and a HTTP-Status of "503 Service Unavailable"
+	 * b) if clients attempts connection before lastattempt+howlong:
+	 *    send a "Retry-After: <remaining-time>" header and a HTTP-Status of "503 Service Unavailable"
+	 * c) if connection fails again within twice the blocking time:
+	 *    we double the blocking time up to maximum of $this->waitOnFailureLimit=7200=2h and
+	 *    send a "Retry-After: 2*<blocking-time>" header and a HTTP-Status of "503 Service Unavailable"
+	 *
+	 * @link https://social.msdn.microsoft.com/Forums/en-US/3658aca8-36fd-4058-9d43-10f48c3f7d3b/what-does-commandfrequency-mean-with-respect-to-eas-throttling?forum=os_exchangeprotocols
+	 * @param string $method z-push backend method called
+	 * @param string $app application of pluging causing the failure
+	 * @param Exception $set =null
+	 */
+	private function device_wait_on_failure($method, $app=null, $set=null)
+	{
+		if (($dev_id = Request::GetDeviceID()) === false)
+		{
+			return;	// no real request, or request not yet initialised
+		}
+		$waitOnFailure = egw_cache::getInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], function()
+		{
+			return array();
+		});
+		$deviceWaitOnFailure =& $waitOnFailure[$dev_id];
+
+		// check if device is blocked
+		if (!isset($set))
+		{
+			// case b: client attempts new connection, before blocking-time is over --> return 503 Service Unavailable immediatly
+			if ($deviceWaitOnFailure && $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] > time())
+			{
+				$keepwaiting = $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] - time();
+				ZLog::Write(LOGLEVEL_ERROR, "$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
+				if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+				// let z-push know we want to terminate
+				header("Retry-After: ".$keepwaiting);
+				throw new HTTPReturnCodeException('Service Unavailable', 503);
+			}
+			return;	// everything ok, device is not blocked
+		}
+		// block device because Exception happend in $method plugin for $app
+
+		// case a) initial failure: set lastattempt and howlong=self::$waitOnFailureDefault=30
+		if (!$deviceWaitOnFailure || time() > $deviceWaitOnFailure['lastattempt']+2*$deviceWaitOnFailure['howlong'])
+		{
+			$deviceWaitOnFailure = array(
+				'lastattempt' => time(),
+				'howlong'     => self::$waitOnFailureDefault,
+				'app'         => $app,
+			);
+		}
+		// case c) connection failed again: double waiting time up to max. of self::$waitOnFailureLimit=2h
+		else
+		{
+			$deviceWaitOnFailure = array(
+				'lastattempt' => time(),
+				'howlong'     => 2*$deviceWaitOnFailure['howlong'],
+				'app'         => $app,
+			);
+			if ($deviceWaitOnFailure['howlong'] > self::$waitOnFailureLimit)
+			{
+				$deviceWaitOnFailure['howlong'] = self::$waitOnFailureLimit;
+			}
+		}
+		egw_cache::setInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], $waitOnFailure);
+
+		ZLog::Write(LOGLEVEL_ERROR, "$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
+		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+		// let z-push know we want to terminate
+		header("Retry-After: ".$deviceWaitOnFailure['howlong']);
+		throw new HTTPReturnCodeException('Service Unavailable', 503, $set);
 	}
 
     /**

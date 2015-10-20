@@ -1100,6 +1100,20 @@ class BackendEGW extends BackendDiff
 	const BLOCKING_LOG = 'esync-blocking.log';
 
 	/**
+	 * Integer waitOnFailureDefault how long (in seconds) to wait on connection failure
+	 *
+	 * @var int
+	 */
+	static $waitOnFailureDefault = 30;
+
+	/**
+	 * Integer waitOnFailureLimit how long (in seconds) to wait on connection failure until a 500 is raised
+	 *
+	 * @var int
+	 */
+	static $waitOnFailureLimit = 7200;
+
+	/**
 	 * Check or set device failure mode: in failure mode we only return 503 Service unavailble
 	 *
 	 * Behavior on exceptions eg. connection failures (flags stored by user and device-ID):

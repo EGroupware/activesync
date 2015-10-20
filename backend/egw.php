@@ -970,16 +970,19 @@ class BackendEGW extends BackendDiff
 	 * @param optional further parameters
 	 * @return mixed
 	 */
-	private function run_on_plugin_by_id($method,$id)
+	public function run_on_plugin_by_id($method,$id)
 	{
 		$this->setup_plugins();
 
+		// check if device is still blocked
+		$this->device_wait_on_failure($method);
+
+		$type = $folder = null;
 		$this->splitID($id, $type, $folder);
 
 		if (is_numeric($type))
 		{
 			$type = 'mail';
-			if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $type = 'felamimail';
 		}
 		$params = func_get_args();
 		array_shift($params);	// remove $method
@@ -987,8 +990,14 @@ class BackendEGW extends BackendDiff
 		$ret = false;
 		if (isset($this->plugins[$type]) && method_exists($this->plugins[$type], $method))
 		{
-			//error_log($method.' called with Params:'.array2string($params));
-			$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
+			try {
+				//error_log($method.' called with Params:'.array2string($params));
+				$ret = call_user_func_array(array($this->plugins[$type], $method),$params);
+			}
+			catch(Exception $e) {
+				// log error and block device
+				$this->device_wait_on_failure($method, $type, $e);
+			}
 		}
 		//error_log(__METHOD__."('$method','$id') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
@@ -1003,22 +1012,34 @@ class BackendEGW extends BackendDiff
 	 * @param optional parameters
 	 * @return mixed agregated result
 	 */
-	private function run_on_all_plugins($method,$agregate=array())
+	public function run_on_all_plugins($method,$agregate=array())
 	{
 		$this->setup_plugins();
+
+		// check if device is still blocked
+		$this->device_wait_on_failure($method);
 
 		$params = func_get_args();
 		array_shift($params); array_shift($params);	// remove $method+$agregate
 
-		foreach($this->plugins as $plugin)
+		foreach($this->plugins as $app => $plugin)
 		{
 			if (method_exists($plugin, $method))
 			{
-				$result = call_user_func_array(array($plugin, $method),$params);
+				try {
+					//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method);
+					$result = call_user_func_array(array($plugin, $method),$params);
+					//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() calling ".get_class($plugin).'::'.$method.' returning '.array2string($result));
+				}
+				catch(Exception $e) {
+					// log error and block device
+					$this->device_wait_on_failure($method, $app, $e);
+				}
+
 				if (is_array($agregate))
 				{
 					$agregate = array_merge($agregate,$result);
-					//error_log(__METHOD__."('$method', , ".array2string($params).") result $plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
+					//error_log(__METHOD__."('$method', , ".array2string($params).") result plugin::$method=".array2string($result).' --> agregate='.array2string($agregate));
 				}
 				elseif ($agregate === 'return-first')
 				{
@@ -1048,10 +1069,10 @@ class BackendEGW extends BackendDiff
 		if (isset($this->plugins)) return;
 
 		$this->plugins = array();
-		$apps = array_keys($GLOBALS['egw_info']['user']['apps']);
+		if (isset($GLOBALS['egw_info']['user']['apps'])) $apps = array_keys($GLOBALS['egw_info']['user']['apps']);
 		if (!isset($apps))	// happens during setup
 		{
-			$apps = array('addressbook', 'calendar', 'mail', 'felamimail', 'infolog', 'filemanager');
+			$apps = array('addressbook', 'calendar', 'mail', 'infolog'/*, 'filemanager'*/);
 		}
 		// allow apps without user run-rights to hook into eSync
 		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps', array(), true)))	// true = no perms. check
@@ -1070,16 +1091,94 @@ class BackendEGW extends BackendDiff
 				$this->plugins[$app] = new $class($this);
 			}
 		}
-		// prefer new mail app over felamimail
-		if (isset($this->plugins['mail']) && isset($this->plugins['felamimail']))
-		{
-			unset($this->plugins['felamimail']);
-		}
 		//error_log(__METHOD__."() hook_data=".array2string($hook_data).' returning '.array2string(array_keys($this->plugins)));
 	}
+
+	/**
+	 * Name of log for blocked devices within instances files dir or null to not log blocking
+	 */
+	const BLOCKING_LOG = 'esync-blocking.log';
+
+	/**
+	 * Check or set device failure mode: in failure mode we only return 503 Service unavailble
+	 *
+	 * Behavior on exceptions eg. connection failures (flags stored by user and device-ID):
+	 * a) if connections fails initialy:
+	 *    we log time under "lastattempt" and initial blocking-time of self::$waitOnFailureDefault=30 as "howlong" and
+	 *    send a "Retry-After: 30" header and a HTTP-Status of "503 Service Unavailable"
+	 * b) if clients attempts connection before lastattempt+howlong:
+	 *    send a "Retry-After: <remaining-time>" header and a HTTP-Status of "503 Service Unavailable"
+	 * c) if connection fails again within twice the blocking time:
+	 *    we double the blocking time up to maximum of $this->waitOnFailureLimit=7200=2h and
+	 *    send a "Retry-After: 2*<blocking-time>" header and a HTTP-Status of "503 Service Unavailable"
+	 *
+	 * @link https://social.msdn.microsoft.com/Forums/en-US/3658aca8-36fd-4058-9d43-10f48c3f7d3b/what-does-commandfrequency-mean-with-respect-to-eas-throttling?forum=os_exchangeprotocols
+	 * @param string $method z-push backend method called
+	 * @param string $app application of pluging causing the failure
+	 * @param Exception $set =null
+	 */
+	private function device_wait_on_failure($method, $app=null, $set=null)
+	{
+		if (!($dev_id = $this->_devid))
+		{
+			return;	// no real request, or request not yet initialised
+		}
+		$waitOnFailure = egw_cache::getInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], function()
+		{
+			return array();
+		});
+		$deviceWaitOnFailure =& $waitOnFailure[$dev_id];
+
+		// check if device is blocked
+		if (!isset($set))
+		{
+			// case b: client attempts new connection, before blocking-time is over --> return 503 Service Unavailable immediatly
+			if ($deviceWaitOnFailure && $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] > time())
+			{
+				$keepwaiting = $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] - time();
+				debugLog("$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid);
+				if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+				// terminate now
+				header("Retry-After: ".$keepwaiting);
+				header("HTTP/1.1 503 Service Unavailable");
+				common::egw_exit();
+			}
+			return;	// everything ok, device is not blocked
+		}
+		// block device because Exception happend in $method plugin for $app
+
+		// case a) initial failure: set lastattempt and howlong=self::$waitOnFailureDefault=30
+		if (!$deviceWaitOnFailure || time() > $deviceWaitOnFailure['lastattempt']+2*$deviceWaitOnFailure['howlong'])
+		{
+			$deviceWaitOnFailure = array(
+				'lastattempt' => time(),
+				'howlong'     => self::$waitOnFailureDefault,
+				'app'         => $app,
+			);
+		}
+		// case c) connection failed again: double waiting time up to max. of self::$waitOnFailureLimit=2h
+		else
+		{
+			$deviceWaitOnFailure = array(
+				'lastattempt' => time(),
+				'howlong'     => 2*$deviceWaitOnFailure['howlong'],
+				'app'         => $app,
+			);
+			if ($deviceWaitOnFailure['howlong'] > self::$waitOnFailureLimit)
+			{
+				$deviceWaitOnFailure['howlong'] = self::$waitOnFailureLimit;
+			}
+		}
+		egw_cache::setInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], $waitOnFailure);
+
+		debugLog("$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid);
+		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+		// terminate now
+		header("Retry-After: ".$deviceWaitOnFailure['howlong']);
+		header("HTTP/1.1 503 Service Unavailable");
+		common::egw_exit();
+	}
 }
-
-
 
 /**
  * Plugin interface for EGroupware application backends

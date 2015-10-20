@@ -1119,7 +1119,7 @@ class BackendEGW extends BackendDiff
 	 */
 	private function device_wait_on_failure($method, $app=null, $set=null)
 	{
-		if (($dev_id = Request::GetDeviceID()) === false)
+		if (!($dev_id = $this->_devid))
 		{
 			return;	// no real request, or request not yet initialised
 		}
@@ -1136,8 +1136,8 @@ class BackendEGW extends BackendDiff
 			if ($deviceWaitOnFailure && $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] > time())
 			{
 				$keepwaiting = $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] - time();
-				debugLog("$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
-				if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+				debugLog("$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid);
+				if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
 				// terminate now
 				header("Retry-After: ".$keepwaiting);
 				header("HTTP/1.1 503 Service Unavailable");
@@ -1171,8 +1171,8 @@ class BackendEGW extends BackendDiff
 		}
 		egw_cache::setInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], $waitOnFailure);
 
-		debugLog("$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
-		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+		debugLog("$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid);
+		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
 		// terminate now
 		header("Retry-After: ".$deviceWaitOnFailure['howlong']);
 		header("HTTP/1.1 503 Service Unavailable");

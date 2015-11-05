@@ -1,4 +1,4 @@
-#!/usr/bin/php -d error_reporting=6135
+#!/opt/local/bin/php56 -d error_reporting=6135
 <?php
 /**
  * EGroupware: eSync - top based on z-push-top

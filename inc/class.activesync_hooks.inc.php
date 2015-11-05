@@ -47,8 +47,8 @@ class activesync_hooks
 	/**
 	 * Instanciate EGroupware backend
 	 *
-	 * @staticvar BackendEGW $backend
-	 * @return BackendEGW
+	 * @staticvar activesync_backend $backend
+	 * @return activesync_backend
 	 */
 	static function backend()
 	{
@@ -57,8 +57,7 @@ class activesync_hooks
 		{
 			set_include_path(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src' . PATH_SEPARATOR . get_include_path());
 			include(EGW_SERVER_ROOT.'/activesync/inc/config.php');
-			require_once __DIR__.'/class.BackendEGW.inc.php';
-			$backend = new BackendEGW();
+			$backend = new activesync_backend();
 		}
 		return $backend;
 	}

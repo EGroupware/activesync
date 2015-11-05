@@ -19,16 +19,16 @@ class activesync_statemachine extends FileStateMachine
 	/**
 	 * Reference to our backend
 	 *
-	 * @var BackendEGW
+	 * @var activesync_backend
 	 */
 	protected $backend;
 
 	/**
 	 * Constructor
 	 *
-	 * @param BackendEGW $backend
+	 * @param activesync_backend $backend
 	 */
-	function __construct(BackendEGW $backend)
+	function __construct(activesync_backend $backend)
 	{
 		$this->backend = $backend;
 

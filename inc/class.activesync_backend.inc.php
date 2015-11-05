@@ -11,24 +11,78 @@
  * @version $Id$
  */
 
-include_once('diffbackend.php');
+include_once('lib/interface/ibackend.php');
+include_once('lib/interface/ichanges.php');
+include_once('lib/interface/iexportchanges.php');
+include_once('lib/interface/iimportchanges.php');
+include_once('lib/interface/isearchprovider.php');
+include_once('lib/interface/istatemachine.php');
+include_once('lib/default/diffbackend/diffbackend.php');
+include_once('lib/request/request.php');
+include_once('lib/utils/utils.php');
 
 /**
  * Z-Push backend for EGroupware
  *
- * Uses EGroupware application specific plugins, eg. (felami-) mail_activesync class
+ * Uses EGroupware application specific plugins, eg. mail_zpush class
+ *
+ * @todo store states in DB
+ * @todo change AlterPingChanges method to GetFolderState in plugins, interfaces and egw backend directly returning state
  */
-class BackendEGW extends BackendDiff
+class activesync_backend extends BackendDiff implements ISearchProvider
 {
 	var $egw_sessionID;
-
-	var $_user;
-	var $_devid;
-	var $_protocolversion;
 
 	var $hierarchyimporter;
 	var $contentsimporter;
 	var $exporter;
+
+	var $authenticated = false;
+
+	/**
+	 * Integer waitOnFailureDefault how long (in seconds) to wait on connection failure
+	 *
+	 * @var int
+	 */
+	static $waitOnFailureDefault = 30;
+
+	/**
+	 * Integer waitOnFailureLimit how long (in seconds) to wait on connection failure until a 500 is raised
+	 *
+	 * @var int
+	 */
+	static $waitOnFailureLimit = 7200;
+
+	/**
+	 * Constructor
+	 *
+	 * We create/verify EGroupware session here, as we need our plugins before Logon get called
+	 */
+	function __construct()
+	{
+		// AS preferences needs to instanciate this class too, but has no running AS request
+		// regular AS still runs as "login", when it instanciates our backend
+		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')
+		{
+			Request::AuthenticationInfo();
+			$username = Request::GetAuthUser();
+			$password = Request::GetAuthPassword();
+
+			// check credentials and create session
+			$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
+			$this->authenticated = (($this->egw_sessionID = egw_session::get_sessionid(true)) &&
+				$GLOBALS['egw']->session->verify($this->egw_sessionID) &&
+				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
+				($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)));	// true = no real session
+
+			// check if we support loose provisioning for that device
+			$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
+			$loose_provisioning = $response ? (boolean)$response['response'] : false;
+			define('LOOSE_PROVISIONING', $loose_provisioning);
+
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=".array2string($loose_provisioning).", autheticated=".array2string($this->authenticated));
+		}
+	}
 
 	/**
 	 * Log into EGroupware
@@ -37,29 +91,24 @@ class BackendEGW extends BackendDiff
 	 * @param string $domain
 	 * @param string $password
 	 * @return boolean TRUE if the logon succeeded, FALSE if not
+     * @throws FatalException   e.g. some required libraries are unavailable
 	 */
 	public function Logon($username, $domain, $password)
 	{
-		// check credentials and create session
-   		$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-		if (!(($this->egw_sessionID = egw_session::get_sessionid(true)) && $GLOBALS['egw']->session->verify($this->egw_sessionID) &&
-				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
-			($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true))))	// true = no real session
+		if (!$this->authenticated)
 		{
-			debugLog(__METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() z-push authentication failed: ".$GLOBALS['egw']->session->cd_reason);
 			return false;
 		}
 		if (!isset($GLOBALS['egw_info']['user']['apps']['activesync']))
 		{
-			debugLog(__METHOD__."() z-push authentication failed: NO run rights for E-Push application!");
+			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() z-push authentication failed: NO run rights for E-Push application!");
 			return false;
 		}
-   		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
+   		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$username','$domain',...) logon SUCCESS");
 
    		// call plugins in case they are interested in being call on each command
    		$this->run_on_all_plugins(__FUNCTION__, array(), $username, $domain, $password);
-
-   		$this->_loggedin = TRUE;
 
 		return true;
 	}
@@ -69,9 +118,6 @@ class BackendEGW extends BackendDiff
 	 */
 	public function Logoff()
 	{
-		if ($this->mail) $this->mail->closeConnection();
-		unset($this->mail);
-
 		$this->_loggedin = FALSE;
 
 		debugLog ("LOGOFF");
@@ -82,39 +128,27 @@ class BackendEGW extends BackendDiff
 	 */
 	function GetFolderList()
 	{
+		error_log(__METHOD__."()");
 		$folderlist = $this->run_on_all_plugins(__FUNCTION__);
-		$applist = array('addressbook','calendar');
-		$targetmailapp = 'mail';
-		if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $targetmailapp = 'felamimail';
-		$applist[] = $targetmailapp;
+		error_log(__METHOD__."() run_On_all_plugins() returned ".array2string($folderlist));
+		$applist = array('addressbook','calendar','mail');
 		foreach($applist as $app)
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
 				$folderlist[] = $folder = array(
 					'id'	=>	$this->createID($app,
-						$app == $targetmailapp ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
+						$app == 'mail' ? 0 :	// fmail uses id=0 for INBOX, other apps account_id of user
 							$GLOBALS['egw_info']['user']['account_id']),
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
 				);
-				debugLog(__METHOD__."() adding for disabled $app ".array2string($folder));
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() adding for disabled $app ".array2string($folder));
 			}
 		}
-		//debugLog(__METHOD__."() returning ".array2string($folderlist));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() returning ".array2string($folderlist));
 
 		return $folderlist;
-	}
-
-	/**
-	 * Switches alter ping handling on or off
-	 *
-	 * @see BackendDiff::AlterPing()
-	 * @return boolean
-	 */
-	function AlterPing()
-	{
-		return true;
 	}
 
 	/**
@@ -127,6 +161,7 @@ class BackendEGW extends BackendDiff
 	{
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id)))
 		{
+			$type = $folder = $app = null;
 			$this->splitID($id, $type, $folder, $app);
 
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
@@ -151,10 +186,10 @@ class BackendEGW extends BackendDiff
 						$ret->type = $folder == 0 ? SYNC_FOLDER_TYPE_INBOX : SYNC_FOLDER_TYPE_USER_MAIL;
 						break;
 				}
-				debugLog(__METHOD__."($id) return ".array2string($ret)." for disabled app!");
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id) return ".array2string($ret)." for disabled app!");
 			}
 		}
-		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -175,6 +210,7 @@ class BackendEGW extends BackendDiff
 	{
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id)))
 		{
+			$type = $folder = $app = null;
 			$this->splitID($id, $type, $folder, $app);
 
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
@@ -184,10 +220,10 @@ class BackendEGW extends BackendDiff
 					'mod'	=>	'not-enabled',
 					'parent'=>	'0',
 				);
-				debugLog(__METHOD__."($id) return ".array2string($ret)." for disabled app!");
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id) return ".array2string($ret)." for disabled app!");
 			}
 		}
-		//debugLog(__METHOD__."('$id') returning ".array2string($ret));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$id') returning ".array2string($ret));
 		return $ret;
 	}
 
@@ -209,9 +245,9 @@ class BackendEGW extends BackendDiff
 	 */
 	function ChangeFolder($id, $oldid, $displayname, $type)
 	{
-		debugLog(__METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
-		debugLog(__METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
-		return (false);
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
+		ZLog::Write(LOGLEVEL_ERROR, __METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
+		return false;
 	}
 
 
@@ -227,23 +263,24 @@ class BackendEGW extends BackendDiff
 	 * will work OK apart from that.
 	 *
 	 * @param string $id folder id
-	 * @param int $cutoffdate=null
+	 * @param int $cutoffdate =null
 	 * @return array
   	 */
 	function GetMessageList($id, $cutoffdate=NULL)
 	{
+		$type = $folder = $app = null;
 		$this->splitID($id, $type, $folder, $app);
-		debugLog(__METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate)))
 		{
 			if (!isset($GLOBALS['egw_info']['user']['apps'][$app]))
 			{
-				debugLog(__METHOD__."($id, $cutoffdate) return array() for disabled app!");
+				ZLog::Write(LOGLEVEL_ERROR, __METHOD__."($id, $cutoffdate) return array() for disabled app!");
 				$ret = array();
 			}
 		}
 		// allow other apps to insert meeting requests
-		if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
+		/*if ($app == 'mail' && $folder == 0)
 		{
 			$before = count($ret);
 			$not_uids = array();
@@ -257,12 +294,12 @@ class BackendEGW extends BackendDiff
 			$ret2 = $this->run_on_all_plugins('GetMeetingRequests', $ret, $not_uids, $cutoffdate);
 			if (is_array($ret2) && !empty($ret2))
 			{
-				debugLog(__METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret2)-$before)." messages");
-				debugLog(array2string($ret2));
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) call to GetMeetingRequests added ".(count($ret2)-$before)." messages");
+				ZLog::Write(LOGLEVEL_DEBUG, array2string($ret2));
 				$ret = $ret2; // should be already merged by run_on_all_plugins
 			}
-		}
-		debugLog(__METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate):".array2string($ret));
+		}*/
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.'->retrieved '.count($ret)." Messages for type=$type, folder=$folder, app=$app ($id, $cutoffdate)");//.array2string($ret));
 		return $ret;
 	}
 
@@ -281,7 +318,7 @@ class BackendEGW extends BackendDiff
 			/* Bytes 37-­40: */	pack('V',13+bytes($uid)).	// binary length + 13 for next line and terminating \x00
 			/* Bytes 41-­52: */	'vCal-Uid'."\x01\x00\x00\x00".
 			$uid."\x00");
-		debugLog(__METHOD__."('$uid') returning '$objid'");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$uid') returning '$objid'");
 		return $objid;
 	}
 
@@ -294,7 +331,7 @@ class BackendEGW extends BackendDiff
 	public static function globalObjId2uid($objid)
 	{
 		$uid = cut_bytes(base64_decode($objid), 52, -1);	// -1 to cut off terminating \0x00
-		debugLog(__METHOD__."('$objid') returning '$uid'");
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$objid') returning '$uid'");
 		return $uid;
 	}
 
@@ -303,24 +340,23 @@ class BackendEGW extends BackendDiff
 	 *
 	 * @param string $folderid
 	 * @param string $id
-	 * @param int $truncsize
-	 * @param int $bodypreference
-	 * @param $optionbodypreference
-	 * @param bool $mimesupport
+     * @param ContentParameters $contentparameters  parameters of the requested message (truncation, mimesupport etc)
 	 * @return $messageobject|boolean false on error
 	 */
-	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
+	function GetMessage($folderid, $id, $contentparameters)
 	{
-		if ($id < 0)
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($folderid, $id)");
+		/*if ($id < 0)
 		{
+			$type = $folder = $app = null;
 			$this->splitID($folderid, $type, $folder, $app);
-			if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
+			if ($app == 'mail' && $folder == 0)
 			{
 
-				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
+				return $this->run_on_all_plugins('GetMeetingRequest', 'return-first', $id, $contentparameters);
 			}
-		}
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $truncsize, $bodypreference, $optionbodypreference, $mimesupport);
+		}*/
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $contentparameters);
 	}
 
 	/**
@@ -334,7 +370,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function GetAttachmentData($attname)
 	{
-		list($id, $uid, $part) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
+		list($id) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
 	}
 
@@ -349,23 +385,21 @@ class BackendEGW extends BackendDiff
 	 */
 	function ItemOperationsGetAttachmentData($attname)
 	{
-		list($id, $uid, $part) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
+		list($id) = explode(":", $attname); // split name as it is constructed that way FOLDERID:UID:PARTID
 		return $this->run_on_plugin_by_id(__FUNCTION__, $id, $attname);
 	}
 
 	function ItemOperationsFetchMailbox($entryid, $bodypreference, $mimesupport = 0) {
-		debugLog(__METHOD__.__LINE__.'Entry:'.$entryid.', BodyPref:'.array2string( $bodypreference).', MimeSupport:'.array2string($mimesupport));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.'Entry:'.$entryid.', BodyPref:'.array2string( $bodypreference).', MimeSupport:'.array2string($mimesupport));
 		list($folderid, $uid) = explode(":", $entryid); // split name as it is constructed that way FOLDERID:UID:PARTID
+		$type = $folder = $app = null;
 		$this->splitID($folderid, $type, $folder, $app);
-		//debugLog(__METHOD__.__LINE__."$folderid, $type, $folder, $app");
-		if ($app === 'felamimail'||$app == 'mail')
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__."$folderid, $type, $folder, $app");
+		if ($app == 'mail')
 		{									// GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0)
-			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreferences[1]['TruncationSize']?$bodypreferences[1]['TruncationSize']:500), $bodypreference, $optionbodypreference=false, $mimesupport);
+			return $this->run_on_plugin_by_id('GetMessage', $folderid, $uid, $truncsize=($bodypreference[1]['TruncationSize']?$bodypreference[1]['TruncationSize']:500), $bodypreference, false, $mimesupport);
 		}
-		else
-		{
-			return false;
-		}
+		return false;
 	}
 
 	/**
@@ -384,13 +418,95 @@ class BackendEGW extends BackendDiff
 	{
 		if ($id < 0)
 		{
+			$type = $folder = $app = null;
 			$this->splitID($folderid, $type, $folder, $app);
-			if (($app == 'felamimail'||$app == 'mail') && $folder == 0)
+			if (($app == 'mail') && $folder == 0)
 			{
 				return $this->run_on_all_plugins('StatMeetingRequest',array(),$id);
 			}
 		}
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+	}
+
+	/**
+	 * Indicates if the backend has a ChangesSink.
+	 * A sink is an active notification mechanism which does not need polling.
+	 * The EGroupware backend simulates a sink by polling status information of the folder
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function HasChangesSink()
+	{
+		$this->sinkfolders = array();
+		$this->sinkstates = array();
+		return true;
+	}
+
+	/**
+	 * The folder should be considered by the sink.
+	 * Folders which were not initialized should not result in a notification
+	 * of IBacken->ChangesSink().
+	 *
+	 * @param string        $folderid
+	 *
+	 * @access public
+	 * @return boolean      false if found can not be found
+	 */
+	public function ChangesSinkInitialize($folderid)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($folderid)");
+
+		$this->sinkfolders[] = $folderid;
+
+		return true;
+	}
+
+	/**
+	 * The actual ChangesSink.
+	 * For max. the $timeout value this method should block and if no changes
+	 * are available return an empty array.
+	 * If changes are available a list of folderids is expected.
+	 *
+	 * @param int           $timeout        max. amount of seconds to block
+	 *
+	 * @access public
+	 * @return array
+	 */
+	public function ChangesSink($timeout = 30)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($timeout)");
+		$notifications = array();
+		$stopat = time() + $timeout - 1;
+
+		while($stopat > time() && empty($notifications))
+		{
+			foreach ($this->sinkfolders as $folderid)
+			{
+				$newstate = null;
+				$this->AlterPingChanges($folderid, $newstate);
+
+				if (!isset($this->sinkstates[$folderid]))
+					$this->sinkstates[$folderid] = $newstate;
+
+				if ($this->sinkstates[$folderid] != $newstate)
+				{
+					ZLog::Write(LOGLEVEL_DEBUG, "ChangeSink() found change for folderid=$folderid from ".array2string($this->sinkstates[$folderid])." to ".array2string($newstate));
+					$notifications[] = $folderid;
+					$this->sinkstates[$folderid] = $newstate;
+				}
+			}
+
+			if (empty($notifications))
+			{
+				$sleep_time = min($timeout, 30);
+				ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($timeout) no changes, going to sleep($sleep_time)");
+				sleep($sleep_time);
+			}
+		}
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($timeout) returning ".array2string($notifications));
+
+		return $notifications;
 	}
 
 	/**
@@ -408,12 +524,12 @@ class BackendEGW extends BackendDiff
 	{
 		$this->setup_plugins();
 
+		$type = $folder = null;
 		$this->splitID($folderid, $type, $folder);
 
 		if (is_numeric($type))
 		{
 			$type = 'mail';
-			if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $type = 'felamimail';
 		}
 
 		$ret = array();		// so unsupported or not enabled/installed backends return "no change"
@@ -428,36 +544,100 @@ class BackendEGW extends BackendDiff
 				$this->device_wait_on_failure(__FUNCTION__, $type, $e);
 			}
 		}
-		debugLog(__METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
 
-	function ChangeMessage($folderid, $id, $message)
+    /**
+     * Called when a message has been changed on the mobile. The new message must be saved to disk.
+     * The return value must be whatever would be returned from StatMessage() after the message has been saved.
+     * This way, the 'flags' and the 'mod' properties of the StatMessage() item may change via ChangeMessage().
+     * This method will never be called on E-mail items as it's not 'possible' to change e-mail items. It's only
+     * possible to set them as 'read' or 'unread'.
+     *
+     * @param string              $folderid            id of the folder
+     * @param string              $id                  id of the message
+     * @param SyncXXX             $message             the SyncObject containing a message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return array                        same return value as StatMessage()
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function ChangeMessage($folderid, $id, $message, $contentParameters)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $message);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $message, $contentParameters);
 	}
 
-	function MoveMessage($folderid, $id, $newfolderid)
+    /**
+     * Called when the user moves an item on the PDA from one folder to another. Whatever is needed
+     * to move the message on disk has to be done here. After this call, StatMessage() and GetMessageList()
+     * should show the items to have a new parent. This means that it will disappear from GetMessageList()
+     * of the sourcefolder and the destination folder will show the new message
+     *
+     * @param string              $folderid            id of the source folder
+     * @param string              $id                  id of the message
+     * @param string              $newfolderid         id of the destination folder
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_MOVEITEMSSTATUS_* exceptions
+     */
+    public function MoveMessage($folderid, $id, $newfolderid, $contentParameters)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $newfolderid);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $newfolderid, $contentParameters);
 	}
 
-	function DeleteMessage($folderid, $id)
+    /**
+     * Called when the user has requested to delete (really delete) a message. Usually
+     * this means just unlinking the file its in or somesuch. After this call has succeeded, a call to
+     * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the mobile
+     * as it will be seen as a 'new' item. This means that if this method is not implemented, it's possible to
+     * delete messages on the PDA, but as soon as a sync is done, the item will be resynched to the mobile
+     *
+     * @param string              $folderid             id of the folder
+     * @param string              $id                   id of the message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function DeleteMessage($folderid, $id, $contentParameters)
 	{
 		if ($id < 0)
 		{
+			$type = $folder = $app = null;
 			$this->splitID($folderid, $type, $folder, $app);
-			if (($app == 'felamimail' || $app == 'mail') && $folder == 0)
+			if ($app == 'mail' && $folder == 0)
 			{
-				return $this->run_on_all_plugins('DeleteMeetingRequest',array(),$id);
+				return $this->run_on_all_plugins('DeleteMeetingRequest', array(), $id, $contentParameters);
 			}
 		}
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $contentParameters);
 	}
 
-	function SetReadFlag($folderid, $id, $flag)
+    /**
+     * Changes the 'read' flag of a message on disk. The $flags
+     * parameter can only be '1' (read) or '0' (unread). After a call to
+     * SetReadFlag(), GetMessageList() should return the message with the
+     * new 'flags' but should not modify the 'mod' parameter. If you do
+     * change 'mod', simply setting the message to 'read' on the mobile will trigger
+     * a full resync of the item from the server.
+     *
+     * @param string              $folderid            id of the folder
+     * @param string              $id                  id of the message
+     * @param int                 $flags               read flag of the message
+     * @param ContentParameters   $contentParameters
+     *
+     * @access public
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
+     */
+    public function SetReadFlag($folderid, $id, $flags, $contentParameters)
 	{
-		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
+		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flags, $contentParameters);
 	}
 
 	function ChangeMessageFlag($folderid, $id, $flag)
@@ -465,60 +645,43 @@ class BackendEGW extends BackendDiff
 		return $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $id, $flag);
 	}
 
-
 	/**
-	 * START ADDED dw2412 Settings Support
+	 * Applies settings to and gets informations from the device
 	 *
-	 * Plugins either return array() to NOT change standard response or array('response' => value)
+	 * @param SyncObject    $settings (SyncOOF or SyncUserInformation possible)
 	 *
-	 * @param array $request
-	 * @param string $devid
-	 * @return array response
+	 * @access public
+	 * @return SyncObject   $settings
 	 */
-	function setSettings($request,$devid)
+	public function Settings($settings)
 	{
-		if (isset($request["oof"])) {
-			if ($request["oof"]["oofstate"] == 1) {
-				// in case oof should be switched on do it here
-				// store somehow your oofmessage in case your system supports.
-				// response["oof"]["status"] = true per default and should be false in case
-				// the oof message could not be set
-				$response["oof"]["status"] = true;
-			} else {
-				// in case oof should be switched off do it here
-				$response["oof"]["status"] = true;
-			}
+		parent::Settings($settings);
+
+		if ($settings instanceof SyncUserInformation)
+		{
+			$settings->emailaddresses[] = $GLOBALS['egw_info']['user']['account_email'];
+			$settings->Status = SYNC_SETTINGSSTATUS_SUCCESS;
 		}
-		if (isset($request["deviceinformation"])) {
-			//error_log(print_r($request["deviceinformation"]));
-			// in case you'd like to store device informations do it here.
-			$response["deviceinformation"]["status"] = true;
-		}
-		if (isset($request["devicepassword"])) {
-			// in case you'd like to store device informations do it here.
-			$response["devicepassword"]["status"] = true;
+		if ($settings instanceof SyncOOF)
+		{
+			// OOF (out of office) not yet supported via AS, but required parameter
+			$settings->oofstate = 0;
+
+			// seems bodytype is not allowed in outgoing SyncOOF message
+			// iOS 8.3 shows Oof Response as "Loading ..." instead of "Off"
+			unset($settings->bodytype);
+
+			// iOS console shows: received results for an unknown oof settings request
+			// setting following parameters do not help
+			//$settings->starttime = $settings->endtime = time();
+			//$settings->oofmessage = array();
+
 		}
 
-		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $request, $devid);
+		// call all plugins with settings
+		$this->run_on_all_plugins(__FUNCTION__, array(), $settings);
 
-		//error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
-		return $response;
-	}
-
-	function getSettings ($request,$devid)
-	{
-		if (isset($request["userinformation"])) {
-			$response["userinformation"]["status"] = 1;
-			$response["userinformation"]["emailaddresses"][] = $GLOBALS['egw_info']['user']['email'];
-		} else {
-			$response["userinformation"]["status"] = false;
-		};
-		if (isset($request["oof"])) {
-			$response["oof"]["status"] 	= 0;
-		};
-		//error_log(__METHOD__.'('.array2string($request).', '.array2string($devid).') returning '.array2string($response));
-		return $response;
+		return $settings;
 	}
 
 	/**
@@ -547,33 +710,12 @@ class BackendEGW extends BackendDiff
 	 */
 	function CheckPolicy($policykey, $devid)
 	{
-		$response = array('response' => parent::CheckPolicy($policykey, $devid));
+		$response_in = array('response' => parent::CheckPolicy($policykey, $devid));
 
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $policykey, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response_in, $policykey, $devid);
 
 		//error_log(__METHOD__."('$policykey', '$devid') returning ".array2string($response['response']));
-		return $response['response'];
-	}
-
-	/**
-	 * Checks if policy of device allows loose provisioning
-	 *
-	 * Plugins either return array() to NOT change standard response or array('response' => value)
-	 *
-	 * @param string $policykey
-	 * @param string $devid
-	 *
-	 * @return boolean
-	 */
-	function LooseProvisioning($devid)
-	{
-		$response = array('response' => true);	// allow loose provisioning by default
-
-		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $devid);
-
-		//error_log(__METHOD__."('$devid') returning ".array2string($response['response']));
 		return $response['response'];
 	}
 
@@ -591,9 +733,9 @@ class BackendEGW extends BackendDiff
 	 */
 	function getDeviceRWStatus($user, $pass, $devid)
 	{
-		$response = array('response' => false);
+		$response_in = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response_in, $user, $pass, $devid);
 
 		//error_log(__METHOD__."('$user', '$pass', '$devid') returning ".array2string($response['response']));
 		return $response['response'];
@@ -615,9 +757,9 @@ class BackendEGW extends BackendDiff
 	 */
 	function setDeviceRWStatus($user, $pass, $devid, $status)
 	{
-		$response = array('response' => false);
+		$response_in = array('response' => false);
 		// allow plugins to overwrite standard responses
-		$response = $this->run_on_all_plugins(__FUNCTION__, $response, $user, $pass, $devid, $status);
+		$response = $this->run_on_all_plugins(__FUNCTION__, $response_in, $user, $pass, $devid, $status);
 
 		//error_log(__METHOD__."('$user', '$pass', '$devid', '$status') returning ".array2string($response['response']));
 		return $response['response'];
@@ -632,13 +774,13 @@ class BackendEGW extends BackendDiff
 	 * the new message as any other new message in a folder.
 	 *
 	 * @param string $rfc822 mail
-	 * @param array $smartdata=array() values for keys:
+	 * @param array $smartdata =array() values for keys:
 	 * 	'task': 'forward', 'new', 'reply'
 	 *  'itemid': id of message if it's an reply or forward
 	 *  'folderid': folder
 	 *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
 	 *	'saveinsentitems': 1 or absent?
-	 * @param boolean|double $protocolversion=false
+	 * @param boolean|double $protocolversion =false
 	 * @return boolean true on success, false on error
 	 *
 	 * @see eg. BackendIMAP::SendMail()
@@ -648,8 +790,87 @@ class BackendEGW extends BackendDiff
 	function SendMail($rfc822, $smartdata=array(), $protocolversion = false)
 	{
 		$ret = $this->run_on_all_plugins(__FUNCTION__, 'return-first', $rfc822, $smartdata, $protocolversion);
-		debugLog(__METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) returning ".array2string($ret));
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$rfc822', ".array2string($smartdata).", $protocolversion) returning ".array2string($ret));
 		return $ret;
+	}
+
+	/**
+	 * Searches the GAL
+	 *
+	 * @param string        $searchquery
+	 * @param string        $searchrange
+	 *
+	 * @access public
+	 * @return array
+	 * @throws StatusException
+	 */
+	public function GetGALSearchResults($searchquery, $searchrange)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.':'.array2string(array('query'=>$searchquery, 'range'=>$searchrange)));
+		return $this->getSearchResults(array('query'=>$searchquery, 'range'=>$searchrange),'GAL');
+	}
+
+	/**
+	 * Searches for the emails on the server
+	 *
+	 * @param ContentParameter $cpo
+	 *
+	 * @return array
+	 */
+	public function GetMailboxSearchResults($cpo)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.':'.array2string($cpo));
+		return $this->getSearchResults($cpo,'MAILBOX');
+	}
+
+    /**
+     * Returns a ISearchProvider implementation used for searches
+     *
+     * @access public
+     * @return object       Implementation of ISearchProvider
+     */
+    public function GetSearchProvider()
+	{
+		return $this;
+	}
+
+	/**
+	 * Indicates if a search type is supported by this SearchProvider
+	 * Currently only the type SEARCH_GAL (Global Address List) is implemented
+	 *
+	 * @param string        $searchtype
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function SupportsType($searchtype)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.'='.array2string($searchtype));
+		return ($searchtype == ISearchProvider::SEARCH_MAILBOX) || ($searchtype == ISearchProvider::SEARCH_GAL);
+	}
+
+	/**
+	 * Terminates a search for a given PID
+	 *
+	 * @param int $pid
+	 *
+	 * @return boolean
+	 */
+	public function TerminateSearch($pid)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.' PID:'.array2string($pid));
+		return true;
+	}
+
+	/**
+	 * Disconnects from the current search provider
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function Disconnect()
+	{
+		return true;
 	}
 
 	/**
@@ -662,7 +883,7 @@ class BackendEGW extends BackendDiff
 	 */
 	function getSearchResults($searchquery,$searchname)
 	{
-		//debugLog("EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
+		ZLog::Write(LOGLEVEL_DEBUG, "EGW:getSearchResults : query: ". print_r($searchquery,true) . " : searchname : ". $searchname);
 		switch (strtoupper($searchname)) {
 			case 'GAL':
 				$rows = $this->run_on_all_plugins('getSearchResultsGAL',array(),$searchquery);
@@ -679,11 +900,7 @@ class BackendEGW extends BackendDiff
 		}
 		if (is_array($rows))
 		{
-			$result = array(
-				'rows' => &$rows,
-				'status' => 1,
-				'global_search_status' => 1,
-			);
+			$result =  &$rows;
 		}
 		//error_log(__METHOD__."('$searchquery', '$searchname') returning ".count($result['rows']).' rows = '.array2string($result));
 		return $result;
@@ -704,7 +921,7 @@ class BackendEGW extends BackendDiff
 04/28/11 21:55:28 [8923] I    </MeetingResponse:RequestId>
 04/28/11 21:55:28 [8923] I   </MeetingResponse:Request>
 04/28/11 21:55:28 [8923] I  </MeetingResponse:MeetingResponse>
-04/28/11 21:55:28 [8923] BackendEGW::MeetingResponse('99723', '101000000000', '1', ) returning FALSE
+04/28/11 21:55:28 [8923] activesync_backend::MeetingResponse('99723', '101000000000', '1', ) returning FALSE
 04/28/11 21:55:28 [8923] O  <MeetingResponse:MeetingResponse>
 04/28/11 21:55:28 [8923] O   <MeetingResponse:Result>
 04/28/11 21:55:28 [8923] O    <MeetingResponse:RequestId>
@@ -722,15 +939,14 @@ class BackendEGW extends BackendDiff
 	 * @param int $requestid uid of mail with meeting request
 	 * @param string $folderid folder of meeting request mail
 	 * @param int $response 1=accepted, 2=tentative, 3=decline
-	 * @param int &$calendarid on return id of calendar item
-	 * @return boolean true on success, false on error
+	 * @return boolean calendar-id on success, false on error
 	 */
-	function MeetingResponse($requestid, $folderid, $response, &$calendarid)
+	function MeetingResponse($requestid, $folderid, $response)
 	{
 		$calendarid = $this->run_on_plugin_by_id(__FUNCTION__, $folderid, $requestid, $response);
 
-		debugLog(__METHOD__."('$requestid', '$folderid', '$response', $calendarid) returning ".array2string((bool)$calendarid));
-		return (bool)$calendarid;
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$requestid', '$folderid', '$response') returning ".array2string($calendarid));
+		return $calendarid;
 	}
 
 	/**
@@ -770,7 +986,6 @@ class BackendEGW extends BackendDiff
 				$type = self::TYPE_INFOLOG;
 				break;
 			case 'mail':
-			case 'felamimail':
 				$type = self::TYPE_MAIL;
 				break;
 			default:
@@ -792,8 +1007,7 @@ class BackendEGW extends BackendDiff
 		if (strlen($folder_hex) > 8) $folder_hex = substr($folder_hex,-8);
 		$str = sprintf('%04X',$type).$folder_hex;
 
-		//debugLog(__METHOD__."('$t','$f') type=$type --> '$str'");
-
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$t','$folder') type=$type --> '$str'");
 		return $str;
 	}
 
@@ -832,25 +1046,24 @@ class BackendEGW extends BackendDiff
 					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
 				}
 				$app = 'mail';
-				if (!isset($this->plugins['mail']) && isset($this->plugins['felamimail'])) $app = 'felamimail';
 				$type -= self::TYPE_MAIL;
 				break;
 		}
-		// debugLog(__METHOD__."('$str','$type','$folder')");
+		// ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$str','$type','$folder')");
 	}
 
 	/**
 	 * Convert note to requested bodypreference format and truncate if requested
 	 *
-	 * @param $note string containing the plaintext message
-	 * @param $bodypreference object
-	 * @param &$airsyncbasebody the airsyncbasebody object to send to the client
+	 * @param string $note containing the plaintext message
+	 * @param array $bodypreference
+	 * @param SyncBaseBody $airsyncbasebody the airsyncbasebody object to send to the client
 	 *
 	 * @return string plain textbody for message or false
 	 */
-	public function note2messagenote($note, $bodypreference, &$airsyncbasebody)
+	public function note2messagenote($note, $bodypreference, SyncBaseBody $airsyncbasebody)
 	{
-		//error_log (__METHOD__);
+		//error_log (__METHOD__."('$note', ".array2string($bodypreference).", ...)");
 		if ($bodypreference == false)
 		{
 			return ($note);
@@ -859,7 +1072,7 @@ class BackendEGW extends BackendDiff
 		{
 			if (isset($bodypreference[2]))
 			{
-				debugLog("HTML Body");
+				ZLog::Write(LOGLEVEL_DEBUG, "HTML Body");
 				$airsyncbasebody->type = 2;
 				$html = '<html>'.
 						'<head>'.
@@ -880,7 +1093,7 @@ class BackendEGW extends BackendDiff
 			}
 			else
 			{
-				debugLog("Plaintext Body");
+				ZLog::Write(LOGLEVEL_DEBUG, "Plaintext Body");
 				$airsyncbasebody->type = 1;
 				$plainnote = str_replace("\n","\r\n",str_replace("\r","",$note));
 				if(isset($bodypreference[1]["TruncationSize"]) && strlen($plainnote) > $bodypreference[1]["TruncationSize"])
@@ -901,9 +1114,9 @@ class BackendEGW extends BackendDiff
 	/**
 	 * Convert received messagenote to egroupware plaintext note
 	 *
-	 * @param $body the plain body received
-	 * @param $body the rtf body data
-	 * @param $airsyncbasebody  object received from client
+	 * @param string $body the plain body received
+	 * @param string $rtf the rtf body data
+	 * @param SyncBaseBody $airsyncbasebody  object received from client
 	 *
 	 * @return string plaintext for eGroupware
 	 */
@@ -924,7 +1137,7 @@ class BackendEGW extends BackendDiff
 		// Nokia MfE 2.9.158 sends contact notes with RTF and Body element.
 		// The RTF is empty, the body contains the note therefore we need to unpack the rtf
 		// to see if it is realy empty and in case not, take the appointment body.
-		if (isset($message->rtf))
+		/*if (isset($message->rtf))
 		{
 			error_log("RTF Body");
 			$rtf_body = new rtf ();
@@ -936,7 +1149,8 @@ class BackendEGW extends BackendDiff
 				unset($rtf);
 			}
 			if($rtf_body->out <> "") $body=$rtf_body->out;
-		}
+		}*/
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(body=".array2string($body).", rtf=".array2string($rtf).", airsyncbasebody=".array2string($airsyncbasebody).") returning ".array2string($body));
 		return $body;
 	}
 
@@ -946,9 +1160,9 @@ class BackendEGW extends BackendDiff
 	 * @param array|string $hook_data
 	 * @return array with settings from all plugins
 	 */
-	public function settings($hook_data)
+	public function egw_settings($hook_data)
 	{
-		return $this->run_on_all_plugins('settings',array(),$hook_data);
+		return $this->run_on_all_plugins('egw_settings',array(),$hook_data);
 	}
 
 	/**
@@ -960,6 +1174,38 @@ class BackendEGW extends BackendDiff
 	public function verify_settings($hook_data)
 	{
 		return $this->run_on_all_plugins('verify_settings', array(), $hook_data);
+	}
+
+    /**
+     * Returns the waste basket
+     *
+     * The waste basked is used when deleting items; if this function returns a valid folder ID,
+     * then all deletes are handled as moves and are sent to the backend as a move.
+     * If it returns FALSE, then deletes are handled as real deletes
+     *
+     * @access public
+     * @return string
+     */
+    public function GetWasteBasket()
+	{
+		//return $this->run_on_all_plugins(__FUNCTION__, 'return-first');
+		return false;
+	}
+
+	/**
+     * Deletes a folder
+     *
+     * @param string        $id
+     * @param string        $parentid         is normally false
+     *
+     * @access public
+     * @return boolean                      status - false if e.g. does not exist
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
+     */
+    public function DeleteFolder($id, $parentid)
+	{
+		ZLog::Write(LOGLEVEL_ERROR, __METHOD__."('$parentid', '$id') NOT supported!");
+		//return false;
 	}
 
 	/**
@@ -1092,7 +1338,7 @@ class BackendEGW extends BackendDiff
 		foreach($apps as $app)
 		{
 			if (strpos($app,'_')!==false) continue;
-			$class = $app.'_activesync';
+			$class = $app.'_zpush';
 			if (class_exists($class))
 			{
 				$this->plugins[$app] = new $class($this);
@@ -1105,20 +1351,6 @@ class BackendEGW extends BackendDiff
 	 * Name of log for blocked devices within instances files dir or null to not log blocking
 	 */
 	const BLOCKING_LOG = 'esync-blocking.log';
-
-	/**
-	 * Integer waitOnFailureDefault how long (in seconds) to wait on connection failure
-	 *
-	 * @var int
-	 */
-	static $waitOnFailureDefault = 30;
-
-	/**
-	 * Integer waitOnFailureLimit how long (in seconds) to wait on connection failure until a 500 is raised
-	 *
-	 * @var int
-	 */
-	static $waitOnFailureLimit = 7200;
 
 	/**
 	 * Check or set device failure mode: in failure mode we only return 503 Service unavailble
@@ -1140,7 +1372,7 @@ class BackendEGW extends BackendDiff
 	 */
 	private function device_wait_on_failure($method, $app=null, $set=null)
 	{
-		if (!($dev_id = $this->_devid))
+		if (($dev_id = Request::GetDeviceID()) === false)
 		{
 			return;	// no real request, or request not yet initialised
 		}
@@ -1157,12 +1389,11 @@ class BackendEGW extends BackendDiff
 			if ($deviceWaitOnFailure && $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] > time())
 			{
 				$keepwaiting = $deviceWaitOnFailure['lastattempt']+$deviceWaitOnFailure['howlong'] - time();
-				debugLog("$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid);
-				if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
-				// terminate now
+				ZLog::Write(LOGLEVEL_ERROR, "$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
+				if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() still blocking for an other $keepwaiting seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+				// let z-push know we want to terminate
 				header("Retry-After: ".$keepwaiting);
-				header("HTTP/1.1 503 Service Unavailable");
-				common::egw_exit();
+				throw new HTTPReturnCodeException('Service Unavailable', 503);
 			}
 			return;	// everything ok, device is not blocked
 		}
@@ -1192,366 +1423,35 @@ class BackendEGW extends BackendDiff
 		}
 		egw_cache::setInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], $waitOnFailure);
 
-		debugLog("$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid);
-		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.$this->_devid."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
-		// terminate now
+		ZLog::Write(LOGLEVEL_ERROR, "$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
+		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);
+		// let z-push know we want to terminate
 		header("Retry-After: ".$deviceWaitOnFailure['howlong']);
-		header("HTTP/1.1 503 Service Unavailable");
-		common::egw_exit();
+		throw new HTTPReturnCodeException('Service Unavailable', 503, $set);
 	}
-}
 
-/**
- * Plugin interface for EGroupware application backends
- *
- * Apps can implement it in a class called appname_activesync, to participate in active sync.
- */
-interface activesync_plugin_write extends activesync_plugin_read
-{
-	/**
-	 *  Creates or modifies a folder
-	 *
-	 * @param $id of the parent folder
-	 * @param $oldid => if empty -> new folder created, else folder is to be renamed
-	 * @param $displayname => new folder name (to be created, or to be renamed to)
-	 * @param type => folder type, ignored in IMAP
-	 *
-	 * @return stat | boolean false on error
-	 *
-	 */
-	public function ChangeFolder($id, $oldid, $displayname, $type);
+    /**
+     * Indicates which AS version is supported by the backend.
+     * By default AS version 2.5 (ASV_25) is returned (Z-Push 1 standard).
+     * Subclasses can overwrite this method to set another AS version
+     *
+     * @access public
+     * @return string       AS version constant
+     */
+    public function GetSupportedASVersion()
+	{
+        return ZPush::ASV_14;
+    }
 
 	/**
-	 * Deletes (really delete) a Folder
+	 * Returns a IStateMachine implementation used to save states
+	 * The default StateMachine should be used here, so, false is fine
 	 *
-	 * @param $parentid of the folder to delete
-	 * @param $id of the folder to delete
-	 *
-	 * @return
-	 * @TODO check what is to be returned
-	 *
+	 * @access public
+	 * @return boolean/object
 	 */
-	public function DeleteFolder($parentid, $id);
-
-	/**
-	 * Changes or adds a message on the server
-	 *
-	 * @param $folderid
-	 * @param $id for change | empty for create new
-	 * @param $message object to SyncObject to create
-	 *
-	 * @return $stat whatever would be returned from StatMessage
-	 *
-	 * This function is called when a message has been changed on the PDA. You should parse the new
-	 * message here and save the changes to disk. The return value must be whatever would be returned
-	 * from StatMessage() after the message has been saved. This means that both the 'flags' and the 'mod'
-	 * properties of the StatMessage() item may change via ChangeMessage().
-	 * Note that this function will never be called on E-mail items as you can't change e-mail items, you
-	 * can only set them as 'read'.
-	 */
-	public function ChangeMessage($folderid, $id, $message);
-
-	/**
-	 * Moves a message from one folder to another
-	 *
-	 * @param $folderid of the current folder
-	 * @param $id of the message
-	 * @param $newfolderid
-	 *
-	 * @return $newid as a string | boolean false on error
-	 *
-	 * After this call, StatMessage() and GetMessageList() should show the items
-	 * to have a new parent. This means that it will disappear from GetMessageList() will not return the item
-	 * at all on the source folder, and the destination folder will show the new message
-	 *
-	 */
-	public function MoveMessage($folderid, $id, $newfolderid);
-
-	/**
-	 * Delete (really delete) a message in a folder
-	 *
-	 * @param $folderid
-	 * @param $id
-	 *
-	 * @TODO check what is to be returned
-	 *
-	 * @DESC After this call has succeeded, a call to
-	 * GetMessageList() should no longer list the message. If it does, the message will be re-sent to the PDA
-	 * as it will be seen as a 'new' item. This means that if you don't implement this function, you will
-	 * be able to delete messages on the PDA, but as soon as you sync, you'll get the item back
-	 */
-	public function DeleteMessage($folderid, $id);
-
-	/**
-	 * modify read flag of a message
-	 *
-	 * @param $folderid
-	 * @param $id
-	 * @param $flags
-	 *
-	 *
-	 * @DESC The $flags parameter can only be '1' (read) or '0' (unread)
-	 */
-	public function SetReadFlag($folderid, $id, $flags);
-
-	/**
-	 * modify olflags (outlook style) flag of a message
-	 *
-	 * @param $folderid
-	 * @param $id
-	 * @param $flags
-	 *
-	 *
-	 * @DESC The $flags parameter must contains the poommailflag Object
-	 */
-	public function ChangeMessageFlag($folderid, $id, $flags);
-}
-
-/**
- * Plugin interface for EGroupware application backends
- *
- * Apps can implement it in a class called appname_activesync, to participate in acitve sync.
- */
-interface activesync_plugin_read
-{
-	/**
-	 * Constructor
-	 *
-	 * @param BackendEGW $backend
-	 */
-	public function __construct(BackendEGW $backend);
-
-	/**
-	 *  This function is analogous to GetMessageList.
-	 */
-	public function GetFolderList();
-
-	/**
-	 * Return a changes array
-	 *
-	 * if changes occurr default diff engine computes the actual changes
-	 *
-	 * @param string $folderid
-	 * @param string &$syncstate on call old syncstate, on return new syncstate
-	 * @return array|boolean false if $folderid not found, array() if no changes or array(array("type" => "fakeChange"))
-	 */
-	public function AlterPingChanges($id, &$synckey);
-
-	/**
-	 * Get Information about a folder
-	 *
-	 * @param string $id
-	 * @return SyncFolder|boolean false on error
-	 */
-	public function GetFolder($id);
-
-	/**
-	 * Return folder stats. This means you must return an associative array with the
-	 * following properties:
-	 *
-	 * "id" => The server ID that will be used to identify the folder. It must be unique, and not too long
-	 *		 How long exactly is not known, but try keeping it under 20 chars or so. It must be a string.
-	 * "parent" => The server ID of the parent of the folder. Same restrictions as 'id' apply.
-	 * "mod" => This is the modification signature. It is any arbitrary string which is constant as long as
-	 *		  the folder has not changed. In practice this means that 'mod' can be equal to the folder name
-	 *		  as this is the only thing that ever changes in folders. (the type is normally constant)
-	 *
-	 * @return array with values for keys 'id', 'parent' and 'mod'
-	 */
-	function StatFolder($id);
-
-	/**
-	 * Return an list (array) of all messages in a folder
-	 *
-	 * @param $folderid
-	 * @param $cutoffdate=NULL
-	 *
-	 * @return $array
-	 *
-	 * @DESC
-	 * each entry being an associative array with the same entries as StatMessage().
-	 * This function should return stable information; ie
-	 * if nothing has changed, the items in the array must be exactly the same. The order of
-	 * the items within the array is not important though.
-	 *
-	 * The cutoffdate is a date in the past, representing the date since which items should be shown.
-	 * This cutoffdate is determined by the user's setting of getting 'Last 3 days' of e-mail, etc. If
-	 * you ignore the cutoffdate, the user will not be able to select their own cutoffdate, but all
-	 * will work OK apart from that.
-	 */
-	public function GetMessageList($folderid, $cutoffdate=NULL);
-
-	/**
-	 * Get Message stats
-	 *
-	 * @param $folderid
-	 * @param $id
-	 *
-	 * @return $array
-	 *
-	 * StatMessage should return message stats, analogous to the folder stats (StatFolder). Entries are:
-	 * 'id'     => Server unique identifier for the message. Again, try to keep this short (under 20 chars)
-	 * 'flags'  => simply '0' for unread, '1' for read
-	 * 'mod'    => modification signature. As soon as this signature changes, the item is assumed to be completely
-	 *             changed, and will be sent to the PDA as a whole. Normally you can use something like the modification
-	 *             time for this field, which will change as soon as the contents have changed.
-	 */
-	public function StatMessage($folderid, $id);
-
-	/**
-	 * Get specified item from specified folder.
-	 * @param string $folderid
-	 * @param string $id
-	 * @param int $truncsize
-	 * @param int $bodypreference
-	 * @param $optionbodypreference
-	 * @param bool $mimesupport
-	 * @return $messageobject|boolean false on error
-	 */
-	function GetMessage($folderid, $id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0);
-
-	/**
-	 * Settings / Preferences like the usualy settings hook in egroupware
-	 *
-	 * Names should be prefixed with the application name and a dash '-', to not conflict with other plugins
-	 *
-	 * @return array name => array with values for keys: type, label, name, help, values, default, ...
-	 */
-	function settings($hook_data);
-}
-
-/**
- * Plugin that can send mail
- */
-interface activesync_plugin_sendmail
-{
-	/**
-	 * Sends a message which is passed as rfc822. You basically can do two things
-	 * 1) Send the message to an SMTP server as-is
-	 * 2) Parse the message yourself, and send it some other way
-	 * It is up to you whether you want to put the message in the sent items folder. If you
-	 * want it in 'sent items', then the next sync on the 'sent items' folder should return
-	 * the new message as any other new message in a folder.
-	 *
-	 * @param string $rfc822 mail
-	 * @param array $smartdata=array() values for keys:
-	 * 	'task': 'forward', 'new', 'reply'
-	 *  'itemid': id of message if it's an reply or forward
-	 *  'folderid': folder
-	 *  'replacemime': false = send as is, false = decode and recode for whatever reason ???
-	 *	'saveinsentitems': 1 or absent?
-	 * @param boolean|double $protocolversion=false
-	 * @return boolean true on success, false on error
-	 *
-	 * @see eg. BackendIMAP::SendMail()
-	 * @todo implement either here or in fmail backend
-	 * 	(maybe sending here and storing to sent folder in plugin, as sending is supposed to always work in EGroupware)
-	 */
-	function SendMail($rfc822, $smartdata=array(), $protocolversion = false);
-}
-
-/**
- * Plugin that supports MeetingResponse method
- *
- * Plugin can call MeetingResponse method of backend with $requestid containing an iCal to let calendar plugin add the event
- */
-interface activesync_plugin_meeting_response
-{
-	/**
-	 * Process response to meeting request
-	 *
-	 * @see BackendDiff::MeetingResponse()
-	 * @param string $folderid folder of meeting request mail
-	 * @param int|string $requestid uid of mail with meeting request
-	 * @param int $response 1=accepted, 2=tentative, 3=decline
-	 * @return int|boolean id of calendar item, false on error
-	 */
-	function MeetingResponse($folderid, $requestid, $response);
-}
-
-/**
- * Plugin that supplies additional (to mail) meeting requests
- *
- * These meeting requests should have negative id's to not conflict with uid's of mail!
- *
- * Backend merges these meeting requests into the inbox, even if mail is completly disabled
- */
-interface activesync_plugin_meeting_requests extends activesync_plugin_meeting_response
-{
-	/**
-	 * List all meeting requests / invitations of user NOT having a UID in $not_uids (already received by email)
-	 *
-	 * @param array $not_uids
-	 * @param int $cutoffdate=null
-	 * @return array
-	 */
-	function GetMeetingRequests(array $not_uids, $cutoffdate=NULL);
-
-	/**
-	 * Stat a meeting request
-	 *
-	 * @param int $id negative! id
-	 * @return array
-	 */
-	function StatMeetingRequest($id);
-
-	/**
-	 * Return a meeting request as AS SyncMail object
-	 *
-	 * @param int $id negative! cal_id
-	 * @param int $truncsize
-	 * @param int $bodypreference
-	 * @param $optionbodypreference
-	 * @param bool $mimesupport
-	 * @return SyncMail
-	 */
-	function GetMeetingRequest($id, $truncsize, $bodypreference=false, $optionbodypreference=false, $mimesupport = 0);
-}
-
-/**
- * Plugin interface for EGroupware application backends to implement a global addresslist search
- *
- * Apps can implement it in a class called appname_activesync, to participate in active sync.
- */
-interface activesync_plugin_search_gal
-{
-	/**
-	 * Search global address list for a given pattern
-	 *
-	 * @param string $searchquery
-	 * @return array with just rows (no values for keys rows, status or global_search_status!)
-	 */
-	public function getSearchResultsGAL($searchquery);
-}
-
-/**
- * Plugin interface for EGroupware application backends to implement a mailbox search
- *
- * Apps can implement it in a class called appname_activesync, to participate in active sync.
- */
-interface activesync_plugin_search_mailbox
-{
-	/**
-	 * Search mailbox for a given pattern
-	 *
-	 * @param string $searchquery
-	 * @return array with just rows (no values for keys rows, status or global_search_status!)
-	 */
-	public function getSearchResultsMailbox($searchquery);
-}
-
-/**
- * Plugin interface for EGroupware application backends to implement a document library search
- *
- * Apps can implement it in a class called appname_activesync, to participate in active sync.
- */
-interface activesync_plugin_search_documentlibrary
-{
-	/**
-	 * Search document library for a given pattern
-	 *
-	 * @param string $searchquery
-	 * @return array with just rows (no values for keys rows, status or global_search_status!)
-	 */
-	public function getSearchResultsDocumentLibrary($searchquery);
+	public function GetStateMachine()
+	{
+		return new activesync_statemachine($this);
+	}
 }

@@ -58,6 +58,11 @@
 		require(__DIR__.'/../../header.inc.php');
 	}
 
+	// EGroupware specific ZPush version from our GitHub clone, overwriting version.php from stock ZPush
+	define('ZPUSH_VERSION', 'EGroupware-'.egw_framework::api_version().
+		(!file_exists(__DIR__.'/../vendor/z-push/z-push/.svn/entries') ? '' :
+			' (r'.trim(file_get_contents(__DIR__.'/../vendor/z-push/z-push/.svn/entries')).')'));
+
 /**********************************************************************************
  *  Default settings
  */
@@ -146,7 +151,7 @@
     // devices which don't support provisioning (like WM 5 and HTC Android Mail) - dw2412 contribution
     // false (default) - Enforce provisioning for all devices
     // true - allow older devices, but enforce policies on devices which support it
-	// BackendEGW defines int in Logon depending on (device-specific) policy
+	// activesync_backend defines int in Logon depending on (device-specific) policy
     //define('LOOSE_PROVISIONING', false);
 
     // Default conflict preference
@@ -239,10 +244,11 @@
  *  Backend settings
  */
     // the backend data provider
-    define('BACKEND_PROVIDER', 'BackendEGW');
+    define('BACKEND_PROVIDER', 'activesync_backend');
 
 	// IPC backend to use, default IpcBackendShm
-    if (!function_exists('sem_get') || !function_exists('shm_attach') || !function_exists('sem_acquire')|| !function_exists('shm_get_var')) {
+    //if (!function_exists('sem_get') || !function_exists('shm_attach') || !function_exists('sem_acquire')|| !function_exists('shm_get_var'))
+	{
         define('IPC_BACKEND_CLASS', 'activesync_ipc_backend');
     }
 

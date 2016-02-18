@@ -128,9 +128,9 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 */
 	function GetFolderList()
 	{
-		error_log(__METHOD__."()");
+		//error_log(__METHOD__."()");
 		$folderlist = $this->run_on_all_plugins(__FUNCTION__);
-		error_log(__METHOD__."() run_On_all_plugins() returned ".array2string($folderlist));
+		//error_log(__METHOD__."() run_On_all_plugins() returned ".array2string($folderlist));
 		$applist = array('addressbook','calendar','mail');
 		foreach($applist as $app)
 		{
@@ -606,6 +606,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
      */
     public function DeleteMessage($folderid, $id, $contentParameters)
 	{
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$folderid','".array2string($id)."') with Params ".array2string($contentParameters));
 		if ($id < 0)
 		{
 			$type = $folder = $app = null;

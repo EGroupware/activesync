@@ -75,6 +75,13 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
 				($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)));	// true = no real session
 
+			// closing session right away to not block parallel requests,
+			// this is a must for Ping requests, others might give better performance
+			if ($this->authenticated) // && Request::GetCommand() == 'Ping')
+			{
+				$GLOBALS['egw']->session->commit_session();
+			}
+
 			// check if we support loose provisioning for that device
 			$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
 			$loose_provisioning = $response ? (boolean)$response['response'] : false;

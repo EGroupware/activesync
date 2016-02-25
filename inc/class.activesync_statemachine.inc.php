@@ -115,6 +115,12 @@ class activesync_statemachine extends FileStateMachine
 		return filectime($dir.'/'.$devid.'-devicedata');
 	}
 
+	/**
+	 * Delete state of a given device
+	 *
+	 * @param string $devid
+	 * @throws egw_exception_wrong_parameter
+	 */
 	public function DeleteState($devid)
 	{
 		if (!preg_match('/^[a-z0-9]+$/', $devid))
@@ -123,7 +129,7 @@ class activesync_statemachine extends FileStateMachine
 		}
 		foreach(glob($this->getDeviceDirectory($devid).'/'.$devid.'-*') as $file)
 		{
-			unlinke($file);
+			unlink($file);
 		}
 	}
 }

@@ -54,6 +54,11 @@ class BackendEGW extends BackendDiff
 			debugLog(__METHOD__."() z-push authentication failed: NO run rights for E-Push application!");
 			return false;
 		}
+		if ($_GET['cmd'] == 'Ping')
+		{
+			$GLOBALS['egw']->session->commit_session();
+			//error_log(__METHOD__."() commiting session right away, because of Ping request");
+		}
    		debugLog(__METHOD__."('$username','$domain',...) logon SUCCESS");
 
    		// call plugins in case they are interested in being call on each command

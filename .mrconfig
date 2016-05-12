@@ -1,0 +1,2 @@
+[vendor/z-push/z-push]
+checkout = git clone git@github.com:EGroupware/z-push.git

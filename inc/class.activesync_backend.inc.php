@@ -11,6 +11,8 @@
  * @version $Id$
  */
 
+use EGroupware\Api;
+
 include_once('lib/interface/ibackend.php');
 include_once('lib/interface/ichanges.php');
 include_once('lib/interface/iexportchanges.php');
@@ -70,9 +72,9 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 
 			// check credentials and create session
 			$GLOBALS['egw_info']['flags']['currentapp'] = 'activesync';
-			$this->authenticated = (($this->egw_sessionID = egw_session::get_sessionid(true)) &&
+			$this->authenticated = (($this->egw_sessionID = Api\Session::get_sessionid(true)) &&
 				$GLOBALS['egw']->session->verify($this->egw_sessionID) &&
-				base64_decode(egw_cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
+				base64_decode(Api\Cache::getSession('phpgwapi', 'password')) === $password ||	// check if session contains password
 				($this->egw_sessionID = $GLOBALS['egw']->session->create($username,$password,'text',true)));	// true = no real session
 
 			// closing session right away to not block parallel requests,
@@ -977,7 +979,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 * @param int|string $type appname or integer mail account id
 	 * @param int $folder integer folder ID
 	 * @return string
-	 * @throws egw_exception_wrong_parameter
+	 * @throws Api\Exception\WrongParameter
 	 */
 	public function createID($type,$folder)
 	{
@@ -999,7 +1001,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 			default:
 				if (!is_numeric($type))
 				{
-					throw new egw_exception_wrong_parameter("type='$type' is NOT nummeric!");
+					throw new Api\Exception\WrongParameter("type='$type' is NOT nummeric!");
 				}
 				$type += self::TYPE_MAIL;
 				break;
@@ -1007,7 +1009,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 
 		if (!is_numeric($folder))
 		{
-			throw new egw_exception_wrong_parameter("folder='$folder' is NOT nummeric!");
+			throw new Api\Exception\WrongParameter("folder='$folder' is NOT nummeric!");
 		}
 
 		$folder_hex = sprintf('%08X',$folder);
@@ -1028,7 +1030,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 * @param string|int &$type on return appname or integer mail account ID
 	 * @param int &$folder on return integer folder ID
 	 * @param string &$app=null application of ID
-	 * @throws egw_exception_wrong_parameter
+	 * @throws Api\Exception\WrongParameter
 	 */
 	public function splitID($str,&$type,&$folder,&$app=null)
 	{
@@ -1051,7 +1053,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 			default:
 				if ($type < self::TYPE_MAIL)
 				{
-					throw new egw_exception_wrong_parameter("Unknown type='$type'!");
+					throw new Api\Exception\WrongParameter("Unknown type='$type'!");
 				}
 				$app = 'mail';
 				$type -= self::TYPE_MAIL;
@@ -1336,7 +1338,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 			$apps = array('addressbook', 'calendar', 'mail', 'infolog'/*, 'filemanager'*/);
 		}
 		// allow apps without user run-rights to hook into eSync
-		if (($hook_data = $GLOBALS['egw']->hooks->process('esync_extra_apps', array(), true)))	// true = no perms. check
+		if (($hook_data = Api\Hooks::process('esync_extra_apps', array(), true)))	// true = no perms. check
 		{
 			foreach($hook_data as $app => $extra_apps)
 			{
@@ -1384,7 +1386,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		{
 			return;	// no real request, or request not yet initialised
 		}
-		$waitOnFailure = egw_cache::getInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], function()
+		$waitOnFailure = Api\Cache::getInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], function()
 		{
 			return array();
 		});
@@ -1429,7 +1431,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 				$deviceWaitOnFailure['howlong'] = self::$waitOnFailureLimit;
 			}
 		}
-		egw_cache::setInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], $waitOnFailure);
+		Api\Cache::setInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], $waitOnFailure);
 
 		ZLog::Write(LOGLEVEL_ERROR, "$method() Error happend in $app ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID());
 		if (self::BLOCKING_LOG) error_log(date('Y-m-d H:i:s ')."$method() Error happend in $app: ".$set->getMessage()." blocking for $deviceWaitOnFailure[howlong] seconds for Instance=".$GLOBALS['egw_info']['user']['domain'].', User='.$GLOBALS['egw_info']['user']['account_lid'].', Device:'.Request::GetDeviceID()."\n", 3, $GLOBALS['egw_info']['server']['files_dir'].'/'.self::BLOCKING_LOG);

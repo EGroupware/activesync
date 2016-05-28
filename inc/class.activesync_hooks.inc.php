@@ -1,6 +1,6 @@
 <?php
 /**
- * EGroupware: eSync - ActiveSync protocol based on Z-Push: hooks: eg. preferences
+ * EGroupware: eSync - ActiveSync protocol based on Z-Push: hooks: eg. Api\Preferences
  *
  * @link http://www.egroupware.org
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
@@ -8,6 +8,9 @@
  * @author Ralf Becker <RalfBecker-AT-outdoor-training.de>
  * @version $Id$
  */
+
+use EGroupware\Api;
+use EGroupware\Api\Egw;
 
 /**
  * eSync hooks: eg. preferences
@@ -31,7 +34,7 @@ class activesync_hooks
 		if ($location == 'preferences')
 		{
 			$file = array(
-				'Preferences'     => egw::link('/index.php','menuaction=preferences.uisettings.index&appname='.$appname),
+				'Preferences'     => Egw::link('/index.php','menuaction=preferences.uisettings.index&appname='.$appname),
 			);
 			if ($location == 'preferences')
 			{
@@ -114,7 +117,7 @@ class activesync_hooks
 				$logs['z-push.log'] = lang('View global z-push log').' ('.lang('admin only').')';
 				$logs['z-push-error.log'] = lang('View glogal z-push error log').' ('.lang('admin only').')';
 			}
-			$link = egw::link('/index.php',array(
+			$link = Egw::link('/index.php',array(
 				'menuaction' => 'activesync.activesync_hooks.log',
 				'filename' => '',
 			));
@@ -124,7 +127,7 @@ class activesync_hooks
 			foreach($statemachine->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']) as $devid)
 			{
 
-				$profiles[$devid] = $devid.' ('.egw_time::to($statemachine->DeviceDataTime($devid)).')';
+				$profiles[$devid] = $devid.' ('.Api\DateTime::to($statemachine->DeviceDataTime($devid)).')';
 			}
 		}
 		else	// allow to force users to NOT be able to delete their profiles
@@ -176,7 +179,7 @@ class activesync_hooks
 	 *
 	 * $_GET['filename'] has to be in activesync subdir of files dir
 	 *
-	 * @throws egw_exception_wrong_parameter
+	 * @throws Api\Exception\WrongParameter
 	 */
 	public function log()
 	{
@@ -184,7 +187,7 @@ class activesync_hooks
 		if (!($filename == $GLOBALS['egw_info']['user']['account_lid'].'.log' ||
 			$GLOBALS['egw_info']['user']['apps']['admin'] && in_array($filename, array('z-push.log', 'z-push-error.log'))))
 		{
-			throw new egw_exception_wrong_parameter("Access denied to file '$filename'!");
+			throw new Api\Exception\WrongParameter("Access denied to file '$filename'!");
 		}
 		self::debug_log($filename);
 	}
@@ -193,7 +196,7 @@ class activesync_hooks
 	 * Enable and view debug log
 	 *
 	 * @param string $filename relativ to activesync subdir of files-dir
-	 * @throws egw_exception_wrong_parameter
+	 * @throws Api\Exception\WrongParameter
 	 */
 	public static function debug_log($filename)
 	{
@@ -209,7 +212,7 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 		{
 			touch($debug_file);
 		}
-		$tail = new egw_tail('activesync/'.$filename);
+		$tail = new Api\Json\Tail('activesync/'.$filename);
 		$GLOBALS['egw']->framework->render($tail->show(),false,false);
 	}
 

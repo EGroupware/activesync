@@ -9,6 +9,8 @@
  * @version $Id$
  */
 
+use EGroupware\Api;
+
 include_once('lib/default/filestatemachine.php');
 
 /**
@@ -119,13 +121,13 @@ class activesync_statemachine extends FileStateMachine
 	 * Delete state of a given device
 	 *
 	 * @param string $devid
-	 * @throws egw_exception_wrong_parameter
+	 * @throws Api\Exception\WrongParameter
 	 */
 	public function DeleteState($devid)
 	{
 		if (!preg_match('/^[a-z0-9]+$/', $devid))
 		{
-			throw new egw_exception_wrong_parameter("Invalid device-ID '$devid'!");
+			throw new Api\Exception\WrongParameter("Invalid device-ID '$devid'!");
 		}
 		foreach(glob($this->getDeviceDirectory($devid).'/'.$devid.'-*') as $file)
 		{

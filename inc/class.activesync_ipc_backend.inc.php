@@ -9,6 +9,8 @@
  * @version $Id$
  */
 
+use EGroupware\Api;
+
 include_once('lib/core/interprocessdata.php');
 
 /**
@@ -29,7 +31,7 @@ class activesync_ipc_backend implements IIpcBackend
     public function __construct($type, $allocate, $class) {
 		unset($allocate);	// not used, but required by function signature
 		$this->type = $type;
-		$this->level = $class == 'TopCollector' ? egw_cache::TREE : egw_cache::INSTANCE;
+		$this->level = $class == 'TopCollector' ? Api\Cache::TREE : Api\Cache::INSTANCE;
 	}
 
     /**
@@ -80,7 +82,7 @@ class activesync_ipc_backend implements IIpcBackend
      */
     public function blockMutex() {
 		$n = 0;
-		while(!egw_cache::addCache($this->level, __CLASS__, $this->type+10, true, 10))
+		while(!Api\Cache::addCache($this->level, __CLASS__, $this->type+10, true, 10))
 		{
 			if (!$n++) error_log(__METHOD__."() waiting to aquire mutex (this->type=$this->type)");
 			usleep(self::BLOCK_USLEEP);	// wait 20ms before retrying
@@ -98,7 +100,7 @@ class activesync_ipc_backend implements IIpcBackend
      */
     public function releaseMutex() {
 		//error_log(__METHOD__."() this->type=$this->type");
-		return egw_cache::unsetCache($this->level, __CLASS__, $this->type+10);
+		return Api\Cache::unsetCache($this->level, __CLASS__, $this->type+10);
     }
 
     /**
@@ -110,7 +112,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @return boolean
      */
     public function hasData($id = 2) {
-		return egw_cache::getCache($this->level, __CLASS__, $this->type.':'.$id) !== null;
+		return Api\Cache::getCache($this->level, __CLASS__, $this->type.':'.$id) !== null;
     }
 
     /**
@@ -122,7 +124,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @return mixed
      */
     public function getData($id = 2) {
-		return egw_cache::getCache($this->level, __CLASS__, $this->type.':'.$id);
+		return Api\Cache::getCache($this->level, __CLASS__, $this->type.':'.$id);
     }
 
     /**
@@ -136,7 +138,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @return boolean
      */
     public function setData($data, $id = 2) {
-		return egw_cache::setCache($this->level, __CLASS__, $this->type.':'.$id, $data);
+		return Api\Cache::setCache($this->level, __CLASS__, $this->type.':'.$id, $data);
     }
 
     /**

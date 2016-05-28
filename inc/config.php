@@ -1,5 +1,5 @@
 <?php
-/***********************************************
+/**
 * File      :   config.php
 * Project   :   Z-Push
 * Descr     :   Main configuration file
@@ -59,7 +59,7 @@
 	}
 
 	// EGroupware specific ZPush version from our GitHub clone, overwriting version.php from stock ZPush
-	define('ZPUSH_VERSION', 'EGroupware-'.egw_framework::api_version().
+	define('ZPUSH_VERSION', 'EGroupware-'.EGroupware\Api\Framework::api_version().
 		(!file_exists(__DIR__.'/../vendor/z-push/z-push/.svn/entries') ? '' :
 			' (r'.trim(file_get_contents(__DIR__.'/../vendor/z-push/z-push/.svn/entries')).')'));
 

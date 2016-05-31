@@ -93,17 +93,9 @@ class activesync_hooks
 			$settings[$name] = $data;
 		}
 		// check if our verify_settings hook is registered, register it if not
-		$hooks = $GLOBALS['egw']->hooks;
-		if (!isset($hooks->locations['verify_settings']['activesync']))
+		if (!Api\Hooks::exists('verify_settings', 'activesync'))
 		{
-			$f = EGW_SERVER_ROOT . '/activesync/setup/setup.inc.php';
-			$setup_info = array('activesync' => array());
-			if(@file_exists($f)) include($f);
-			$hooks->register_hooks('activesync', $setup_info['activesync']['hooks']);
-			if (method_exists($GLOBALS['egw'], 'invalidate_session_cache'))
-			{
-				$GLOBALS['egw']->invalidate_session_cache();
-			}
+			Api\Hooks::read(true);
 		}
 		if ($GLOBALS['type'] === 'user')
 		{

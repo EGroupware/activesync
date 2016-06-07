@@ -96,7 +96,7 @@
  */
     //if (!function_exists('sem_get') || !function_exists('shm_attach') || !function_exists('sem_acquire')|| !function_exists('shm_get_var'))
 	{
-        define('IPC_PROVICER', 'activesync_ipc_backend');
+        define('IPC_PROVIDER', 'activesync_ipc_backend');
     }
 	//else define('IPC_PROVIDER', '');
 

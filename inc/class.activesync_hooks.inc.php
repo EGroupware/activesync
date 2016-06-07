@@ -58,7 +58,7 @@ class activesync_hooks
 		static $backend=null;
 		if (!isset($backend))
 		{
-			set_include_path(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src' . PATH_SEPARATOR . get_include_path());
+			require_once(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src/vendor/autoload.php');
 			include(EGW_SERVER_ROOT.'/activesync/inc/config.php');
 			$backend = new activesync_backend();
 		}

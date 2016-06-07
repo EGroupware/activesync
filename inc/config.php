@@ -141,7 +141,7 @@
 		$specialLogUsers[] = $GLOBALS['egw_info']['user']['account_lid'];
 	}
 	// do not log E_NOTICE or E_STRICT
-	defined('ZPUSH_LOG_ERROR_MASK', ~(E_NOTICE|E_STRICT));
+	define('ZPUSH_ERROR_LOG_MASK', ~(E_NOTICE|E_STRICT));
 
     // Filelog settings
     define('LOGFILEDIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync/');

@@ -240,7 +240,7 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 	}
 }
 
-// to not fail, if any backend calls z-push debugLog, simply ignore it
+// to not fail, if any backend calls z-push ZLog::Write, simply ignore it
 if (!class_exists('ZLog'))
 {
 	class ZLog
@@ -249,12 +249,5 @@ if (!class_exists('ZLog'))
 		{
 			unset($level, $msg, $truncate);
 		}
-	}
-}
-if (!function_exists('debugLog'))
-{
-	function debugLog($message)
-	{
-		ZLog::Write(LOGLEVEL_DEBUG, $message);
 	}
 }

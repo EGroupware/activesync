@@ -11,8 +11,6 @@
 
 use EGroupware\Api;
 
-include_once('lib/default/filestatemachine.php');
-
 /**
  * ActiveSync statemachine based on ZPush2 filestatestatemachine
  */

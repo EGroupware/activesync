@@ -13,16 +13,6 @@
 
 use EGroupware\Api;
 
-include_once('lib/interface/ibackend.php');
-include_once('lib/interface/ichanges.php');
-include_once('lib/interface/iexportchanges.php');
-include_once('lib/interface/iimportchanges.php');
-include_once('lib/interface/isearchprovider.php');
-include_once('lib/interface/istatemachine.php');
-include_once('lib/default/diffbackend/diffbackend.php');
-include_once('lib/request/request.php');
-include_once('lib/utils/utils.php');
-
 /**
  * Z-Push backend for EGroupware
  *
@@ -66,7 +56,8 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		// regular AS still runs as "login", when it instanciates our backend
 		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')
 		{
-			Request::AuthenticationInfo();
+			// need to call ProcessHeaders() here, to be able to use ::GetAuth(User|Password), unfortunately zpush calls it too so it runs twice
+			Request::ProcessHeaders();
 			$username = Request::GetAuthUser();
 			$password = Request::GetAuthPassword();
 
@@ -129,7 +120,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	{
 		$this->_loggedin = FALSE;
 
-		debugLog ("LOGOFF");
+		ZLog::Write(LOGLEVEL_DEBUG, "LOGOFF");
 	}
 
 	/**
@@ -905,7 +896,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 				$rows = $this->run_on_all_plugins('getSearchDocumentLibrary',array(),$searchquery);
 		  		break;
 		  	default:
-		  		debugLog (__METHOD__." unknown searchname ". $searchname);
+		  		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__." unknown searchname ". $searchname);
 		  		return NULL;
 		}
 		if (is_array($rows))

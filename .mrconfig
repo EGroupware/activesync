@@ -4,4 +4,4 @@ git_tag = git tag -a $1 -m "$2"
 git_untag = git tag -d $1
 
 [vendor/z-push/z-push]
-checkout = git clone ${EGW_REPO_BASE:-$(git config --get remote.origin.url|sed 's|/egroupware.git||')}/z-push.git
+checkout = git clone ${EGW_REPO_BASE:-$(git config --get remote.origin.url|sed 's|/activesync.git||')}/z-push.git

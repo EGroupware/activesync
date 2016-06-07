@@ -1090,7 +1090,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 					$airsyncbasebody->truncated = 1;
 				}
 				$airsyncbasebody->estimateddatasize = strlen($html);
-				$airsyncbasebody->data = $html;
+				$airsyncbasebody->data = StringStreamWrapper::Open($html);
 			}
 			else
 			{
@@ -1103,11 +1103,11 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 					$airsyncbasebody->truncated = 1;
 				}
 				$airsyncbasebody->estimateddatasize = strlen($plainnote);
-				$airsyncbasebody->data = $plainnote;
+				$airsyncbasebody->data = StringStreamWrapper::Open((string)$plainnote !== '' ? $plainnote : ' ');
 			}
-			if ($airsyncbasebody->type != 3 && (!isset($airsyncbasebody->data) || strlen($airsyncbasebody->data) == 0))
+			if ($airsyncbasebody->type != 3 && !isset($airsyncbasebody->data))
 			{
-				$airsyncbasebody->data = " ";
+				$airsyncbasebody->data = StringStreamWrapper::Open(" ");
 			}
 		}
 	}
@@ -1121,16 +1121,16 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 *
 	 * @return string plaintext for eGroupware
 	 */
-	public function messagenote2note($body, $rtf, $airsyncbasebody)
+	public function messagenote2note($body, $rtf, SyncBaseBody $airsyncbasebody)
 	{
 		if (isset($airsyncbasebody))
 		{
 			switch($airsyncbasebody->type)
 			{
-				case '3' :	$rtf = $airsyncbasebody->data;
+				case '3' :	$rtf = stream_get_contents($airsyncbasebody->data);
 							//error_log("Airsyncbase RTF Body");
 							break;
-				case '1' :	$body = $airsyncbasebody->data;
+				case '1' :	$body = stream_get_contents($airsyncbasebody->data);
 							//error_log("Airsyncbase Plain Body");
 							break;
 			}

@@ -32,7 +32,7 @@ class activesync_statemachine extends FileStateMachine
 	{
 		$this->backend = $backend;
 
-		parent::FileStateMachine();
+		parent::__construct();
 	}
 
 	/**

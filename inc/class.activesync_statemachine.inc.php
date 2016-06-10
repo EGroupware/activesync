@@ -181,7 +181,7 @@ class activesync_statemachine extends SqlStateMachine
 	public function DeviceDataTime($devid)
 	{
 		$sql = "SELECT MAX(updated_at) FROM $this->states_table WHERE device_id = :device_id";
-		$params = array(":key_name" => $devid);
+		$params = array(":device_id" => $devid);
 
 		$sth = $this->getDbh()->prepare($sql);
 		$sth->execute($params);

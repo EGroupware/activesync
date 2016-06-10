@@ -94,6 +94,10 @@ class activesync_statemachine extends SqlStateMachine
 	 */
 	protected function checkDbAndTables()
 	{
+		if (!isset($GLOBALS['egw_info']['apps']))
+		{
+			$GLOBALS['egw']->applications->read_installed_apps();
+		}
 		if (version_compare($GLOBALS['egw_info']['apps']['activesync']['version'] , '16.1.001', '<'))
 		{
 			throw new UnavailableException('ZPush tables not yet installed, run setup!');

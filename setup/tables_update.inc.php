@@ -1,6 +1,6 @@
 <?php
 /**
- * eGroupWare - Setup
+ * EGroupware - Setup
  * http://www.egroupware.org
  * Created by eTemplates DB-Tools written by ralfbecker@outdoor-training.de
  *
@@ -9,6 +9,12 @@
  * @subpackage setup
  * @version $Id$
  */
+
+function activesync_upgrade14_1()
+{
+	return $GLOBALS['setup_info']['activesync']['currentver'] = '16.1';
+}
+
 
 function activesync_upgrade16_1()
 {

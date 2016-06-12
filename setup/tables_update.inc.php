@@ -1,6 +1,7 @@
 <?php
 /**
- * EGroupware - Setup
+ * EGroupware - eSync - ActiveSync protocol based on Z-Push
+ *
  * http://www.egroupware.org
  * Created by eTemplates DB-Tools written by ralfbecker@outdoor-training.de
  *
@@ -10,12 +11,31 @@
  * @version $Id$
  */
 
+/**
+ * Update from 11.1
+ *
+ * @return string
+ */
+function activesync_upgrade0_1()
+{
+	return $GLOBALS['setup_info']['activesync']['currentver'] = '16.1';
+}
+
+/**
+ * Update from 14.x
+ *
+ * @return string
+ */
 function activesync_upgrade14_1()
 {
 	return $GLOBALS['setup_info']['activesync']['currentver'] = '16.1';
 }
 
-
+/**
+ * Creating sqlstatemaschine tables
+ *
+ * @return string
+ */
 function activesync_upgrade16_1()
 {
 	$GLOBALS['egw_setup']->oProc->CreateTable('egw_zpush_states', array(
@@ -61,4 +81,3 @@ function activesync_upgrade16_1()
 
 	return $GLOBALS['setup_info']['activesync']['currentver'] = '16.1.001';
 }
-

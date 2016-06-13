@@ -1067,7 +1067,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		//error_log (__METHOD__."('$note', ".array2string($bodypreference).", ...)");
 		if ($bodypreference == false)
 		{
-			return ($note);
+			return $note;
 		}
 		else
 		{
@@ -1081,7 +1081,8 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 						'<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
 						'</head>'.
 						'<body>'.
-						str_replace(array("\n","\r","\r\n"),"<br />",$note).
+						// using <p> instead of <br/>, as W10mobile seems to have problems with it
+						str_replace(array("\r\n", "\n", "\r"), "<p>", $note).
 						'</body>'.
 						'</html>';
 				if (isset($bodypreference[2]["TruncationSize"]) && strlen($html) > $bodypreference[2]["TruncationSize"])
@@ -1127,12 +1128,19 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		{
 			switch($airsyncbasebody->type)
 			{
-				case '3' :	$rtf = stream_get_contents($airsyncbasebody->data);
-							//error_log("Airsyncbase RTF Body");
-							break;
-				case '1' :	$body = stream_get_contents($airsyncbasebody->data);
-							//error_log("Airsyncbase Plain Body");
-							break;
+				case '3':
+					$rtf = stream_get_contents($airsyncbasebody->data);
+					//error_log("Airsyncbase RTF Body");
+					break;
+
+				case '2':
+					$body = Api\Mail\Html::convertHTMLToText(stream_get_contents($airsyncbasebody->data));
+					break;
+
+				case '1':
+					$body = stream_get_contents($airsyncbasebody->data);
+					//error_log("Airsyncbase Plain Body");
+					break;
 			}
 		}
 		// Nokia MfE 2.9.158 sends contact notes with RTF and Body element.

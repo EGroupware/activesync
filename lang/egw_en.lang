@@ -9,8 +9,10 @@ can not open imap connection	activesync	en	Can not open IMAP connection
 control the sending of calendar invitations while using this profile	activesync	en	control the sending of calendar invitations while using this profile
 deleting of profil %1 failed!	activesync	en	Deleting of profil %1 failed!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	en	Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.
+device %1 deleted.	activesync	en	Device %1 deleted.
 disabled	activesync	en	disabled
 email account to sync	activesync	en	eMail Account to sync
+enable or show logs	activesync	en	Enable or show logs
 esync will fail without a working email configuration!	activesync	en	eSync will FAIL without a working eMail configuration!
 force sorting on device to	activesync	en	Force sorting on device to
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	en	Global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.
@@ -22,6 +24,7 @@ profil %1 deleted.	activesync	en	Profil %1 deleted.
 select serverside profile to delete	activesync	en	Select serverside profile to delete
 select serverside profile to delete<br>always delete account on device first!	activesync	en	Select serverside profile to delete<br>ALWAYS delete account on device first!
 show log of following device	activesync	en	Show log of following device
+shows and enables user-specific logs. for admins global z-push logs can be viewed too.	activesync	en	Shows and enables user-specific logs. For admins global z-push logs can be viewed too.
 shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	en	Shows log of a device, enabling it if currently disabled. To disable logging, delete the log file in popup!
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	en	Some devices (eg. Windows Mobil, but not iOS) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. With this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.
 sync all addressbooks as one	activesync	en	Sync all addressbooks as one

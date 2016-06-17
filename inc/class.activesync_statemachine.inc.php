@@ -195,12 +195,12 @@ class activesync_statemachine extends SqlStateMachine
 	 * @param string $devid
 	 * @throws Api\Exception\WrongParameter
 	 */
-	public function DeleteState($devid)
+	public function DeleteDevice($devid)
 	{
-		$sql = "DELETE FROM $this->states_table WHERE device_id = :device_id";
-		$params = array(":device_id" => $devid);
+		$sth = $this->getDbh()->prepare("DELETE FROM $this->states_table WHERE device_id = :device_id");
+		$sth->execute(array(":device_id" => $devid));
 
-		$sth = $this->getDbh()->prepare($sql);
-		$sth->execute($params);
+		$sth2 = $this->getDbh()->prepare("DELETE FROM $this->users_table WHERE device_id = :device_id");
+		$sth2->execute(array(":device_id" => $devid));
 	}
 }

@@ -8,9 +8,11 @@ always delete account on device first!	activesync	de	Sie müssen zuerst das Prof
 can not open imap connection	activesync	de	Kann KEINE Verbindung zum IMAP Server herstellen
 control the sending of calendar invitations while using this profile	activesync	de	Kontrollieren Sie das Versenden von Kalender-Einladungen während Sie dieses Profil benutzen
 deleting of profil %1 failed!	activesync	de	Löschen des Profil %1 fehlgeschlagen!
-deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	de	Löschen des serverseitigen Profile entfernt alle Spuren früherer Synchronisierung des ausgewählten Gerätes.
+deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	de	Das Löschen des server-seitigen Profiles entfernt alle Spuren von früheren Versuchen das ausgewählte Gerät zu synchronisieren.
+device %1 deleted.	activesync	de	Gerät %1 gelöscht.
 disabled	activesync	de	ausgeschaltet
 email account to sync	activesync	de	E-Mail Konto zu synchronisieren
+enable or show logs	activesync	de	Logs einschalten oder anzeigen
 esync will fail without a working email configuration!	activesync	de	eSync BENÖTIGT ein E-Mail Konto mit korrekter E-Mail Konfiguration! => ohne E-Mail->Kein eSync möglich!!
 force sorting on device to	activesync	de	Erzwinge Sortierung auf Gerät als
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	de	Die globale Adresssuche durchsucht immer alle Adressbücher, daher müssen Sie nicht alle Adressbücher synchronisieren, um darauf Zugriff zu haben solange Sie online sind.
@@ -20,8 +22,9 @@ not all devices support additonal calendars. your personal calendar is always sy
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	de	Nicht alle Geräte unterstützen mehrere Adressbücher, deshalb können Sie alle oben ausgewählten Adressbücher in ein einziges synchronisieren.
 profil %1 deleted.	activesync	de	Profil %1 gelöscht.
 select serverside profile to delete	activesync	de	Wählen Sie das Serverseitige Profil zum Löschen aus.
-select serverside profile to delete<br>always delete account on device first!	activesync	de	Wähle serverseitiges Profil zum Löschen<br>IMMER zuerst Konto auf dem Geräte löschen!
+select serverside profile to delete<br>always delete account on device first!	activesync	de	Serverseitiges Profil zum Löschen auswählen<br>IMMER zuerst das Konto auf dem Gerät löschen!
 show log of following device	activesync	de	Zeige Log des folgenden Geräts
+shows and enables user-specific logs. for admins global z-push logs can be viewed too.	activesync	de	Schaltet Benutzer spezifische Logs ein und zeigt sie an. Administratoren können auch das globale z-push Log anzeigen.
 shows log of a device, enabling it if currently disabled. to disable logging, delete the log file in popup!	activesync	de	Zeigt das Log eines Gerätes und schaltet dieses ein, falls es aktuell ausgeschaltet ist. Logging durch löschen der Logdatei im Pop-up wieder ausschalten!
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	de	Einige Geräte (z.B. Windows Mobil, nicht aber iOS) sortieren nach dem Adressbuch Attribut "eigene Sortierung", was evtl. nicht das ist was Sie auf dem Gerät wollen. Mit dieser Einstellung kann man dem Geräte eine andere Sortierung vorgeben, ohne diese im Adressbuch zu ändern.
 sync all addressbooks as one	activesync	de	Alle Adressbücher in eines synchronisieren

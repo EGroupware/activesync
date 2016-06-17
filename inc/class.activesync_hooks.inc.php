@@ -235,7 +235,15 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 			($statemachine = self::backend()->GetStateMachine()) &&
 			in_array($hook_data['prefs']['delete-profile'], $statemachine->GetAllDevices($GLOBALS['egw_info']['user']['account_lid'])))
 		{
-			$statemachine->CleanStates($hook_data['prefs']['delete-profile'], '', false);
+			$dev_id = $hook_data['prefs']['delete-profile'];
+			$hook_data['prefs']['delete-profile'] = '';
+			try {
+				$statemachine->DeleteDevice($dev_id);
+				return lang('Device %1 deleted.', $dev_id);
+			}
+			catch(Exception $e) {
+				return lang('Deleting of profil %1 failed!', $dev_id)."\n".$e->getMessage();
+			}
 		}
 		// call verification hook of eSync backends
 		return implode("<br/>\n", self::backend()->verify_settings($hook_data));

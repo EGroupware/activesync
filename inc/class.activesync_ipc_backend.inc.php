@@ -11,12 +11,10 @@
 
 use EGroupware\Api;
 
-include_once('lib/core/interprocessdata.php');
-
 /**
  * ActiveSync IPC based on ZPush2 IpcBackend but using EGroupware cache instead of PHP shm extension
  */
-class activesync_ipc_backend implements IIpcBackend
+class activesync_ipc_backend implements IIpcProvider
 {
 	protected $type;
 	protected $level;
@@ -35,13 +33,14 @@ class activesync_ipc_backend implements IIpcBackend
 	}
 
     /**
-     * Reinitializes shared memory by removing, detaching and re-allocating it
+     * Reinitializes the IPC data. If the provider has no way of performing
+     * this action, it should return 'false'.
      *
      * @access public
      * @return boolean
      */
-    public function ReInitSharedMem() {
-        return ($this->RemoveSharedMem() && $this->InitSharedMem());
+    public function ReInitIPC() {
+        return false;
     }
 
     /**
@@ -74,13 +73,13 @@ class activesync_ipc_backend implements IIpcBackend
      * Method blocks until mutex is available!
      * ATTENTION: make sure that you *always* release a blocked mutex!
 	 *
-	 * We try to add mutex to our cache, until we sucseed.
+	 * We try to add mutex to our cache, until we succseed.
 	 * It will fail as long other client has stored it
      *
      * @access protected
      * @return boolean
      */
-    public function blockMutex() {
+    public function BlockMutex() {
 		$n = 0;
 		while(!Api\Cache::addCache($this->level, __CLASS__, $this->type+10, true, 10))
 		{
@@ -98,7 +97,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @access protected
      * @return boolean
      */
-    public function releaseMutex() {
+    public function ReleaseMutex() {
 		//error_log(__METHOD__."() this->type=$this->type");
 		return Api\Cache::unsetCache($this->level, __CLASS__, $this->type+10);
     }
@@ -111,7 +110,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @access protected
      * @return boolean
      */
-    public function hasData($id = 2) {
+    public function HasData($id = 2) {
 		return Api\Cache::getCache($this->level, __CLASS__, $this->type.':'.$id) !== null;
     }
 
@@ -123,7 +122,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @access protected
      * @return mixed
      */
-    public function getData($id = 2) {
+    public function GetData($id = 2) {
 		return Api\Cache::getCache($this->level, __CLASS__, $this->type.':'.$id);
     }
 
@@ -137,17 +136,7 @@ class activesync_ipc_backend implements IIpcBackend
      * @access protected
      * @return boolean
      */
-    public function setData($data, $id = 2) {
+    public function SetData($data, $id = 2) {
 		return Api\Cache::setCache($this->level, __CLASS__, $this->type.':'.$id, $data);
     }
-
-    /**
-     * Sets the time when the shared memory block was created
-     *
-     * @access private
-     * @return boolean
-     */
-    private function setInitialCleanTime() {
-
-	}
 }

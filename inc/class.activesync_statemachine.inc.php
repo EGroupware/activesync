@@ -11,12 +11,10 @@
 
 use EGroupware\Api;
 
-include_once('lib/default/filestatemachine.php');
-
 /**
  * ActiveSync statemachine based on ZPush2 filestatestatemachine
  */
-class activesync_statemachine extends FileStateMachine
+class activesync_statemachine extends SqlStateMachine
 {
 	/**
 	 * Reference to our backend
@@ -24,6 +22,15 @@ class activesync_statemachine extends FileStateMachine
 	 * @var activesync_backend
 	 */
 	protected $backend;
+
+	/**
+	 * Name of tables, overwritten to add "egw_zpush_" prefix
+	 *
+	 * @var type
+	 */
+	protected $settings_table = 'egw_zpush_settings';
+	protected $users_table = 'egw_zpush_users';
+	protected $states_table = 'egw_zpush_states';
 
 	/**
 	 * Constructor
@@ -34,7 +41,68 @@ class activesync_statemachine extends FileStateMachine
 	{
 		$this->backend = $backend;
 
-		parent::FileStateMachine();
+		parent::__construct();
+	}
+
+	/**
+	 * Returns an existing PDO instance or creates new if necessary.
+	 *
+	 * @param boolean $throwFatalException   if true (default) a FatalException is thrown in case of a PDOException, if false the PDOException.
+	 *
+	 * @access public
+	 * @return PDO
+	 * @throws FatalException
+	 */
+	public function getDbh($throwFatalException = true)
+	{
+		if (!isset($this->dbh))
+		{
+			try {
+				$this->dbh = Api\Db\Pdo::connection();
+			}
+			// various Db\Exception are thrown, if our regular db-connection fails, which we connect before PDO
+			catch(Api\Db\Exception $ex) {
+				if ($throwFatalException)
+				{
+					throw new FatalException(sprintf("SqlStateMachine()->getDbh(): not possible to connect to the state database: %s", $ex->getMessage()));
+				}
+				else
+				{
+					throw new PDOException($ex->getMessage(), $ex->getCode(), $ex);
+				}
+			}
+			catch(PDOException $ex) {
+				if ($throwFatalException)
+				{
+					throw new FatalException(sprintf("SqlStateMachine()->getDbh(): not possible to connect to the state database: %s", $ex->getMessage()));
+				}
+				else
+				{
+					throw $ex;
+				}
+			}
+		}
+		return $this->dbh;
+	}
+
+	/**
+	 * Check if the database and necessary tables exist.
+	 *
+	 * @access private
+	 * @return boolean
+	 * @throws UnavailableException
+	 */
+	protected function checkDbAndTables()
+	{
+		if (!isset($GLOBALS['egw_info']['apps']))
+		{
+			$GLOBALS['egw']->applications->read_installed_apps();
+		}
+		if (version_compare($GLOBALS['egw_info']['apps']['activesync']['version'] , '16.1.001', '<'))
+		{
+			throw new UnavailableException('ZPush tables not yet installed, run setup!');
+		}
+		return true;
 	}
 
 	/**
@@ -112,9 +180,13 @@ class activesync_statemachine extends FileStateMachine
 	 */
 	public function DeviceDataTime($devid)
 	{
-		$dir = $this->getDeviceDirectory($devid);
+		$sql = "SELECT MAX(updated_at) FROM $this->states_table WHERE device_id = :device_id";
+		$params = array(":device_id" => $devid);
 
-		return filectime($dir.'/'.$devid.'-devicedata');
+		$sth = $this->getDbh()->prepare($sql);
+		$sth->execute($params);
+
+		return Api\DateTime::to($sth->fetchColumn(), 'ts');
 	}
 
 	/**
@@ -125,13 +197,10 @@ class activesync_statemachine extends FileStateMachine
 	 */
 	public function DeleteState($devid)
 	{
-		if (!preg_match('/^[a-z0-9]+$/', $devid))
-		{
-			throw new Api\Exception\WrongParameter("Invalid device-ID '$devid'!");
-		}
-		foreach(glob($this->getDeviceDirectory($devid).'/'.$devid.'-*') as $file)
-		{
-			unlink($file);
-		}
+		$sql = "DELETE FROM $this->states_table WHERE device_id = :device_id";
+		$params = array(":device_id" => $devid);
+
+		$sth = $this->getDbh()->prepare($sql);
+		$sth->execute($params);
 	}
 }

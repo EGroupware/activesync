@@ -13,16 +13,6 @@
 
 use EGroupware\Api;
 
-include_once('lib/interface/ibackend.php');
-include_once('lib/interface/ichanges.php');
-include_once('lib/interface/iexportchanges.php');
-include_once('lib/interface/iimportchanges.php');
-include_once('lib/interface/isearchprovider.php');
-include_once('lib/interface/istatemachine.php');
-include_once('lib/default/diffbackend/diffbackend.php');
-include_once('lib/request/request.php');
-include_once('lib/utils/utils.php');
-
 /**
  * Z-Push backend for EGroupware
  *
@@ -66,7 +56,8 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		// regular AS still runs as "login", when it instanciates our backend
 		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')
 		{
-			Request::AuthenticationInfo();
+			// need to call ProcessHeaders() here, to be able to use ::GetAuth(User|Password), unfortunately zpush calls it too so it runs twice
+			Request::ProcessHeaders();
 			$username = Request::GetAuthUser();
 			$password = Request::GetAuthPassword();
 
@@ -129,7 +120,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	{
 		$this->_loggedin = FALSE;
 
-		debugLog ("LOGOFF");
+		ZLog::Write(LOGLEVEL_DEBUG, "LOGOFF");
 	}
 
 	/**
@@ -905,7 +896,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 				$rows = $this->run_on_all_plugins('getSearchDocumentLibrary',array(),$searchquery);
 		  		break;
 		  	default:
-		  		debugLog (__METHOD__." unknown searchname ". $searchname);
+		  		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__." unknown searchname ". $searchname);
 		  		return NULL;
 		}
 		if (is_array($rows))
@@ -1076,7 +1067,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		//error_log (__METHOD__."('$note', ".array2string($bodypreference).", ...)");
 		if ($bodypreference == false)
 		{
-			return ($note);
+			return $note;
 		}
 		else
 		{
@@ -1090,7 +1081,8 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 						'<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
 						'</head>'.
 						'<body>'.
-						str_replace(array("\n","\r","\r\n"),"<br />",$note).
+						// using <p> instead of <br/>, as W10mobile seems to have problems with it
+						str_replace(array("\r\n", "\n", "\r"), "<p>", $note).
 						'</body>'.
 						'</html>';
 				if (isset($bodypreference[2]["TruncationSize"]) && strlen($html) > $bodypreference[2]["TruncationSize"])
@@ -1099,7 +1091,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 					$airsyncbasebody->truncated = 1;
 				}
 				$airsyncbasebody->estimateddatasize = strlen($html);
-				$airsyncbasebody->data = $html;
+				$airsyncbasebody->data = StringStreamWrapper::Open($html);
 			}
 			else
 			{
@@ -1112,11 +1104,11 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 					$airsyncbasebody->truncated = 1;
 				}
 				$airsyncbasebody->estimateddatasize = strlen($plainnote);
-				$airsyncbasebody->data = $plainnote;
+				$airsyncbasebody->data = StringStreamWrapper::Open((string)$plainnote !== '' ? $plainnote : ' ');
 			}
-			if ($airsyncbasebody->type != 3 && (!isset($airsyncbasebody->data) || strlen($airsyncbasebody->data) == 0))
+			if ($airsyncbasebody->type != 3 && !isset($airsyncbasebody->data))
 			{
-				$airsyncbasebody->data = " ";
+				$airsyncbasebody->data = StringStreamWrapper::Open(" ");
 			}
 		}
 	}
@@ -1126,22 +1118,29 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 *
 	 * @param string $body the plain body received
 	 * @param string $rtf the rtf body data
-	 * @param SyncBaseBody $airsyncbasebody  object received from client
+	 * @param SyncBaseBody $airsyncbasebody =null object received from client, or null if none received
 	 *
 	 * @return string plaintext for eGroupware
 	 */
-	public function messagenote2note($body, $rtf, $airsyncbasebody)
+	public function messagenote2note($body, $rtf, SyncBaseBody $airsyncbasebody=null)
 	{
 		if (isset($airsyncbasebody))
 		{
 			switch($airsyncbasebody->type)
 			{
-				case '3' :	$rtf = $airsyncbasebody->data;
-							//error_log("Airsyncbase RTF Body");
-							break;
-				case '1' :	$body = $airsyncbasebody->data;
-							//error_log("Airsyncbase Plain Body");
-							break;
+				case '3':
+					$rtf = stream_get_contents($airsyncbasebody->data);
+					//error_log("Airsyncbase RTF Body");
+					break;
+
+				case '2':
+					$body = Api\Mail\Html::convertHTMLToText(stream_get_contents($airsyncbasebody->data));
+					break;
+
+				case '1':
+					$body = stream_get_contents($airsyncbasebody->data);
+					//error_log("Airsyncbase Plain Body");
+					break;
 			}
 		}
 		// Nokia MfE 2.9.158 sends contact notes with RTF and Body element.

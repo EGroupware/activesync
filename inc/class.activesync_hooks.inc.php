@@ -58,7 +58,9 @@ class activesync_hooks
 		static $backend=null;
 		if (!isset($backend))
 		{
-			set_include_path(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src' . PATH_SEPARATOR . get_include_path());
+			require_once(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src/vendor/autoload.php');
+			// some files, eg. sqlstatemaschine, does includes it's config relative to z-push sources
+			ini_set('include_path', EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src'.PATH_SEPARATOR.ini_get('include_path'));
 			include(EGW_SERVER_ROOT.'/activesync/inc/config.php');
 			$backend = new activesync_backend();
 		}
@@ -240,7 +242,7 @@ pre.tail { background-color: white; padding-left: 5px; margin-left: 5px; }
 	}
 }
 
-// to not fail, if any backend calls z-push debugLog, simply ignore it
+// to not fail, if any backend calls z-push ZLog::Write, simply ignore it
 if (!class_exists('ZLog'))
 {
 	class ZLog
@@ -249,12 +251,5 @@ if (!class_exists('ZLog'))
 		{
 			unset($level, $msg, $truncate);
 		}
-	}
-}
-if (!function_exists('debugLog'))
-{
-	function debugLog($message)
-	{
-		ZLog::Write(LOGLEVEL_DEBUG, $message);
 	}
 }

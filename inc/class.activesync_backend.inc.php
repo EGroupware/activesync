@@ -52,6 +52,8 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 */
 	function __construct()
 	{
+		parent::__construct();
+
 		// AS preferences needs to instanciate this class too, but has no running AS request
 		// regular AS still runs as "login", when it instanciates our backend
 		if ($GLOBALS['egw_info']['flags']['currentapp'] == 'login')
@@ -75,8 +77,17 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 				$GLOBALS['egw']->session->commit_session();
 			}
 
+			// enable logging for all devices of a user or a specific device
+			$dev_id = Request::GetDeviceID();
+			//error_log(__METHOD__."() username=$username, dev_id=$dev_id, prefs[activesync]=".array2string($GLOBALS['egw_info']['user']['preferences']['activesync']));
+			if ($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == 'user' ||
+				$GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == $dev_id.'.log')
+			{
+				ZLog::EnableDeviceLog($dev_id);
+			}
+
 			// check if we support loose provisioning for that device
-			$response = $this->run_on_all_plugins('LooseProvisioning', array(), Request::GetDeviceID());
+			$response = $this->run_on_all_plugins('LooseProvisioning', array(), $dev_id);
 			$loose_provisioning = $response ? (boolean)$response['response'] : false;
 			define('LOOSE_PROVISIONING', $loose_provisioning);
 

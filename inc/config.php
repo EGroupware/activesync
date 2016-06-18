@@ -135,13 +135,8 @@
     // The data will be saved into a dedicated file per user in the LOGFILEDIR
     // Users have to be encapusulated in quotes, several users are comma separated, like:
     //   $specialLogUsers = array('info@domain.com', 'myusername');
-    define('LOGUSERLEVEL', LOGLEVEL_DEVICEID);
+    define('LOGUSERLEVEL', LOGLEVEL_WBXML);
     $specialLogUsers = array();
-	// add current user, if he has logging enabled in his preferences
-	if ($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == 'user')
-	{
-		$specialLogUsers[] = $GLOBALS['egw_info']['user']['account_lid'];
-	}
 
     // Filelog settings
     define('LOGFILEDIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync/');

@@ -101,27 +101,27 @@ class activesync_hooks
 		}
 		if ($GLOBALS['type'] === 'user')
 		{
-			$logs = array(
-				'off' => lang('No user-specific logging'),
-				'user' => lang('User-specific logging enabled'),
-				$GLOBALS['egw_info']['user']['account_lid'].'.log' => lang('View and enable user-specific log'),
+			$enable = array(
+				'' => lang('Off'),
+				'user' => lang('All your devices'),
 			);
-			if ($GLOBALS['egw_info']['user']['apps']['admin'])
-			{
-				$logs['z-push.log'] = lang('View global z-push log').' ('.lang('admin only').')';
-				$logs['z-push-error.log'] = lang('View glogal z-push error log').' ('.lang('admin only').')';
-			}
 			$link = Egw::link('/index.php',array(
 				'menuaction' => 'activesync.activesync_hooks.log',
 				'filename' => '',
 			));
-			$onchange = "if (this.value.substr(-4) == '.log') egw_openWindowCentered('$link'+encodeURIComponent(this.value), '_blank', 1000, 500)";
+			$onchange = "if (this.value.substr(-4) == '.log') egw_openWindowCentered('$link'+encodeURIComponent(this.value), '_blank', 1000, 500); this.value='';";
 			$profiles = array();
 			$statemachine = $backend->GetStateMachine();
 			foreach($statemachine->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']) as $devid)
 			{
-
-				$profiles[$devid] = $devid.' ('.Api\DateTime::to($statemachine->DeviceDataTime($devid)).')';
+				$devices = $statemachine->GetState($devid, 'devicedata')->devices;
+				$device = $devices[$GLOBALS['egw_info']['user']['account_lid']];
+				$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] = $device->UserAgent.': '.Api\DateTime::to($statemachine->DeviceDataTime($devid)).' ('.$devid.')';
+			}
+			if ($GLOBALS['egw_info']['user']['apps']['admin'])
+			{
+				$logs['z-push.log'] = lang('View global z-push log').' ('.lang('admin only').')';
+				$logs['z-push-error.log'] = lang('View glogal z-push error log').' ('.lang('admin only').')';
 			}
 		}
 		else	// allow to force users to NOT be able to delete their profiles
@@ -142,9 +142,18 @@ class activesync_hooks
 			{
 				$settings['logging'] = array(
 					'type'   => 'select',
-					'label'  => 'Enable or show logs',
+					'label'  => 'Enable logging',
 					'name'   => 'logging',
-					'help'   => 'Shows and enables user-specific logs. For admins global z-push logs can be viewed too.',
+					'help'   => 'Enable logging for all your devices or a specific one.',
+					'values' => $enable,
+					'xmlrpc' => True,
+					'admin'  => False,
+				);
+				$settings['show-log'] = array(
+					'type'   => 'select',
+					'label'  => 'Show log of following device',
+					'name'   => 'show-log',
+					'help'   => 'Shows device specific logs. For admins global z-push logs can be viewed too.',
 					'values' => $logs,
 					'xmlrpc' => True,
 					'admin'  => False,
@@ -156,7 +165,7 @@ class activesync_hooks
 			{
 				$settings['delete-profile'] = array(
 					'type'   => 'select',
-					'label'  => 'Select serverside profile to delete<br>ALWAYS delete account on device first!',
+					'label'  => lang('Select serverside profile to delete').'<br>'.lang('ALWAYS delete account on device first!'),
 					'name'   => 'delete-profile',
 					'help'   => 'Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.',
 					'values' => $profiles,
@@ -178,8 +187,9 @@ class activesync_hooks
 	public function log()
 	{
 		$filename = basename($_GET['filename']);
-		if (!($filename == $GLOBALS['egw_info']['user']['account_lid'].'.log' ||
-			$GLOBALS['egw_info']['user']['apps']['admin'] && in_array($filename, array('z-push.log', 'z-push-error.log'))))
+		if (!($GLOBALS['egw_info']['user']['apps']['admin'] && in_array($filename, array('z-push.log', 'z-push-error.log')) ||
+			in_array(basename($filename, '.log'),
+				self::backend()->GetStateMachine()->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']))))
 		{
 			throw new Api\Exception\WrongParameter("Access denied to file '$filename'!");
 		}

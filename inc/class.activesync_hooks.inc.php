@@ -77,6 +77,7 @@ class activesync_hooks
 	 */
 	static function settings($hook_data)
 	{
+error_log(__METHOD__."(".array2string($hook_data).")");
 		$settings = array();
 		$backend = self::backend();
 		$last_app = '';
@@ -112,10 +113,11 @@ class activesync_hooks
 			$onchange = "if (this.value.substr(-4) == '.log') egw_openWindowCentered('$link'+encodeURIComponent(this.value), '_blank', 1000, 500); this.value='';";
 			$profiles = array();
 			$statemachine = $backend->GetStateMachine();
-			foreach($statemachine->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']) as $devid)
+			$account_lid = Api\Accounts::id2name($hook_data['account_id']);
+			foreach($statemachine->GetAllDevices($account_lid) as $devid)
 			{
 				$devices = $statemachine->GetState($devid, 'devicedata')->devices;
-				$device = $devices[$GLOBALS['egw_info']['user']['account_lid']];
+				$device = $devices[$account_lid];
 				$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] = $device->UserAgent.': '.Api\DateTime::to($statemachine->DeviceDataTime($devid)).' ('.$devid.')';
 			}
 			if ($GLOBALS['egw_info']['user']['apps']['admin'])
@@ -187,7 +189,7 @@ class activesync_hooks
 	public function log()
 	{
 		$filename = basename($_GET['filename']);
-		if (!($GLOBALS['egw_info']['user']['apps']['admin'] && in_array($filename, array('z-push.log', 'z-push-error.log')) ||
+		if (!($GLOBALS['egw_info']['user']['apps']['admin'] ||
 			in_array(basename($filename, '.log'),
 				self::backend()->GetStateMachine()->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']))))
 		{

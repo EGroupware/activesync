@@ -26,6 +26,10 @@ if (!isset($GLOBALS['egw_info']))
 	));
 
 	require(__DIR__.'/../header.inc.php');
+
+	// turn off output buffering turned on in our header.inc.php, as z-push cant kope with it
+	// (ItemOperations of big attachments send wrong size Content-Length header)
+	while(ob_end_clean()) { }
 }
 
 // EGroupware specific ZPush version from our GitHub clone, overwriting version.php from stock ZPush

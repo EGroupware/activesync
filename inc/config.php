@@ -126,7 +126,7 @@
  *  LOGAUTHFAIL is logged to the LOGBACKEND.
  */
     define('LOGBACKEND', 'filelog');
-    define('LOGLEVEL', LOGLEVEL_INFO);
+    define('LOGLEVEL', LOGLEVEL_WBXML);
     define('LOGAUTHFAIL', false);
 	// uncomment to NOT log certain error-levels eg. E_NOTICE or E_STRICT
 	define('LOG_ERROR_MASK', ~(E_NOTICE|E_STRICT));

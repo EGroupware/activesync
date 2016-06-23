@@ -559,6 +559,36 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		return $ret;
 	}
 
+	/**
+	 * Indicates if the Backend supports folder statistics.
+	 *
+	 * @access public
+	 * @return boolean
+	 */
+	public function HasFolderStats()
+	{
+		return true;
+	}
+
+	/**
+	 * Returns a status indication of the folder.
+	 * If there are changes in the folder, the returned value must change.
+	 * The returned values are compared with '===' to determine if a folder needs synchronization or not.
+	 *
+	 * @param string $store         the store where the folder resides
+	 * @param string $folderid      the folder id
+	 *
+	 * @access public
+	 * @return string
+	 */
+	public function GetFolderStat($store, $folderid)
+	{
+		$syncstate = null;
+		$this->AlterPingChanges($folderid, $syncstate);
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($store, '$folderid') returning ".array2string($syncstate));
+		return $syncstate;
+	}
+
     /**
      * Called when a message has been changed on the mobile. The new message must be saved to disk.
      * The return value must be whatever would be returned from StatMessage() after the message has been saved.

@@ -77,7 +77,6 @@ class activesync_hooks
 	 */
 	static function settings($hook_data)
 	{
-error_log(__METHOD__."(".array2string($hook_data).")");
 		$settings = array();
 		$backend = self::backend();
 		$last_app = '';

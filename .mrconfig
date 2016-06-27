@@ -5,4 +5,4 @@ git_untag = git tag -d $1
 git_branch = git checkout -b $1
 
 [vendor/z-push/z-push]
-checkout = git clone ${EGW_REPO_BASE:-$(git config --get remote.origin.url|sed 's|/activesync.git||')}/z-push.git
+checkout = git clone -b 16.1 ${EGW_REPO_BASE:-$(git config --get remote.origin.url|sed 's|/activesync.git||')}/z-push.git

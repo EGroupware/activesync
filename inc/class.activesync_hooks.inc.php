@@ -115,9 +115,15 @@ class activesync_hooks
 			$account_lid = Api\Accounts::id2name($hook_data['account_id']);
 			foreach($statemachine->GetAllDevices($account_lid) as $devid)
 			{
-				$devices = $statemachine->GetState($devid, 'devicedata')->devices;
-				$device = $devices[$account_lid];
-				$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] = $device->UserAgent.': '.Api\DateTime::to($statemachine->DeviceDataTime($devid)).' ('.$devid.')';
+				try {
+					$devices = $statemachine->GetState($devid, 'devicedata')->devices;
+					$device = $devices[$account_lid];
+					$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] = $device->UserAgent.': ';
+				}
+				catch (StateNotFoundException $e) {
+					unset($e);	// ignore no state found
+				}
+				$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] .= Api\DateTime::to($statemachine->DeviceDataTime($devid)).' ('.$devid.')';
 			}
 			if ($GLOBALS['egw_info']['user']['apps']['admin'])
 			{

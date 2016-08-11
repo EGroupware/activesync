@@ -256,9 +256,10 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 */
 	function ChangeFolder($id, $oldid, $displayname, $type)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(id=$id, oldid=$oldid, displaname=$displayname, type=$type)");
-		ZLog::Write(LOGLEVEL_ERROR, __METHOD__." WARNING : we currently do not support creating folders, now informing the device that this has failed");
-		return false;
+		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."(ParentId=$id, oldid=$oldid, displaname=$displayname, type=$type)");
+		$ret = $this->run_on_plugin_by_id(__FUNCTION__, $id,  $oldid, $displayname, $type);
+		if (!$ret) ZLog::Write(LOGLEVEL_ERROR, __METHOD__." WARNING : something failed changing folders, now informing the device that this has failed");
+		return $ret;
 	}
 
 
@@ -1255,7 +1256,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
     public function DeleteFolder($id, $parentid)
 	{
 		ZLog::Write(LOGLEVEL_ERROR, __METHOD__."('$parentid', '$id') NOT supported!");
-		//return false;
+		return false;
 	}
 
 	/**

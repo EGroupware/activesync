@@ -34,14 +34,14 @@ interface activesync_plugin_write extends activesync_plugin_read
 	/**
 	 * Deletes (really delete) a Folder
 	 *
-	 * @param $parentid of the folder to delete
 	 * @param $id of the folder to delete
+	 * @param $parentid of the folder to delete
 	 *
 	 * @return
 	 * @TODO check what is to be returned
 	 *
 	 */
-	public function DeleteFolder($parentid, $id);
+	public function DeleteFolder($id, $parentid);
 
 	/**
 	 * Changes or adds a message on the server

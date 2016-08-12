@@ -1253,10 +1253,11 @@ class activesync_backend extends BackendDiff implements ISearchProvider
      * @return boolean                      status - false if e.g. does not exist
      * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
      */
-    public function DeleteFolder($id, $parentid)
+    public function DeleteFolder($id, $parentid=false)
 	{
-		ZLog::Write(LOGLEVEL_ERROR, __METHOD__."('$parentid', '$id') NOT supported!");
-		return false;
+		$ret = $this->run_on_plugin_by_id(__FUNCTION__, $id,  $parentid);
+		if (!$ret) ZLog::Write(LOGLEVEL_ERROR, __METHOD__." WARNING : something failed deleting a folder ($id), now informing the device that this has failed");
+		return $ret;
 	}
 
 	/**

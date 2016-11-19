@@ -41,11 +41,13 @@
 * Consult LICENSE file for details
 ************************************************/
 
+use EGroupware\Api;
+
 /**********************************************************************************
  *  Default settings
  */
     // Defines the default time zone, change e.g. to "Europe/London" if necessary
-    define('TIMEZONE', 'Europe/Berlin');
+    define('TIMEZONE', Api\DateTime::$user_timezone->getName());
 
     // Defines the base path on the server
     define('BASE_PATH', dirname($_SERVER['SCRIPT_FILENAME']). '/');

@@ -81,3 +81,13 @@ function activesync_upgrade16_1()
 
 	return $GLOBALS['setup_info']['activesync']['currentver'] = '16.1.001';
 }
+
+/**
+ * Bump version to 17.1
+ *
+ * @return string
+ */
+function activesync_upgrade16_1_001()
+{
+	return $GLOBALS['setup_info']['activesync']['currentver'] = '17.1';
+}

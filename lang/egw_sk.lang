@@ -19,6 +19,8 @@ enable logging for all your devices or a specific one.	activesync	sk	Povoliť z�
 esync will fail without a working email configuration!	activesync	sk	eSync NEBUDE fungovať bez funkčnej konfigurácie E-mailu!
 force sorting on device to	activesync	sk	Vynútiť zoraďovanie na zariadení na
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	sk	Globálne vyhľadávanie adries vždy hľadá vo všetkých adresároch, takže nemusíte synchronizovať všetky adresáre, a aj tak ich máte dostupné keď ste online.
+how many days to sync in the past when client does not specify a date-range (default %1)	activesync	sk	Koľko dní do minulosti synchronizovať ak klient neurčí dátumový rozsah (predvolené: %1)
+if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	sk	Ak klient neurčí dátumový rozsah synchronizácie, môžete prebiť toto nastavenie (čím možno predídete pádu klienta, lebo by nemusel zvládnuť toľko správ alebo údajov). Ak chcete synchronizovať ďaleko do minulosti, nastavte veľké číslo
 maintenance	activesync	sk	Údržba
 no valid %1 folder configured!	activesync	sk	Nebol nastavený platný priečinok %1!
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	sk	Nie všetky zariadenia podporujú prídavné kalendáre. Váš osobný kalendár sa synchronizuje vždy.

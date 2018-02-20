@@ -32,10 +32,8 @@ if (!isset($GLOBALS['egw_info']))
 	while(ob_end_clean()) { }
 }
 
-// EGroupware specific ZPush version from our GitHub clone, overwriting version.php from stock ZPush
-define('ZPUSH_VERSION', 'EGroupware-'.EGroupware\Api\Framework::api_version()/*.
-	(!file_exists(__DIR__.'/../vendor/z-push/z-push/.svn/entries') ? '' :
-		' (r'.trim(file_get_contents(__DIR__.'/../vendor/z-push/z-push/.svn/entries')).')')*/);
+// EGroupware specific ZPush version, overwriting version.php from stock ZPush
+define('ZPUSH_VERSION', 'EGroupware-'.EGroupware\Api\Framework::api_version());
 
 // following code is necessary to use an unchanged z-push2 package installed in vendor/z-push/z-push
 $_SERVER['SCRIPT_FILENAME'] = __DIR__.'/vendor/z-push/z-push/src/index.php';

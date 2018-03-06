@@ -17,6 +17,7 @@ use EGroupware\Api;
 class activesync_ipc_backend implements IIpcProvider
 {
 	protected $type;
+    private $typeMutex;
 	protected $level;
 
     /**
@@ -29,6 +30,7 @@ class activesync_ipc_backend implements IIpcProvider
     public function __construct($type, $allocate, $class) {
 		unset($allocate);	// not used, but required by function signature
 		$this->type = $type;
+        $this->typeMutex = $type . "MX";
 		$this->level = $class == 'TopCollector' ? Api\Cache::TREE : Api\Cache::INSTANCE;
 	}
 
@@ -81,9 +83,9 @@ class activesync_ipc_backend implements IIpcProvider
      */
     public function BlockMutex() {
 		$n = 0;
-		while(!Api\Cache::addCache($this->level, __CLASS__, $this->type+10, true, 10))
+		while(!Api\Cache::addCache($this->level, __CLASS__, $this->typeMutex, true, 10))
 		{
-			if (!$n++) error_log(__METHOD__."() waiting to aquire mutex (this->type=$this->type)");
+			if ($n++ > 3) error_log(__METHOD__."() waiting to aquire mutex (this->type=$this->type)");
 			usleep(self::BLOCK_USLEEP);	// wait 20ms before retrying
 		}
 		if ($n) error_log(__METHOD__."() mutex aquired after waiting for ".($n*self::BLOCK_USLEEP/1000)."ms (this->type=$this->type)");
@@ -99,7 +101,7 @@ class activesync_ipc_backend implements IIpcProvider
      */
     public function ReleaseMutex() {
 		//error_log(__METHOD__."() this->type=$this->type");
-		return Api\Cache::unsetCache($this->level, __CLASS__, $this->type+10);
+		return Api\Cache::unsetCache($this->level, __CLASS__, $this->typeMutex);
     }
 
     /**

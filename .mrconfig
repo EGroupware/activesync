@@ -1,8 +1,0 @@
-[DEFAULT]
-git_update = git stash -q || true ; git pull --rebase ; git stash pop -q 2>/dev/null || true
-git_tag = git tag -a $1 -m "$2"
-git_untag = git tag -d $1
-git_branch = git checkout -b $1
-
-[vendor/z-push/z-push]
-checkout = git clone ${EGW_REPO_BASE:-$(git config --get remote.origin.url|sed 's|/activesync.git||')}/z-push.git

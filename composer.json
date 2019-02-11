@@ -20,6 +20,6 @@
     ],
 	"require": {
 		"egroupware/egroupware": "self.version",
-		"egroupware/z-push": "self.version"
+		"zpush/z-push-dev": "self.version"
 	}
 }

@@ -35,8 +35,8 @@ if (!isset($GLOBALS['egw_info']))
 // EGroupware specific ZPush version, overwriting version.php from stock ZPush
 define('ZPUSH_VERSION', 'EGroupware-'.EGroupware\Api\Framework::api_version());
 
-// following code is necessary to use an unchanged z-push2 package installed in vendor/z-push/z-push
-$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/vendor/z-push/z-push/src/index.php';
-chdir(__DIR__.'/vendor/z-push/z-push/src');
+// use Composer installed egroupware/z-push-dev from global vendor directory
+$_SERVER['SCRIPT_FILENAME'] = EGW_SERVER_ROOT.'/vendor/egroupware/z-push-dev/src/index.php';
+chdir(dirname($_SERVER['SCRIPT_FILENAME']));
 define('ZPUSH_CONFIG', __DIR__.'/inc/config.php');
-include(__DIR__.'/vendor/z-push/z-push/src/index.php');
+include($_SERVER['SCRIPT_FILENAME']);

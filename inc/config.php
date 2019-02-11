@@ -43,6 +43,8 @@
 
 use EGroupware\Api;
 
+require_once EGW_SERVER_ROOT.'/vendor/egroupware/z-push-dev/src/vendor/autoload.php';
+
 /**********************************************************************************
  *  Default settings
  */

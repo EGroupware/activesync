@@ -61,9 +61,8 @@ class activesync_hooks
 			// EGroupware specific ZPush version, overwriting version.php from stock ZPush
 			define('ZPUSH_VERSION', 'EGroupware-'.EGroupware\Api\Framework::api_version());
 
-			require_once(EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src/vendor/autoload.php');
 			// some files, eg. sqlstatemaschine, does includes it's config relative to z-push sources
-			ini_set('include_path', EGW_SERVER_ROOT.'/activesync/vendor/z-push/z-push/src'.PATH_SEPARATOR.ini_get('include_path'));
+			ini_set('include_path', EGW_SERVER_ROOT.'/vendor/egroupware/z-push-dev/src'.PATH_SEPARATOR.ini_get('include_path'));
 			include(EGW_SERVER_ROOT.'/activesync/inc/config.php');
 			$backend = new activesync_backend();
 		}

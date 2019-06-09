@@ -6,7 +6,6 @@
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
  * @package esync
  * @author Ralf Becker <RalfBecker-AT-outdoor-training.de>
- * @version $Id$
  */
 
 use EGroupware\Api;
@@ -19,6 +18,7 @@ class activesync_ipc_backend implements IIpcProvider
 	protected $type;
     private $typeMutex;
 	protected $level;
+    protected $serverKey;
 
     /**
      * Constructor
@@ -27,11 +27,12 @@ class activesync_ipc_backend implements IIpcProvider
 	 * @param int $allocate
 	 * @param string $class
 	 */
-    public function __construct($type, $allocate, $class) {
+    public function __construct($type, $allocate, $class, $serverKey) {
 		unset($allocate);	// not used, but required by function signature
 		$this->type = $type;
         $this->typeMutex = $type . "MX";
 		$this->level = $class == 'TopCollector' ? Api\Cache::TREE : Api\Cache::INSTANCE;
+		$this->serverKey = $serverKey;
 	}
 
     /**

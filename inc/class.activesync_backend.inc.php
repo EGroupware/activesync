@@ -838,16 +838,17 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	}
 
 	/**
-	 * Searches the GAL
+	 * Searches the GAL.
 	 *
-	 * @param string        $searchquery
-	 * @param string        $searchrange
+	 * @param string                        $searchquery        string to be searched for
+	 * @param string                        $searchrange        specified searchrange
+	 * @param SyncResolveRecipientsPicture  $searchpicture      limitations for picture
 	 *
 	 * @access public
-	 * @return array
+	 * @return array        search results
 	 * @throws StatusException
 	 */
-	public function GetGALSearchResults($searchquery, $searchrange)
+	public function GetGALSearchResults($searchquery, $searchrange, $searchpicture)
 	{
 		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__.__LINE__.':'.array2string(array('query'=>$searchquery, 'range'=>$searchrange)));
 		return $this->getSearchResults(array('query'=>$searchquery, 'range'=>$searchrange),'GAL');

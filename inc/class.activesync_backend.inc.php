@@ -83,7 +83,9 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 			if ($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == 'user' ||
 				$GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == $dev_id.'.log')
 			{
-				ZLog::EnableDeviceLog($dev_id);
+				//ZLog::EnableDeviceLog($dev_id);
+				// ToDo: check and if necessarey modify where log is written
+				ZLog::SpecialLogUser();
 			}
 
 			// check if we support loose provisioning for that device

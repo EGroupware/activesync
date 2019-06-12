@@ -68,6 +68,7 @@ require_once EGW_SERVER_ROOT.'/vendor/egroupware/z-push-dev/src/vendor/autoload.
  *   SQL   - SqlStateMachine has own configuration file. STATE_DIR is ignored.
  *           State migration script is available, more informations: https://wiki.z-hub.io/x/xIAa
  */
+	// EGroupware uses it's own activesync_statemachine class extending SqlStateMachine
 	define('STATE_MACHINE', 'FILE');
 	define('STATE_DIR', $GLOBALS['egw_info']['server']['files_dir'].'/activesync/');
 
@@ -115,7 +116,7 @@ require_once EGW_SERVER_ROOT.'/vendor/egroupware/z-push-dev/src/vendor/autoload.
  *
  *  LOGAUTHFAIL is logged to the LOGBACKEND.
  */
-    define('LOGBACKEND', 'filelog');
+    define('LOGBACKEND', 'activesync_logger');	// fixed filelog
     define('LOGLEVEL', LOGLEVEL_INFO);
     define('LOGAUTHFAIL', false);
 	// uncomment to NOT log certain error-levels eg. E_NOTICE or E_STRICT

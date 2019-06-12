@@ -8,7 +8,6 @@
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
  * @package activesync
  * @subpackage setup
- * @version $Id$
  */
 
 /**

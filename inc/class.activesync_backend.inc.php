@@ -4,11 +4,10 @@
  *
  * @link http://www.egroupware.org
  * @package esync
- * @author Ralf Becker <rb@stylite.de>
- * @author Stylite AG <info@stylite.de>
+ * @author Ralf Becker <rb@egroupware.org>
+ * @author EGroupware GmbH <info@egroupware.org>
  * @author Philip Herbert <philip@knauber.de>
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
- * @version $Id$
  */
 
 use EGroupware\Api;
@@ -83,8 +82,6 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 			if ($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == 'user' ||
 				$GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == $dev_id.'.log')
 			{
-				//ZLog::EnableDeviceLog($dev_id);
-				// ToDo: check and if necessarey modify where log is written
 				ZLog::SpecialLogUser();
 			}
 

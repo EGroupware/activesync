@@ -6,7 +6,6 @@
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
  * @package esync
  * @author Ralf Becker <RalfBecker-AT-outdoor-training.de>
- * @version $Id$
  */
 
 use EGroupware\Api;

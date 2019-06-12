@@ -3,10 +3,9 @@
  * EGroupware - eSync - ActiveSync protocol based on Z-Push
  *
  * @link www.egroupware.org
- * @author rb(at)stylite.de
+ * @author rb(at)egroupware.org
  * @package esync
  * @subpackage setup
- * @version $Id$
  */
 
 // give Default and Admins group rights for E-Push app

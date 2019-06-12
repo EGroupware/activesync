@@ -7,7 +7,6 @@
  * @license http://opensource.org/licenses/gpl-license.php GPL - GNU General Public License
  * @package esync
  * @author Ralf Becker <RalfBecker-AT-outdoor-training.de>
- * @version $Id$
  */
 
 if (php_sapi_name() !== 'cli')	// security precaution: forbit calling z-push-top as web-page

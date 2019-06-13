@@ -1166,7 +1166,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 */
 	public function messagenote2note($body, $rtf, SyncBaseBody $airsyncbasebody=null)
 	{
-		if (isset($airsyncbasebody))
+		if (isset($airsyncbasebody) && is_resource($airsyncbasebody->data))
 		{
 			switch($airsyncbasebody->type)
 			{

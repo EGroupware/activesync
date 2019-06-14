@@ -466,7 +466,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 */
 	public function ChangesSinkInitialize($folderid)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($folderid)");
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($folderid)");
 
 		$this->sinkfolders[] = $folderid;
 
@@ -555,7 +555,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 				$this->device_wait_on_failure(__FUNCTION__, $type, $e);
 			}
 		}
-		ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
+		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$folderid','".array2string($syncstate)."') type=$type, folder=$folder returning ".array2string($ret));
 		return $ret;
 	}
 

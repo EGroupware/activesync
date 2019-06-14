@@ -114,17 +114,23 @@ class activesync_hooks
 			$profiles = array();
 			$statemachine = $backend->GetStateMachine();
 			$account_lid = Api\Accounts::id2name($hook_data['account_id']);
+			$devids = [];
 			foreach($statemachine->GetAllDevices($account_lid) as $devid)
+			{
+				$devids[$devid] = $statemachine->DeviceDataTime($devid);
+			}
+			arsort($devids, SORT_NUMERIC);
+			foreach($devids as $devid => $time)
 			{
 				try {
 					$devices = $statemachine->GetState($devid, 'devicedata')->devices;
 					$device = $devices[$account_lid];
-					$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] = $device->UserAgent.': ';
+					$enable[$devid.'.log'] = $logs[$account_lid.'-'.$devid.'.log'] = $profiles[$devid] = $device->UserAgent.': ';
 				}
 				catch (StateNotFoundException $e) {
 					unset($e);	// ignore no state found
 				}
-				$enable[$devid.'.log'] = $logs[$devid.'.log'] = $profiles[$devid] .= Api\DateTime::to($statemachine->DeviceDataTime($devid)).' ('.$devid.')';
+				$enable[$devid.'.log'] = $logs[$account_lid.'-'.$devid.'.log'] = $profiles[$devid] .= Api\DateTime::to($time).' ('.$devid.')';
 			}
 			if ($GLOBALS['egw_info']['user']['apps']['admin'])
 			{
@@ -195,8 +201,9 @@ class activesync_hooks
 	public function log()
 	{
 		$filename = basename($_GET['filename']);
+		list(, $devid) = explode('-', basename($filename, '.log'));	//
 		if (!($GLOBALS['egw_info']['user']['apps']['admin'] ||
-			in_array(basename($filename, '.log'),
+			in_array($devid,
 				self::backend()->GetStateMachine()->GetAllDevices($GLOBALS['egw_info']['user']['account_lid']))))
 		{
 			throw new Api\Exception\WrongParameter("Access denied to file '$filename'!");

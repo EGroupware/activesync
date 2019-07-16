@@ -40,5 +40,5 @@ $setup_info['activesync']['hooks']['verify_settings']	= 'activesync_hooks::verif
 /* Dependencies for this app to work */
 $setup_info['activesync']['depends'][] = array(
 	 'appname'  => 'api',
-	 'versions' => Array('17.1')
+	 'versions' => Array('19.1')
 );

@@ -1,1 +1,13 @@
 activesync	common	es-es	eSync
+additional addressbooks to sync	activesync	es-es	Libretas de direcciones adicionales a sincronizar
+additional calendars to sync	activesync	es-es	Calendarios adicionales a sincronizar
+addressbooks to sync	activesync	es-es	Libretas de direcciones a sincronizar
+admin only	activesync	es-es	Solo administrador
+all users, admin only	activesync	es-es	Todos los usuarios, solo administrador
+all your devices	activesync	es-es	Todos sus dispositivos
+disabled	activesync	es-es	deshabilitado
+email account to sync	activesync	es-es	Cuenta de correo-e a sincronizar
+maintenance	activesync	es-es	Mantenimiento
+profil %1 deleted.	activesync	es-es	Perfil %1 suprimido.
+show log of following device	activesync	es-es	Mostrar registro del siguiente dispositivo
+sync all addressbooks as one	activesync	es-es	Sincronizar todas las libretas de direcciones como una

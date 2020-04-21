@@ -5,6 +5,7 @@ addressbooks to sync	activesync	es-es	Libretas de direcciones a sincronizar
 admin only	activesync	es-es	Solo administrador
 all users, admin only	activesync	es-es	Todos los usuarios, solo administrador
 all your devices	activesync	es-es	Todos sus dispositivos
+device %1 deleted.	activesync	es-es	Dispositivo %1 suprimido.
 disabled	activesync	es-es	deshabilitado
 email account to sync	activesync	es-es	Cuenta de correo-e a sincronizar
 maintenance	activesync	es-es	Mantenimiento

@@ -19,7 +19,6 @@
         }
     ],
 	"require": {
-		"egroupware/egroupware": "self.version",
 		"egroupware/z-push-dev": "^2.5"
 	}
 }

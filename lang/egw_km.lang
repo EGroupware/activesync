@@ -1,0 +1,36 @@
+activesync	common	km	eSync
+additional addressbooks to sync	activesync	km	សៀវភៅអាសយដ្ឋានបន្ថែមដើម្បីធ្វើសមកាលកម្ម
+additional calendars to sync	activesync	km	ប្រតិទិនបន្ថែមដើម្បីធ្វើសមកាលកម្ម
+addressbooks to sync	activesync	km	សៀវភៅអាសយដ្ឋានដើម្បីធ្វើសមកាលកម្ម
+admin only	activesync	km	អ្នកគ្រប់គ្រងតែប៉ុណ្ណោះ
+all users, admin only	activesync	km	អ្នកប្រើប្រាស់ទាំងអស់ មានតែអ្នកគ្រប់គ្រងប៉ុណ្ណោះ។
+all your devices	activesync	km	ឧបករណ៍របស់អ្នកទាំងអស់
+allow sending of calendar invitations using this profile?	activesync	km	អនុញ្ញាតឱ្យផ្ញើការអញ្ជើញតាមប្រតិទិនដោយប្រើកម្រងព័ត៌មាននេះ?
+always delete account on device first!	activesync	km	លុបគណនីនៅលើឧបករណ៍ជាមុនសិន!
+can not open imap connection	activesync	km	មិនអាចបើកការតភ្ជាប់ IMAP បានទេ
+control the sending of calendar invitations while using this profile	activesync	km	គ្រប់គ្រងការផ្ញើការអញ្ជើញតាមប្រតិទិន ពេលកំពុងប្រើកម្រងព័ត៌មាននេះ
+deleting of profil %1 failed!	activesync	km	ការលុបកម្រងព័ត៌មាន %1 បានបរាជ័យ!
+deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	km	ការលុបទម្រង់ serverside លុបដានទាំងអស់នៃការប៉ុនប៉ងធ្វើសមកាលកម្មពីមុននៃឧបករណ៍ដែលបានជ្រើសរើស។
+device %1 deleted.	activesync	km	ឧបករណ៍ %1 ត្រូវបានលុប។
+disabled	activesync	km	ពិការ
+email account to sync	activesync	km	គណនីអ៊ីមែលដើម្បីធ្វើសមកាលកម្ម
+enable logging	activesync	km	បើកដំណើរការកំណត់ហេតុ
+enable logging for all your devices or a specific one.	activesync	km	បើកការកត់ត្រាសម្រាប់ឧបករណ៍របស់អ្នកទាំងអស់ ឬឧបករណ៍ជាក់លាក់មួយ។
+esync will fail without a working email configuration!	activesync	km	eSync នឹង​បរាជ័យ​ដោយ​គ្មាន​ការ​កំណត់​រចនាសម្ព័ន្ធ​អ៊ីមែល​ដែល​ដំណើរការ​!
+force sorting on device to	activesync	km	បង្ខំការតម្រៀបនៅលើឧបករណ៍ទៅ
+global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	km	ការស្វែងរកអាសយដ្ឋានសកលតែងតែស្វែងរកនៅក្នុងសៀវភៅអាសយដ្ឋានទាំងអស់ ដូច្នេះអ្នកមិនចាំបាច់ធ្វើសមកាលកម្មសៀវភៅអាសយដ្ឋានទាំងអស់ដើម្បីអាចចូលប្រើវាបាន ប្រសិនបើអ្នកមានអ៊ីនធឺណិត។
+how many days to sync in the past when client does not specify a date-range (default %1)	activesync	km	តើត្រូវ​ធ្វើ​សមកាលកម្ម​ប៉ុន្មាន​ថ្ងៃ​មុន ពេល​ម៉ាស៊ីនភ្ញៀវ​មិន​បញ្ជាក់​ជួរ​កាលបរិច្ឆេទ (លំនាំដើម% 1)
+if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	km	ប្រសិនបើម៉ាស៊ីនភ្ញៀវកំណត់មិនមានជួរសមកាលកម្មទេ អ្នកអាចបដិសេធការកំណត់ (ការពារការគាំងម៉ាស៊ីនភ្ញៀវដែលអាចបណ្តាលមកពីសំបុត្រច្រើនពេក/ទិន្នន័យច្រើនពេក)។ ប្រសិនបើអ្នកចង់ធ្វើសមកាលកម្មវិធីត្រឡប់ទៅអតីតកាលវិញ៖ កំណត់លេខធំ
+maintenance	activesync	km	ថែទាំ
+no valid %1 folder configured!	activesync	km	គ្មាន​ថត %1 ដែល​បាន​កំណត់​ត្រឹមត្រូវ​ទេ!
+not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	km	មិនមែនគ្រប់ឧបករណ៍ទាំងអស់គាំទ្រប្រតិទិនបន្ថែមទេ។ ប្រតិទិនផ្ទាល់ខ្លួនរបស់អ្នកតែងតែធ្វើសមកាលកម្ម។
+not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	km	មិនមែនគ្រប់ឧបករណ៍ទាំងអស់គាំទ្រសៀវភៅអាសយដ្ឋានច្រើនទេ ដូច្នេះអ្នកអាចជ្រើសរើសធ្វើសមកាលកម្មសៀវភៅអាសយដ្ឋានដែលបានជ្រើសរើសខាងលើទាំងអស់ជាមួយ។
+profil %1 deleted.	activesync	km	កម្រងព័ត៌មាន %1 ត្រូវបានលុប។
+select serverside profile to delete	activesync	km	ជ្រើសរើសទម្រង់ serverside ដើម្បីលុប
+show log of following device	activesync	km	បង្ហាញកំណត់ហេតុនៃឧបករណ៍ខាងក្រោម
+shows device specific logs. for admins global z-push logs can be viewed too.	activesync	km	បង្ហាញកំណត់ហេតុជាក់លាក់របស់ឧបករណ៍។ សម្រាប់ admins global z-push logs ក៏អាចមើលបានផងដែរ។
+some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	km	ឧបករណ៍មួយចំនួន (ឧទាហរណ៍ Windows Mobile ប៉ុន្តែមិនមែន iOS) តម្រៀបតាមសៀវភៅអាសយដ្ឋាន "ការតម្រៀបផ្ទាល់ខ្លួន" ដែលប្រហែលជាមិនមែនជាអ្វីដែលអ្នកចង់បាននៅលើឧបករណ៍នោះទេ។ ជាមួយនឹងការកំណត់នេះ អ្នកអាចបង្ខំឱ្យឧបករណ៍ប្រើការតម្រៀបផ្សេងសម្រាប់ទំនាក់ទំនងទាំងអស់ ដោយមិនចាំបាច់ផ្លាស់ប្តូរវានៅក្នុងសៀវភៅអាសយដ្ឋាន។
+sync all addressbooks as one	activesync	km	ធ្វើសមកាលកម្មសៀវភៅអាសយដ្ឋានទាំងអស់ជាមួយ។
+use addressbooks "own sorting" attribute	activesync	km	ប្រើសៀវភៅអាសយដ្ឋាន "តម្រៀបផ្ទាល់ខ្លួន" គុណលក្ខណៈ
+view global z-push log	activesync	km	មើលកំណត់ហេតុ z-push សកល
+view glogal z-push error log	activesync	km	មើលកំណត់ហេតុកំហុស glogal z-push

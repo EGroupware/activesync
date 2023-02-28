@@ -120,3 +120,13 @@ function activesync_upgrade20_1()
 {
 	return $GLOBALS['setup_info']['activesync']['currentver'] = '21.1';
 }
+
+/**
+ * Bump version to 23.1
+ *
+ * @return string
+ */
+function activesync_upgrade21_1()
+{
+	return $GLOBALS['setup_info']['activesync']['currentver'] = '23.1';
+}

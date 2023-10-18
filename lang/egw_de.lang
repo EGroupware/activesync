@@ -10,7 +10,7 @@ always delete account on device first!	activesync	de	Sie müssen zuerst das Prof
 can not open imap connection	activesync	de	Kann KEINE Verbindung zum IMAP Server herstellen
 control the sending of calendar invitations while using this profile	activesync	de	Kontrollieren Sie das Versenden von Kalender-Einladungen während Sie dieses Profil benutzen
 deleting of profil %1 failed!	activesync	de	Löschen des Profil %1 fehlgeschlagen!
-deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	de	Das Löschen des server-seitigen Profiles entfernt alle Spuren von früheren Versuchen das ausgewählte Gerät zu synchronisieren.
+deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	de	Das Löschen des serverseitigen Profiles entfernt alle Spuren von früheren Versuchen das ausgewählte Gerät zu synchronisieren.
 device %1 deleted.	activesync	de	Gerät %1 gelöscht.
 disabled	activesync	de	ausgeschaltet
 email account to sync	activesync	de	E-Mail Konto zu synchronisieren
@@ -26,7 +26,7 @@ no valid %1 folder configured!	activesync	de	Kein gültiger %1 Ordner konfigurie
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	de	Nicht alle Geräte unterstützen zusätzliche Kalender. Ihr persönlicher Kalender wird immer synchronisiert.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	de	Nicht alle Geräte unterstützen mehrere Adressbücher, deshalb können Sie alle oben ausgewählten Adressbücher in ein einziges synchronisieren.
 profil %1 deleted.	activesync	de	Profil %1 gelöscht.
-select serverside profile to delete	activesync	de	Wählen Sie das Serverseitige Profil zum Löschen aus.
+select serverside profile to delete	activesync	de	Wählen Sie das serverseitige Profil zum Löschen aus.
 show log of following device	activesync	de	Zeige Log des folgenden Geräts
 shows device specific logs. for admins global z-push logs can be viewed too.	activesync	de	Zeige das Log eines Gerätes. Administratoren können auch die globalen Z-Push Logs anzeigen.
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	de	Einige Geräte (z.B. Windows Mobile, nicht aber iOS) sortieren nach dem Adressbuch-Attribut "eigene Sortierung", was evtl. nicht das ist was Sie auf dem Gerät wollen. Mit dieser Einstellung kann man dem Geräte eine andere Sortierung vorgeben, ohne diese im Adressbuch zu ändern.

@@ -8,7 +8,7 @@ all your devices	activesync	it	Tutti i tuoi dispositivi
 allow sending of calendar invitations using this profile?	activesync	it	Permettere l'invio di inviti dell'agenda usando questo profilo?
 always delete account on device first!	activesync	it	Eliminare SEMPRE prima l'account sul dispositivo!
 can not open imap connection	activesync	it	Impossibile aprire la connessione IMAP
-control the sending of calendar invitations while using this profile	activesync	it	controllare l'invio di inviti dell'agenda, usando questo profilo
+control the sending of calendar invitations while using this profile	activesync	it	Controllare l'invio di inviti dell'agenda, usando questo profilo
 deleting of profil %1 failed!	activesync	it	Non è stato possibile eliminare il profilo %1
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	it	L'eliminazione lato server del profilo, rimuove tutte le tracce di tentativi di sincronizzazione precedenti
 device %1 deleted.	activesync	it	Dispositivo %1 eliminato
@@ -31,6 +31,6 @@ show log of following device	activesync	it	Mostra il registro (log) del seguente
 shows device specific logs. for admins global z-push logs can be viewed too.	activesync	it	Mostra registri specifici. Gli amministratori possono visualizzare anche i registri globali z-push.
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	it	Alcuni dispositivi (p.es. Windows Mobile, ma non iOS) ordinano in base all'attributo "proprio ordinamento" delle rubriche, che a volte non è ciò che si desidera sul dispositivo. Con questa impostazione invece si può forzare il dispositivo di modo che usi un altro criterio di ordinamento per tutti i contatti, senza modificarla anche nella rubrica di EGroupware.
 sync all addressbooks as one	activesync	it	Sincronizzare tutte le rubriche come se fossero una unica rubrica.
-use addressbooks "own sorting" attribute	activesync	it	usare il "proprio ordinamento" della rubrica
+use addressbooks "own sorting" attribute	activesync	it	Usare il "proprio ordinamento" della rubrica
 view global z-push log	activesync	it	Visualizza registro globale z-push
 view glogal z-push error log	activesync	it	Visualizza registro errori z-push

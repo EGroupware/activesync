@@ -8,7 +8,7 @@ all your devices	activesync	fr	Tous vos appareils
 allow sending of calendar invitations using this profile?	activesync	fr	Autoriser l'envoi d'invitations de calendrier en utilisant ce profil ?
 always delete account on device first!	activesync	fr	TOUJOURS d'abord supprimer le compte sur l'appareil !
 can not open imap connection	activesync	fr	Ne peut pas ouvrir de connexion IMAP
-control the sending of calendar invitations while using this profile	activesync	fr	contrôle l'envoi d'invitation de calendrier à l'utilisation de ce profil
+control the sending of calendar invitations while using this profile	activesync	fr	Contrôle l'envoi d'invitation de calendrier à l'utilisation de ce profil
 deleting of profil %1 failed!	activesync	fr	Echec de la suppression du profil %1 !
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	fr	Supprimer le profil sur le serveur va supprimer toutes les traces des précédentes tentatives de synchronisation par l'appareil sélectionné.
 device %1 deleted.	activesync	fr	Appareil %1 supprimé

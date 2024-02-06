@@ -79,8 +79,9 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 			// enable logging for all devices of a user or a specific device
 			$dev_id = Request::GetDeviceID();
 			//error_log(__METHOD__."() username=$username, dev_id=$dev_id, prefs[activesync]=".array2string($GLOBALS['egw_info']['user']['preferences']['activesync']));
-			if ($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == 'user' ||
-				$GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] == $dev_id.'.log')
+			if (isset($GLOBALS['egw_info']['user']['preferences']['activesync']['logging']) &&
+				($GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] === 'user' ||
+					$GLOBALS['egw_info']['user']['preferences']['activesync']['logging'] === $dev_id.'.log'))
 			{
 				ZLog::SpecialLogUser();
 			}
@@ -1428,7 +1429,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 		{
 			return;	// no real request, or request not yet initialised
 		}
-		$waitOnFailure = Api\Cache::getInstance(__CLASS__, 'waitOnFailure-'.$GLOBALS['egw_info']['user']['account_lid'], function()
+		$waitOnFailure = Api\Cache::getInstance(__CLASS__, 'waitOnFailure-'.($GLOBALS['egw_info']['user']['account_lid']??null), static function()
 		{
 			return array();
 		});

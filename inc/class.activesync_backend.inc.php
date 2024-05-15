@@ -282,6 +282,31 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	{
 		$type = $folder = $app = null;
 		$this->splitID($id, $type, $folder, $app);
+
+		// better cope with Android bug reporting always 1st of current month as cutoffdate, if a policy is given.
+		// --> if less than 1 month given, use the value from the default policy (EPL) or our default of 1 year (instead of all)
+		if ($cutoffdate && $cutoffdate >= time()-32*24*60*60)
+		{
+			if (!empty($GLOBALS['egw_info']['apps']['esyncpro']) && in_array($app, ['calendar', 'mail']))
+			{
+				require_once(EGW_INCLUDE_ROOT.'/vendor/egroupware/z-push-dev/src/lib/utils/utils.php');
+				if (!($back = \Utils::GetFiltertypeInterval(esyncpro_policy::standard(false)
+					[$app === 'calendar' ? 'policy_max_cal_age' : 'policy_max_email_age'])))
+				{
+					$cutoffdate = null; // all
+				}
+				else
+				{
+					$cutoffdate = time() - $back;
+				}
+			}
+			else
+			{
+				$cutoffdate = null;
+			}
+			//error_log(__METHOD__."() fixing $app cutoffdate=".($cutoffdate?date('Y-m-d', $cutoffdate):'all').', back='.json_encode($back));
+		}
+
 		//ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."($id, $cutoffdate) type=$type, folder=$folder, app=$app");
 		if (!($ret = $this->run_on_plugin_by_id(__FUNCTION__, $id, $cutoffdate)))
 		{

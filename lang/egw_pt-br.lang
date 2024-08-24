@@ -11,8 +11,13 @@ email account to sync	activesync	pt-br	Conta-mail para sincronizar
 force sorting on device to	activesync	pt-br	Força triagem no dispositivo para
 maintenance	activesync	pt-br	Manutenção
 no valid %1 folder configured!	activesync	pt-br	Nenhuma pasta válido% 1 configurado!
+no, do not send	activesync	pt-br	Não, não enviar
+only send if there is no notification in calendar	activesync	pt-br	Enviar somente se não houver notificação no calendário
 profil %1 deleted.	activesync	pt-br	Profil% 1 excluído.
 select serverside profile to delete	activesync	pt-br	Selecione o perfil serverside para apagar
 show log of following device	activesync	pt-br	Mostrar log do seguinte dispositivo
 sync all addressbooks as one	activesync	pt-br	Sincronize todos os catálogos de endereços como um
-use addressbooks "own sorting" attribute	activesync	pt-br	usar catálogos de endereços "possuir classificação" atributo
+use addressbooks "own sorting" attribute	activesync	pt-br	Usar catálogos de endereços "possuir classificação" atributo
+view global z-push log	activesync	pt-br	Exibir o registro global do Z-Push
+view glogal z-push error log	activesync	pt-br	Exibir o registro de erros do Z-Push global
+yes, always send	activesync	pt-br	Sim, sempre enviar

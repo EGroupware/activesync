@@ -1,1 +1,8 @@
 activesync	common	lv	eSync
+no, do not send	activesync	lv	Nē, nesūtiet
+only send if there is no notification in calendar	activesync	lv	Sūtīt tikai tad, ja kalendārā nav paziņojuma
+sync all addressbooks as one	activesync	lv	Sinhronizēt visas adrešu grāmatas kā vienu
+use addressbooks "own sorting" attribute	activesync	lv	Izmantot adrešu grāmatas atribūtu "sava šķirošana"
+view global z-push log	activesync	lv	Skatīt globālo Z-Push žurnālu
+view glogal z-push error log	activesync	lv	Skatīt globālo Z-Push kļūdu žurnālu
+yes, always send	activesync	lv	Jā, vienmēr sūtīt

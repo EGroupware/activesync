@@ -1,1 +1,8 @@
 activesync	common	zh	eSync
+no, do not send	activesync	zh	否，不发送
+only send if there is no notification in calendar	activesync	zh	仅在日历中没有通知时发送
+sync all addressbooks as one	activesync	zh	同步所有通讯录
+use addressbooks "own sorting" attribute	activesync	zh	使用通讯录 "自己排序 "属性
+view global z-push log	activesync	zh	查看全局 Z-Push 日志
+view glogal z-push error log	activesync	zh	查看全局 Z-Push 错误日志
+yes, always send	activesync	zh	是，始终发送

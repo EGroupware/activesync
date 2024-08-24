@@ -5,32 +5,35 @@ addressbooks to sync	activesync	it	Rubrica da sincronizzare
 admin only	activesync	it	Solo amministratori
 all users, admin only	activesync	it	Tutti gli utenti, solo  amministratori
 all your devices	activesync	it	Tutti i tuoi dispositivi
-allow sending of calendar invitations using this profile?	activesync	it	Permettere l'invio di inviti dell'agenda usando questo profilo?
+allow sending of calendar invitations using this profile?	activesync	it	Permettere l'invio di inviti dell'agenda usando questo profilo
 always delete account on device first!	activesync	it	Eliminare SEMPRE prima l'account sul dispositivo!
 can not open imap connection	activesync	it	Impossibile aprire la connessione IMAP
-control the sending of calendar invitations while using this profile	activesync	it	Controllare l'invio di inviti dell'agenda, usando questo profilo
-deleting of profil %1 failed!	activesync	it	Non è stato possibile eliminare il profilo %1
-deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	it	L'eliminazione lato server del profilo, rimuove tutte le tracce di tentativi di sincronizzazione precedenti
-device %1 deleted.	activesync	it	Dispositivo %1 eliminato
+control the sending of calendar invitations while using this profile	activesync	it	Controllare l'invio di inviti dell'agenda, usando questo profilo.
+deleting of profil %1 failed!	activesync	it	Non è stato possibile eliminare il profilo %1!
+deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	it	L'eliminazione lato server del profilo, rimuove tutte le tracce di tentativi di sincronizzazione precedenti.
+device %1 deleted.	activesync	it	Dispositivo %1 eliminato.
 disabled	activesync	it	disabilitato
-email account to sync	activesync	it	Account di eMail da sincronizzare
+email account to sync	activesync	it	Account di eMail da sincronizzare.
 enable logging	activesync	it	Abilita registro
 enable logging for all your devices or a specific one.	activesync	it	Abilita il registro per tutti i tuoi dispositivi oppure per uno specifico.
 esync will fail without a working email configuration!	activesync	it	eSync non funzionerà senza una configurazione esistente corretta di eMail.
 force sorting on device to	activesync	it	Forza l'ordinamento sul dispositivo a
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	it	La ricerca globale si effettua in tutte le rubriche, non è pertanto necessario sincronizzare tutte le rubriche per potervi accedere, se si è online.
 how many days to sync in the past when client does not specify a date-range (default %1)	activesync	it	Quanti giorni di sincronizzazione in passato quando il client non specifica un intervallo di date (predefinito %1)
-if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	it	Se il client non imposta alcun intervallo di sincronizzazione, è possibile sovrascrivere l'impostazione (evitando il crash del client che potrebbe essere causato da troppi messaggi / troppi dati). Se si desidera sincronizzare molte voci del passato: impostare un numero elevato
+if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	it	Se il client non imposta alcun intervallo di sincronizzazione, è possibile sovrascrivere l'impostazione (evitando il crash del client che potrebbe essere causato da troppi messaggi / troppi dati). Se si desidera sincronizzare molte voci del passato: impostare un numero elevato.
 maintenance	activesync	it	Manutenzione
 no valid %1 folder configured!	activesync	it	La %1 non è una cartella valida!
+no, do not send	activesync	it	No, non inviare
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	it	Non tutti i dispositivi supportano agende aggiuntive. L'agenda personale è sempre sincronizzata.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	it	Non tutti i dispositivi supportano rubriche multiple, perciò si possono sincronizzare tutte le rubriche selezionate qui sopra come un'unica rubrica.
+only send if there is no notification in calendar	activesync	it	Invia solo se non c'è una notifica nel calendario
 profil %1 deleted.	activesync	it	Profilo %1 eliminato
 select serverside profile to delete	activesync	it	Seleziona il profilo lato server da eliminare
 show log of following device	activesync	it	Mostra il registro (log) del seguente dispositivo
-shows device specific logs. for admins global z-push logs can be viewed too.	activesync	it	Mostra registri specifici. Gli amministratori possono visualizzare anche i registri globali z-push.
+shows device specific logs. for admins global z-push logs can be viewed too.	activesync	it	Mostra registri specifici. Gli amministratori possono visualizzare anche i registri globali Z-Push.
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	it	Alcuni dispositivi (p.es. Windows Mobile, ma non iOS) ordinano in base all'attributo "proprio ordinamento" delle rubriche, che a volte non è ciò che si desidera sul dispositivo. Con questa impostazione invece si può forzare il dispositivo di modo che usi un altro criterio di ordinamento per tutti i contatti, senza modificarla anche nella rubrica di EGroupware.
-sync all addressbooks as one	activesync	it	Sincronizzare tutte le rubriche come se fossero una unica rubrica.
+sync all addressbooks as one	activesync	it	Sincronizzare tutte le rubriche come se fossero una unica rubrica
 use addressbooks "own sorting" attribute	activesync	it	Usare il "proprio ordinamento" della rubrica
-view global z-push log	activesync	it	Visualizza registro globale z-push
-view glogal z-push error log	activesync	it	Visualizza registro errori z-push
+view global z-push log	activesync	it	Visualizza registro globale Z-Push
+view glogal z-push error log	activesync	it	Visualizza registro errori Z-Push
+yes, always send	activesync	it	Sì, invia sempre

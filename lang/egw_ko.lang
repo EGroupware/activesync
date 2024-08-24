@@ -1,1 +1,8 @@
 activesync	common	ko	eSync
+no, do not send	activesync	ko	아니요, 보내지 않습니다.
+only send if there is no notification in calendar	activesync	ko	캘린더에 알림이 없는 경우에만 보내기
+sync all addressbooks as one	activesync	ko	모든 주소록을 하나로 동기화
+use addressbooks "own sorting" attribute	activesync	ko	주소록 "자체 정렬" 속성 사용
+view global z-push log	activesync	ko	글로벌 Z-Push 로그 보기
+view glogal z-push error log	activesync	ko	글로벌 Z-Push 오류 로그 보기
+yes, always send	activesync	ko	예, 항상 전송

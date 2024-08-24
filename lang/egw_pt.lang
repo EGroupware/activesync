@@ -1,3 +1,10 @@
 activesync	common	pt	eSync
 can not open imap connection	activesync	pt	Não é possível abrir conexão IMAP
 no valid %1 folder configured!	activesync	pt	Nenhuma pasta válido% 1 configurado!
+no, do not send	activesync	pt	Não, não enviar
+only send if there is no notification in calendar	activesync	pt	Enviar apenas se não existir uma notificação no calendário
+sync all addressbooks as one	activesync	pt	Sincronizar todos os cadernos de endereços como um só
+use addressbooks "own sorting" attribute	activesync	pt	Utilizar o atributo "ordenação própria" dos livros de endereços
+view global z-push log	activesync	pt	Ver o registo global do Z-Push
+view glogal z-push error log	activesync	pt	Ver o registo global de erros do Z-Push
+yes, always send	activesync	pt	Sim, enviar sempre

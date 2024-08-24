@@ -5,7 +5,7 @@ addressbooks to sync	activesync	en	Addressbooks to sync
 admin only	activesync	en	Admin only
 all users, admin only	activesync	en	All users, admin only
 all your devices	activesync	en	All your devices
-allow sending of calendar invitations using this profile?	activesync	en	Allow sending of calendar invitations using this profile?
+allow sending of calendar invitations using this profile?	activesync	en	Allow sending of calendar invitations using this profile
 always delete account on device first!	activesync	en	ALWAYS delete account on device first!
 can not open imap connection	activesync	en	Can not open IMAP connection
 control the sending of calendar invitations while using this profile	activesync	en	Control the sending of calendar invitations while using this profile.
@@ -13,24 +13,27 @@ deleting of profil %1 failed!	activesync	en	Deleting of profil %1 failed!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	en	Deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.
 device %1 deleted.	activesync	en	Device %1 deleted.
 disabled	activesync	en	disabled
-email account to sync	activesync	en	eMail Account to sync
+email account to sync	activesync	en	eMail Account to sync.
 enable logging	activesync	en	Enable logging
 enable logging for all your devices or a specific one.	activesync	en	Enable logging for all your devices or a specific one.
 esync will fail without a working email configuration!	activesync	en	eSync will FAIL without a working eMail configuration!
 force sorting on device to	activesync	en	Force sorting on device to
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	en	Global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.
 how many days to sync in the past when client does not specify a date-range (default %1)	activesync	en	How many days to sync in the past when client does not specify a date-range (default %1)
-if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	en	If the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). If you want to sync way-back into the past: set a large number
+if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	en	If the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). If you want to sync way-back into the past: set a large number.
 maintenance	activesync	en	Maintenance
 no valid %1 folder configured!	activesync	en	No valid %1 folder configured!
+no, do not send	activesync	en	No, do not send
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	en	Not all devices support additonal calendars. Your personal calendar is always synchronised.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	en	Not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.
+only send if there is no notification in calendar	activesync	en	Only send if there is no notification in calendar
 profil %1 deleted.	activesync	en	Profil %1 deleted.
 select serverside profile to delete	activesync	en	Select serverside profile to delete
 show log of following device	activesync	en	Show log of following device
-shows device specific logs. for admins global z-push logs can be viewed too.	activesync	en	Shows device specific logs. For admins global z-push logs can be viewed too.
+shows device specific logs. for admins global z-push logs can be viewed too.	activesync	en	Shows device specific logs. For admins global Z-Push logs can be viewed too.
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	en	Some devices (eg. Windows Mobile, but not iOS) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. With this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.
 sync all addressbooks as one	activesync	en	Sync all addressbooks as one
 use addressbooks "own sorting" attribute	activesync	en	Use addressbooks "own sorting" attribute
-view global z-push log	activesync	en	View global z-push log
-view glogal z-push error log	activesync	en	View glogal z-push error log
+view global z-push log	activesync	en	View global Z-Push log
+view glogal z-push error log	activesync	en	View global Z-Push error log
+yes, always send	activesync	en	Yes, always send

@@ -1,1 +1,8 @@
 activesync	common	da	eSync
+no, do not send	activesync	da	Nej, send ikke
+only send if there is no notification in calendar	activesync	da	Send kun, hvis der ikke er nogen notifikation i kalenderen
+sync all addressbooks as one	activesync	da	Synkroniser alle adressebøger som én
+use addressbooks "own sorting" attribute	activesync	da	Brug adressebøgernes "egen sortering"-attribut
+view global z-push log	activesync	da	Se global Z-Push-log
+view glogal z-push error log	activesync	da	Se global Z-Push-fejllog
+yes, always send	activesync	da	Ja, send altid

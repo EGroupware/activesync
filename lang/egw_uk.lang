@@ -1,1 +1,8 @@
 activesync	common	uk	eSync
+no, do not send	activesync	uk	Ні, не надсилати
+only send if there is no notification in calendar	activesync	uk	Надсилати тільки якщо немає сповіщення в календарі
+sync all addressbooks as one	activesync	uk	Синхронізувати всі адресні книги як одну
+use addressbooks "own sorting" attribute	activesync	uk	Використовувати атрибут адресних книг "власне сортування"
+view global z-push log	activesync	uk	Перегляд глобального журналу Z-Push
+view glogal z-push error log	activesync	uk	Перегляд глобального журналу помилок Z-Push
+yes, always send	activesync	uk	Так, надсилати завжди

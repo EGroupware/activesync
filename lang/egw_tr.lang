@@ -1,2 +1,9 @@
 activesync	common	tr	eSync
 disabled	activesync	tr	engellendi
+no, do not send	activesync	tr	Hayır, göndermeyin
+only send if there is no notification in calendar	activesync	tr	Yalnızca takvimde bildirim yoksa gönderin
+sync all addressbooks as one	activesync	tr	Tüm adres defterlerini tek bir defter olarak senkronize edin
+use addressbooks "own sorting" attribute	activesync	tr	Adres defterlerinin "kendi sıralama" özelliğini kullanın
+view global z-push log	activesync	tr	Global Z-Push günlüğünü görüntüle
+view glogal z-push error log	activesync	tr	Genel Z-Push hata günlüğünü görüntüleme
+yes, always send	activesync	tr	Evet, her zaman gönder

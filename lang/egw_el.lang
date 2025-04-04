@@ -1,4 +1,5 @@
 activesync	common	el	eSync
+email account to sync	activesync	el	Λογαριασμός eMail για συγχρονισμό
 no, do not send	activesync	el	Όχι, μην στείλετε
 only send if there is no notification in calendar	activesync	el	Αποστολή μόνο αν δεν υπάρχει ειδοποίηση στο ημερολόγιο
 sync all addressbooks as one	activesync	el	Συγχρονισμός όλων των βιβλίων διευθύνσεων ως ένα

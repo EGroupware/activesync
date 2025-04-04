@@ -1,4 +1,5 @@
 activesync	common	ro	eSync
+email account to sync	activesync	ro	Cont eMail pentru sincronizare
 no, do not send	activesync	ro	Nu, nu trimiteți
 only send if there is no notification in calendar	activesync	ro	Trimiteți numai dacă nu există nicio notificare în calendar
 sync all addressbooks as one	activesync	ro	Sincronizarea tuturor carnetelor de adrese ca una singură

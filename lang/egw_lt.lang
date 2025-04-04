@@ -1,4 +1,5 @@
 activesync	common	lt	eSync
+email account to sync	activesync	lt	Sinchronizuojama e. pašto paskyra
 no, do not send	activesync	lt	Ne, nesiųskite
 only send if there is no notification in calendar	activesync	lt	Siųsti tik tuo atveju, jei kalendoriuje nėra pranešimo
 sync all addressbooks as one	activesync	lt	Sinchronizuoti visas adresines kaip vieną

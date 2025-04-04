@@ -1,4 +1,5 @@
 activesync	common	hu	eSync
+email account to sync	activesync	hu	Szinkronizálandó eMail fiók
 no, do not send	activesync	hu	Nem, ne küldjön
 only send if there is no notification in calendar	activesync	hu	Csak akkor küldje el, ha nincs értesítés a naptárban
 sync all addressbooks as one	activesync	hu	Az összes címjegyzéket egyként szinkronizálja

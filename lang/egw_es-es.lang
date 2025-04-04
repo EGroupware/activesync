@@ -13,7 +13,7 @@ deleting of profil %1 failed!	activesync	es-es	¡El borrado del perfil %1 ha fal
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	es-es	Al borrar el perfil del servidor se eliminan todos los rastros de intentos de sincronización anteriores del dispositivo seleccionado.
 device %1 deleted.	activesync	es-es	Dispositivo %1 suprimido.
 disabled	activesync	es-es	deshabilitado
-email account to sync	activesync	es-es	Cuenta de correo-e a sincronizar.
+email account to sync	activesync	es-es	Cuenta de correo-e a sincronizar
 enable logging	activesync	es-es	Activar el registro
 enable logging for all your devices or a specific one.	activesync	es-es	Activa el registro para todos tus dispositivos o para uno en concreto.
 esync will fail without a working email configuration!	activesync	es-es	¡eSync FALLARÁ sin una configuración de eMail que funcione!

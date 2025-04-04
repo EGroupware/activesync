@@ -1,4 +1,5 @@
 activesync	common	zh	eSync
+email account to sync	activesync	zh	要同步的电子邮件帐户
 no, do not send	activesync	zh	否，不发送
 only send if there is no notification in calendar	activesync	zh	仅在日历中没有通知时发送
 sync all addressbooks as one	activesync	zh	同步所有通讯录

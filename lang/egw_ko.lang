@@ -1,4 +1,5 @@
 activesync	common	ko	eSync
+email account to sync	activesync	ko	동기화할 이메일 계정
 no, do not send	activesync	ko	아니요, 보내지 않습니다.
 only send if there is no notification in calendar	activesync	ko	캘린더에 알림이 없는 경우에만 보내기
 sync all addressbooks as one	activesync	ko	모든 주소록을 하나로 동기화

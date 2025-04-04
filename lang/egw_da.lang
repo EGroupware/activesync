@@ -1,4 +1,5 @@
 activesync	common	da	eSync
+email account to sync	activesync	da	eMail-konto til synkronisering
 no, do not send	activesync	da	Nej, send ikke
 only send if there is no notification in calendar	activesync	da	Send kun, hvis der ikke er nogen notifikation i kalenderen
 sync all addressbooks as one	activesync	da	Synkroniser alle adressebøger som én

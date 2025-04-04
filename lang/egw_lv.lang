@@ -1,4 +1,5 @@
 activesync	common	lv	eSync
+email account to sync	activesync	lv	Sinhronizējamais e-pasta konts
 no, do not send	activesync	lv	Nē, nesūtiet
 only send if there is no notification in calendar	activesync	lv	Sūtīt tikai tad, ja kalendārā nav paziņojuma
 sync all addressbooks as one	activesync	lv	Sinhronizēt visas adrešu grāmatas kā vienu

@@ -13,7 +13,7 @@ deleting of profil %1 failed!	activesync	sl	Brisanje profila %1 ni uspelo!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	sl	Če izbrišete profil strežnika, odstranite vse sledi prejšnjih poskusov sinhronizacije izbrane naprave.
 device %1 deleted.	activesync	sl	Naprava %1 je izbrisana.
 disabled	activesync	sl	onemogočeno
-email account to sync	activesync	sl	e-poštni račun za sinhronizacijo.
+email account to sync	activesync	sl	e-poštni račun za sinhronizacijo
 enable logging	activesync	sl	Omogoči prijavo
 enable logging for all your devices or a specific one.	activesync	sl	Omogočite prijavo za vse vaše naprave ali za določeno napravo.
 esync will fail without a working email configuration!	activesync	sl	eSync ne bo deloval brez delovne e-poštne konfiguracije!

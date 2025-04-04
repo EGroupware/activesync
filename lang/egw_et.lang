@@ -1,4 +1,5 @@
 activesync	common	et	eSync
+email account to sync	activesync	et	Sünkroonitav e-konto
 no, do not send	activesync	et	Ei, ärge saatke
 only send if there is no notification in calendar	activesync	et	Saada ainult siis, kui kalendris ei ole teateid
 sync all addressbooks as one	activesync	et	Sünkroonida kõik aadressiraamatud üheks

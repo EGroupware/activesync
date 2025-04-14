@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	sl	če odjemalec ne nastavi možnosti sinhronizacije, lahko preglasite nastavitev (preprečite crash stranke, ki jo lahko povzroči preveč pošte / preveč podatkov). Če želite sinhronizirati nazaj v preteklost: nastavite veliko število.
 maintenance	activesync	sl	Vzdrževanje
 no valid %1 folder configured!	activesync	sl	MaintNo veljavno %1 konfigurirano mapo!
-no, do not send	activesync	sl	Ne, ne pošljite
+no, do not send	preferences	sl	Ne, ne pošljite
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	sl	Vse naprave ne podpirajo dodatnega koledarja. Vaš osebni koledar je vedno sinhroniziran.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	sl	Vse naprave ne podpirajo več adresarjev, zato se lahko odločite za sinhronizacijo vseh zgoraj izbranih adresarjev kot enega.
-only send if there is no notification in calendar	activesync	sl	Pošlji samo, če v koledarju ni obvestila
+only send if there is no notification in calendar	preferences	sl	Pošlji samo, če v koledarju ni obvestila
 profil %1 deleted.	activesync	sl	Profil %1 je bil izbrisan.
 select serverside profile to delete	activesync	sl	Izberite profil strežnika, ki ga želite izbrisati
 show log of following device	activesync	sl	Prikažite dnevnik naslednje naprave
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	sl	Sinhronizirajte vse adresarje kot ene
 use addressbooks "own sorting" attribute	activesync	sl	uporabite atribut lastnega razvrščanja naslovnikov
 view global z-push log	activesync	sl	Oglejte si svetovni dnevnik Z-Push log
 view glogal z-push error log	activesync	sl	Oglejte si svetovni dnevnik Z-Push error log
-yes, always send	activesync	sl	Da, vedno pošljite
+yes, always send	preferences	sl	Da, vedno pošljite

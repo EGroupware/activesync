@@ -1,9 +1,9 @@
 activesync	common	hu	eSync
 email account to sync	activesync	hu	Szinkronizálandó eMail fiók
-no, do not send	activesync	hu	Nem, ne küldjön
-only send if there is no notification in calendar	activesync	hu	Csak akkor küldje el, ha nincs értesítés a naptárban
+no, do not send	preferences	hu	Nem, ne küldjön
+only send if there is no notification in calendar	preferences	hu	Csak akkor küldje el, ha nincs értesítés a naptárban
 sync all addressbooks as one	activesync	hu	Az összes címjegyzéket egyként szinkronizálja
 use addressbooks "own sorting" attribute	activesync	hu	Címkönyvek "saját rendezés" attribútumának használata
 view global z-push log	activesync	hu	Globális Z-Push napló megtekintése
 view glogal z-push error log	activesync	hu	Globális Z-Push hibanapló megtekintése
-yes, always send	activesync	hu	Igen, mindig küld
+yes, always send	preferences	hu	Igen, mindig küld

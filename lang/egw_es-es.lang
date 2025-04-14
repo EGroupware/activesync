@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	es-es	Si el cliente no especifica ningún intervalo de sincronización, puede anular la configuración (para evitar que el cliente se bloquee debido al exceso de correos o de datos). Si desea sincronizar en el pasado: establezca un número elevado.
 maintenance	activesync	es-es	Mantenimiento
 no valid %1 folder configured!	activesync	es-es	¡No hay carpeta %1 válida configurada!
-no, do not send	activesync	es-es	No, no enviar
+no, do not send	preferences	es-es	No, no enviar
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	es-es	No todos los dispositivos admiten calendarios adicionales. Tu calendario personal siempre está sincronizado.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	es-es	No todos los dispositivos admiten varias libretas de direcciones, por lo que puede elegir sincronizar todas las libretas de direcciones seleccionadas como una sola.
-only send if there is no notification in calendar	activesync	es-es	Sólo enviar si no hay notificación en el calendario
+only send if there is no notification in calendar	preferences	es-es	Sólo enviar si no hay notificación en el calendario
 profil %1 deleted.	activesync	es-es	Perfil %1 suprimido.
 select serverside profile to delete	activesync	es-es	Seleccione el perfil de servidor que desea eliminar
 show log of following device	activesync	es-es	Mostrar registro del siguiente dispositivo
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	es-es	Sincronizar todas las libretas de 
 use addressbooks "own sorting" attribute	activesync	es-es	Utilizar el atributo "ordenación propia" de las libretas de direcciones
 view global z-push log	activesync	es-es	Ver el registro global de Z-Push
 view glogal z-push error log	activesync	es-es	Ver el registro de errores de glogal Z-Push
-yes, always send	activesync	es-es	Sí, enviar siempre
+yes, always send	preferences	es-es	Sí, enviar siempre

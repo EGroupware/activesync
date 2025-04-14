@@ -1,10 +1,10 @@
 activesync	common	ja	eSync
 disabled	activesync	ja	不可
 email account to sync	activesync	ja	同期するeメールアカウント
-no, do not send	activesync	ja	いいえ、送信しません
-only send if there is no notification in calendar	activesync	ja	カレンダーに通知がない場合のみ送信
+no, do not send	preferences	ja	いいえ、送信しません
+only send if there is no notification in calendar	preferences	ja	カレンダーに通知がない場合のみ送信
 sync all addressbooks as one	activesync	ja	すべてのアドレス帳を同期
 use addressbooks "own sorting" attribute	activesync	ja	アドレス帳の "独自のソート "属性を使用する
 view global z-push log	activesync	ja	グローバルZ-Pushログを見る
 view glogal z-push error log	activesync	ja	グローバルZ-Pushエラーログを見る
-yes, always send	activesync	ja	常に送信する
+yes, always send	preferences	ja	常に送信する

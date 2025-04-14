@@ -15,10 +15,10 @@ force sorting on device to	activesync	ru	Принудительная сорти
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	ru	Глобальный поиск всегда производится по всем адресным книгам, поэтому в режиме on-line синхронизировать адресные книги для доступа к ним не нужно.
 maintenance	activesync	ru	Обслуживание
 no valid %1 folder configured!	activesync	ru	Не настроен правильный каталог %1!
-no, do not send	activesync	ru	Нет, не отправлять
+no, do not send	preferences	ru	Нет, не отправлять
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	ru	Не все устройства поддерживают дополнительные календари. Ваш личный календарь всегда будет синхронизирован.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	ru	Не все устройства поддерживают несколько адресных книг, поэтому можно синхронизировать выбранные адресные книги в одну.
-only send if there is no notification in calendar	activesync	ru	Отправлять только в том случае, если в календаре нет уведомления
+only send if there is no notification in calendar	preferences	ru	Отправлять только в том случае, если в календаре нет уведомления
 profil %1 deleted.	activesync	ru	Профиль %1 удален.
 show log of following device	activesync	ru	Показать журнал на следующем устройстве
 some devices (eg. windows mobil, but not ios) sort by addressbooks "own sorting" attribute, which might not be what you want on the device. with this setting you can force the device to use a different sorting for all contacts, without changing it in addressbook.	activesync	ru	Некоторые устройства (такие как Windows mobile), сортируют адресные книги по своим собственным атрибутам, которые могут не совпадать с тем, что вы хотите от устройства. С помощью этого параметра можно заставить устройство использовать различную сортировку для всех контактов, не меняя их в адресной книге.
@@ -26,4 +26,4 @@ sync all addressbooks as one	activesync	ru	Синхронизировать вс
 use addressbooks "own sorting" attribute	activesync	ru	Использовать атрибут адресной книги "собственная сортировка"
 view global z-push log	activesync	ru	Просмотр глобального журнала Z-Push
 view glogal z-push error log	activesync	ru	Просмотр глобального журнала ошибок Z-Push
-yes, always send	activesync	ru	Да, всегда отправлять
+yes, always send	preferences	ru	Да, всегда отправлять

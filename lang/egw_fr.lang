@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	fr	Si le client n'indique aucune plage de synchronisation, vous pouvez surcharger le paramètre (évitant un crash du client dû à trop de mails/données). Si vous voulez synchroniser longtemps dans le passé: indiquer une très grande valeur.
 maintenance	activesync	fr	Maintenance
 no valid %1 folder configured!	activesync	fr	Aucun répertoire %1 valide configuré !
-no, do not send	activesync	fr	Non, ne pas envoyer
+no, do not send	preferences	fr	Non, ne pas envoyer
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	fr	Tous les appareil ne supportent pas les calendriers supplémentaire.  Votre calendrier personnel est toujours synchronisé.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	fr	Tous les appareil ne supportent pas les carnets d'adresses supplémentaires aussi vous pouvez choisir de synchroniser tous les carnets vers un seul.
-only send if there is no notification in calendar	activesync	fr	N'envoyer que s'il n'y a pas de notification dans le calendrier
+only send if there is no notification in calendar	preferences	fr	N'envoyer que s'il n'y a pas de notification dans le calendrier
 profil %1 deleted.	activesync	fr	Profil % supprimé.
 select serverside profile to delete	activesync	fr	Choisissez le profil du serveur à effacer
 show log of following device	activesync	fr	Afficher les logs de l'appareil suivant
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	fr	Synchroniser tous les carnets d'adres
 use addressbooks "own sorting" attribute	activesync	fr	Utiliser l'attribut "tri perso" (own sorting) du carnet d'adresses
 view global z-push log	activesync	fr	Voir les journaux de Z-Push
 view glogal z-push error log	activesync	fr	Afficher le journal d'erreur global de Z-Push
-yes, always send	activesync	fr	Oui, toujours envoyer
+yes, always send	preferences	fr	Oui, toujours envoyer

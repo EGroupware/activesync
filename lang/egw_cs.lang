@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	cs	Pokud klient nezadá žádný rozsah synchronizace, můžete toto nastavení přepsat (zabráníte tak pádu klienta, který může být způsoben příliš velkým množstvím pošty/příliš velkým množstvím dat). Pokud chcete synchronizovat daleko do minulosti: nastavte velké číslo.
 maintenance	activesync	cs	Údržba
 no valid %1 folder configured!	activesync	cs	Není nakonfigurována žádná platná složka %1!
-no, do not send	activesync	cs	Ne, neposílejte
+no, do not send	preferences	cs	Ne, neposílejte
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	cs	Ne všechna zařízení podporují aditivní kalendáře. Váš osobní kalendář je synchronizován vždy.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	cs	Ne všechna zařízení podporují více adresářů, proto můžete zvolit synchronizaci všech výše vybraných adresářů jako jednoho.
-only send if there is no notification in calendar	activesync	cs	Odeslat pouze v případě, že v kalendáři není žádné oznámení
+only send if there is no notification in calendar	preferences	cs	Odeslat pouze v případě, že v kalendáři není žádné oznámení
 profil %1 deleted.	activesync	cs	Profil %1 smazán.
 select serverside profile to delete	activesync	cs	Vyberte profil na straně serveru, který chcete odstranit
 show log of following device	activesync	cs	Zobrazit protokol následujícího zařízení
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	cs	Synchronizovat všechny adresáře ja
 use addressbooks "own sorting" attribute	activesync	cs	Použití atributu "vlastní třídění" adresáře
 view global z-push log	activesync	cs	Zobrazit globální protokol Z-Push
 view glogal z-push error log	activesync	cs	Zobrazit globální protokol chyb Z-Push
-yes, always send	activesync	cs	Ano, vždy odeslat
+yes, always send	preferences	cs	Ano, vždy odeslat

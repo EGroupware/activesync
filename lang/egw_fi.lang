@@ -4,12 +4,12 @@ additional calendars to sync	activesync	fi	Muut synkronoitavat kalenterit
 addressbooks to sync	activesync	fi	Synkronoitavat osiotekirjat
 email account to sync	activesync	fi	Synkronoitava sähköposti.
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	fi	Globaal osoitehaku etsii ania kaikista osoitekirjoista jos olet verkossa, näinollen ei ole tarvetta synkronoida kaikkia osoitekirjoja.
-no, do not send	activesync	fi	Ei, älä lähetä
+no, do not send	preferences	fi	Ei, älä lähetä
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	fi	Kaikki laitteet eivät tue useiden kalentereiden synkronointia. Yksityinen kalenteri on aina synkronoitavissa.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	fi	Kaikki laitteet eivät tue useiden osoitekirjojen synkronointia. Yksityinen osoitekirja on aina synkronoitavissa.
-only send if there is no notification in calendar	activesync	fi	Lähetä vain, jos kalenterissa ei ole ilmoitusta
+only send if there is no notification in calendar	preferences	fi	Lähetä vain, jos kalenterissa ei ole ilmoitusta
 sync all addressbooks as one	activesync	fi	Synkronoi kaikki osoitekirjat yhtenä
 use addressbooks "own sorting" attribute	activesync	fi	Käytä osoitekirjan "oma lajittelu" vaihtoehtoa
 view global z-push log	activesync	fi	Näytä yleinen Z-Push-loki
 view glogal z-push error log	activesync	fi	Näytä yleinen Z-Push-virheloki
-yes, always send	activesync	fi	Kyllä, lähetä aina
+yes, always send	preferences	fi	Kyllä, lähetä aina

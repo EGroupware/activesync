@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	de	Wenn das Gerät keinen Sync-Bereich vorgibt, dann können Sie hier diese Einstellung übersteuern um Abstürze des Gerätes aufgrund von zu vielen Daten (und zu wenig Speicher) zu vermeiden.
 maintenance	activesync	de	Wartung
 no valid %1 folder configured!	activesync	de	Kein gültiger %1 Ordner konfiguriert!
-no, do not send	activesync	de	Nein, nicht senden
+no, do not send	preferences	de	Nein, nicht senden
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	de	Nicht alle Geräte unterstützen zusätzliche Kalender. Ihr persönlicher Kalender wird immer synchronisiert.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	de	Nicht alle Geräte unterstützen mehrere Adressbücher, deshalb können Sie alle oben ausgewählten Adressbücher in ein einziges synchronisieren.
-only send if there is no notification in calendar	activesync	de	Nur senden, wenn es keine Benachrichtigung im Kalender gibt
+only send if there is no notification in calendar	preferences	de	Nur senden, wenn es keine Benachrichtigung im Kalender gibt
 profil %1 deleted.	activesync	de	Profil %1 gelöscht.
 select serverside profile to delete	activesync	de	Wählen Sie das serverseitige Profil zum Löschen aus
 show log of following device	activesync	de	Zeige Log des folgenden Geräts
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	de	Alle Adressbücher in eines synchroni
 use addressbooks "own sorting" attribute	activesync	de	Benutze "eigene Sortierung" des Adressbuchs
 view global z-push log	activesync	de	Globales Z-Push Log anzeigen
 view glogal z-push error log	activesync	de	Globales Z-Push Fehlerlog anzeigen
-yes, always send	activesync	de	Ja, immer senden
+yes, always send	preferences	de	Ja, immer senden

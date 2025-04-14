@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	bg	ако клиентът не зададе диапазон на синхронизация, можете да отмените настройката (предотвратяване на срив на клиента, който може да бъде причинен от твърде много имейли / твърде много данни). Ако искате да синхронизирате връщане назад в миналото: задайте голям брой.
 maintenance	activesync	bg	Поддръжка
 no valid %1 folder configured!	activesync	bg	Невалидна %1 папка беше конфигурирана!
-no, do not send	activesync	bg	Не, не изпращайте
+no, do not send	preferences	bg	Не, не изпращайте
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	bg	Не всички устройства поддържат допълнителни календари. Личният Ви календар винаги се синхронизира.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	bg	Не всички устройства поддържат множество адреси, може да изберете да синхронизирате всички избрани адреси заедно.
-only send if there is no notification in calendar	activesync	bg	Изпращайте само ако в календара няма известие
+only send if there is no notification in calendar	preferences	bg	Изпращайте само ако в календара няма известие
 profil %1 deleted.	activesync	bg	Профилът %1 е изтрит.
 select serverside profile to delete	activesync	bg	Изберете потребителски профил на сървъра, който да изтриете
 show log of following device	activesync	bg	Показване на дневника на следващото устройство
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	bg	Синхронизиране на в�
 use addressbooks "own sorting" attribute	activesync	bg	използвайте атрибута "собствено сортиране" на адресните книги
 view global z-push log	activesync	bg	Преглед на глобалния (global Z-Push) дневник
 view glogal z-push error log	activesync	bg	Преглед за грешки на глобалния (global Z-Push) дневник
-yes, always send	activesync	bg	Да, винаги изпращайте
+yes, always send	preferences	bg	Да, винаги изпращайте

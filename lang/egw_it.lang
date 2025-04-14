@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	it	Se il client non imposta alcun intervallo di sincronizzazione, è possibile sovrascrivere l'impostazione (evitando il crash del client che potrebbe essere causato da troppi messaggi / troppi dati). Se si desidera sincronizzare molte voci del passato: impostare un numero elevato.
 maintenance	activesync	it	Manutenzione
 no valid %1 folder configured!	activesync	it	La %1 non è una cartella valida!
-no, do not send	activesync	it	No, non inviare
+no, do not send	preferences	it	No, non inviare
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	it	Non tutti i dispositivi supportano agende aggiuntive. L'agenda personale è sempre sincronizzata.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	it	Non tutti i dispositivi supportano rubriche multiple, perciò si possono sincronizzare tutte le rubriche selezionate qui sopra come un'unica rubrica.
-only send if there is no notification in calendar	activesync	it	Invia solo se non c'è una notifica nel calendario
+only send if there is no notification in calendar	preferences	it	Invia solo se non c'è una notifica nel calendario
 profil %1 deleted.	activesync	it	Profilo %1 eliminato
 select serverside profile to delete	activesync	it	Seleziona il profilo lato server da eliminare
 show log of following device	activesync	it	Mostra il registro (log) del seguente dispositivo
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	it	Sincronizzare tutte le rubriche come 
 use addressbooks "own sorting" attribute	activesync	it	Usare il "proprio ordinamento" della rubrica
 view global z-push log	activesync	it	Visualizza registro globale Z-Push
 view glogal z-push error log	activesync	it	Visualizza registro errori Z-Push
-yes, always send	activesync	it	Sì, invia sempre
+yes, always send	preferences	it	Sì, invia sempre

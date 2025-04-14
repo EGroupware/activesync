@@ -1,8 +1,8 @@
 activesync	common	sv	eSync
-no, do not send	activesync	sv	Nej, skicka inte
-only send if there is no notification in calendar	activesync	sv	Skicka endast om det inte finns något meddelande i kalendern
+no, do not send	preferences	sv	Nej, skicka inte
+only send if there is no notification in calendar	preferences	sv	Skicka endast om det inte finns något meddelande i kalendern
 sync all addressbooks as one	activesync	sv	Synkronisera alla adressböcker som en
 use addressbooks "own sorting" attribute	activesync	sv	Använd adressböckernas "egen sortering"-attribut
 view global z-push log	activesync	sv	Visa global Z-Push-logg
 view glogal z-push error log	activesync	sv	Visa global Z-Push-fellogg
-yes, always send	activesync	sv	Ja, skicka alltid
+yes, always send	preferences	sv	Ja, skicka alltid

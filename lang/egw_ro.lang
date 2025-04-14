@@ -1,9 +1,9 @@
 activesync	common	ro	eSync
 email account to sync	activesync	ro	Cont eMail pentru sincronizare
-no, do not send	activesync	ro	Nu, nu trimiteți
-only send if there is no notification in calendar	activesync	ro	Trimiteți numai dacă nu există nicio notificare în calendar
+no, do not send	preferences	ro	Nu, nu trimiteți
+only send if there is no notification in calendar	preferences	ro	Trimiteți numai dacă nu există nicio notificare în calendar
 sync all addressbooks as one	activesync	ro	Sincronizarea tuturor carnetelor de adrese ca una singură
 use addressbooks "own sorting" attribute	activesync	ro	Utilizați atributul "sortare proprie" al carnetelor de adrese
 view global z-push log	activesync	ro	Vizualizați jurnalul Z-Push global
 view glogal z-push error log	activesync	ro	Vizualizați jurnalul global de erori Z-Push
-yes, always send	activesync	ro	Da, trimiteți întotdeauna
+yes, always send	preferences	ro	Da, trimiteți întotdeauna

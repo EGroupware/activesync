@@ -5,10 +5,10 @@ email account to sync	activesync	nl	Te synchroniseren eMail-account
 esync will fail without a working email configuration!	activesync	nl	eSync zal NIET WERKEN zonder een eMail configuratie!
 maintenance	activesync	nl	Onderhoud
 no valid %1 folder configured!	activesync	nl	Geen geldige %1 map geconfigureerd!
-no, do not send	activesync	nl	Nee, niet verzenden
-only send if there is no notification in calendar	activesync	nl	Alleen verzenden als er geen melding in de agenda staat
+no, do not send	preferences	nl	Nee, niet verzenden
+only send if there is no notification in calendar	preferences	nl	Alleen verzenden als er geen melding in de agenda staat
 sync all addressbooks as one	activesync	nl	Synchroniseer alle adresboeken als één
 use addressbooks "own sorting" attribute	activesync	nl	Gebruik het adresboekkenmerk "eigen sortering
 view global z-push log	activesync	nl	Globaal Z-Push logboek bekijken
 view glogal z-push error log	activesync	nl	Glogal Z-Push foutenlogboek bekijken
-yes, always send	activesync	nl	Ja, altijd verzenden
+yes, always send	preferences	nl	Ja, altijd verzenden

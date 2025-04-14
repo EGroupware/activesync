@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	sk	Ak klient neurčí dátumový rozsah synchronizácie, môžete prebiť toto nastavenie (čím možno predídete pádu klienta, lebo by nemusel zvládnuť toľko správ alebo údajov). Ak chcete synchronizovať ďaleko do minulosti, nastavte veľké číslo.
 maintenance	activesync	sk	Údržba
 no valid %1 folder configured!	activesync	sk	Nebol nastavený platný priečinok %1!
-no, do not send	activesync	sk	Nie, neposielajte
+no, do not send	preferences	sk	Nie, neposielajte
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	sk	Nie všetky zariadenia podporujú prídavné kalendáre. Váš osobný kalendár sa synchronizuje vždy.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	sk	Nie všetky zariadenia podporujú viaceré adresáre, takže môžete vybrať synchronizáciu všetkých adresárov, ktoré ste vybrali, ako jeden.
-only send if there is no notification in calendar	activesync	sk	Odoslať len v prípade, že v kalendári nie je žiadne oznámenie
+only send if there is no notification in calendar	preferences	sk	Odoslať len v prípade, že v kalendári nie je žiadne oznámenie
 profil %1 deleted.	activesync	sk	Profil %1 odstránený.
 select serverside profile to delete	activesync	sk	Vyberte profil na strane servera ktorý chcete odstrániť
 show log of following device	activesync	sk	Zobraziť protokol nasledujúceho zariadenia
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	sk	Synchronizovať všetky adresáre ako
 use addressbooks "own sorting" attribute	activesync	sk	použiť "vlastný" triediaci algoritmus adresára
 view global z-push log	activesync	sk	Zobraziť globálny záznam Z-Push
 view glogal z-push error log	activesync	sk	Zobraziť globálny záznam chýb Z-Push
-yes, always send	activesync	sk	Áno, vždy odoslať
+yes, always send	preferences	sk	Áno, vždy odoslať

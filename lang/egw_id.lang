@@ -1,9 +1,9 @@
 activesync	common	id	eSync
 email account to sync	activesync	id	Akun eMail untuk disinkronkan
-no, do not send	activesync	id	Tidak, jangan kirim
-only send if there is no notification in calendar	activesync	id	Hanya kirim jika tidak ada pemberitahuan di kalender
+no, do not send	preferences	id	Tidak, jangan kirim
+only send if there is no notification in calendar	preferences	id	Hanya kirim jika tidak ada pemberitahuan di kalender
 sync all addressbooks as one	activesync	id	Menyinkronkan semua buku alamat sebagai satu kesatuan
 use addressbooks "own sorting" attribute	activesync	id	Gunakan atribut "penyortiran sendiri" pada buku alamat
 view global z-push log	activesync	id	Melihat log Z-Push global
 view glogal z-push error log	activesync	id	Melihat log kesalahan Z-Push global
-yes, always send	activesync	id	Ya, selalu kirim
+yes, always send	preferences	id	Ya, selalu kirim

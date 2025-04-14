@@ -1,9 +1,9 @@
 activesync	common	el	eSync
 email account to sync	activesync	el	Λογαριασμός eMail για συγχρονισμό
-no, do not send	activesync	el	Όχι, μην στείλετε
-only send if there is no notification in calendar	activesync	el	Αποστολή μόνο αν δεν υπάρχει ειδοποίηση στο ημερολόγιο
+no, do not send	preferences	el	Όχι, μην στείλετε
+only send if there is no notification in calendar	preferences	el	Αποστολή μόνο αν δεν υπάρχει ειδοποίηση στο ημερολόγιο
 sync all addressbooks as one	activesync	el	Συγχρονισμός όλων των βιβλίων διευθύνσεων ως ένα
 use addressbooks "own sorting" attribute	activesync	el	Χρήση του χαρακτηριστικού "δική σας ταξινόμηση" των βιβλίων διευθύνσεων
 view global z-push log	activesync	el	Προβολή συνολικού αρχείου καταγραφής Z-Push
 view glogal z-push error log	activesync	el	Προβολή συνολικού αρχείου καταγραφής σφαλμάτων Z-Push
-yes, always send	activesync	el	Ναι, στέλνετε πάντα
+yes, always send	preferences	el	Ναι, στέλνετε πάντα

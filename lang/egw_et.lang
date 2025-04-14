@@ -1,9 +1,9 @@
 activesync	common	et	eSync
 email account to sync	activesync	et	Sünkroonitav e-konto
-no, do not send	activesync	et	Ei, ärge saatke
-only send if there is no notification in calendar	activesync	et	Saada ainult siis, kui kalendris ei ole teateid
+no, do not send	preferences	et	Ei, ärge saatke
+only send if there is no notification in calendar	preferences	et	Saada ainult siis, kui kalendris ei ole teateid
 sync all addressbooks as one	activesync	et	Sünkroonida kõik aadressiraamatud üheks
 use addressbooks "own sorting" attribute	activesync	et	Kasutage aadressiraamatute atribuuti "oma sorteerimine".
 view global z-push log	activesync	et	Vaata globaalset Z-Push logi
 view glogal z-push error log	activesync	et	Vaadake üldist Z-Push vealogi
-yes, always send	activesync	et	Jah, saadab alati
+yes, always send	preferences	et	Jah, saadab alati

@@ -1,9 +1,9 @@
 activesync	common	pl	eSync
 email account to sync	activesync	pl	Konto eMail do synchronizacji
-no, do not send	activesync	pl	Nie, nie wysyłaj
-only send if there is no notification in calendar	activesync	pl	Wysyłaj tylko wtedy, gdy w kalendarzu nie ma powiadomienia
+no, do not send	preferences	pl	Nie, nie wysyłaj
+only send if there is no notification in calendar	preferences	pl	Wysyłaj tylko wtedy, gdy w kalendarzu nie ma powiadomienia
 sync all addressbooks as one	activesync	pl	Synchronizuj wszystkie książki adresowe jako jedną
 use addressbooks "own sorting" attribute	activesync	pl	Użyj atrybutu "własnego sortowania" książek adresowych
 view global z-push log	activesync	pl	Wyświetlanie globalnego dziennika Z-Push
 view glogal z-push error log	activesync	pl	Wyświetl globalny dziennik błędów Z-Push
-yes, always send	activesync	pl	Tak, zawsze wysyłaj
+yes, always send	preferences	pl	Tak, zawsze wysyłaj

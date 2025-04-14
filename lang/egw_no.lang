@@ -1,9 +1,9 @@
 activesync	common	no	eSync
 email account to sync	activesync	no	eMail-konto som skal synkroniseres
-no, do not send	activesync	no	Nei, ikke send
-only send if there is no notification in calendar	activesync	no	Send bare hvis det ikke finnes noe varsel i kalenderen
+no, do not send	preferences	no	Nei, ikke send
+only send if there is no notification in calendar	preferences	no	Send bare hvis det ikke finnes noe varsel i kalenderen
 sync all addressbooks as one	activesync	no	Synkroniser alle adressebøker som én
 use addressbooks "own sorting" attribute	activesync	no	Bruk adressebokens "egen sortering"-attributt
 view global z-push log	activesync	no	Vis global Z-Push-logg
 view glogal z-push error log	activesync	no	Vis global Z-Push-feillogg
-yes, always send	activesync	no	Ja, send alltid
+yes, always send	preferences	no	Ja, send alltid

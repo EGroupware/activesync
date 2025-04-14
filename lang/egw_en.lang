@@ -23,10 +23,10 @@ how many days to sync in the past when client does not specify a date-range (def
 if the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). if you want to sync way-back into the past: set a large number	activesync	en	If the client sets no sync range, you may override the setting (preventing client crash that may be caused by too many mails/too much data). If you want to sync way-back into the past: set a large number.
 maintenance	activesync	en	Maintenance
 no valid %1 folder configured!	activesync	en	No valid %1 folder configured!
-no, do not send	activesync	en	No, do not send
+no, do not send	preferences	en	No, do not send
 not all devices support additonal calendars. your personal calendar is always synchronised.	activesync	en	Not all devices support additonal calendars. Your personal calendar is always synchronised.
 not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.	activesync	en	Not all devices support multiple addressbooks, so you can choose to sync all above selected addressbooks as one.
-only send if there is no notification in calendar	activesync	en	Only send if there is no notification in calendar
+only send if there is no notification in calendar	preferences	en	Only send if there is no notification in calendar
 profil %1 deleted.	activesync	en	Profil %1 deleted.
 select serverside profile to delete	activesync	en	Select serverside profile to delete
 show log of following device	activesync	en	Show log of following device
@@ -36,4 +36,4 @@ sync all addressbooks as one	activesync	en	Sync all addressbooks as one
 use addressbooks "own sorting" attribute	activesync	en	Use addressbooks "own sorting" attribute
 view global z-push log	activesync	en	View global Z-Push log
 view glogal z-push error log	activesync	en	View global Z-Push error log
-yes, always send	activesync	en	Yes, always send
+yes, always send	preferences	en	Yes, always send

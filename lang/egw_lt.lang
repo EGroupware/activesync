@@ -1,9 +1,9 @@
 activesync	common	lt	eSync
 email account to sync	activesync	lt	Sinchronizuojama e. pašto paskyra
-no, do not send	activesync	lt	Ne, nesiųskite
-only send if there is no notification in calendar	activesync	lt	Siųsti tik tuo atveju, jei kalendoriuje nėra pranešimo
+no, do not send	preferences	lt	Ne, nesiųskite
+only send if there is no notification in calendar	preferences	lt	Siųsti tik tuo atveju, jei kalendoriuje nėra pranešimo
 sync all addressbooks as one	activesync	lt	Sinchronizuoti visas adresines kaip vieną
 use addressbooks "own sorting" attribute	activesync	lt	Naudokite adresų knygelių "savo rūšiavimo" atributą
 view global z-push log	activesync	lt	Peržiūrėti visuotinį "Z-Push" žurnalą
 view glogal z-push error log	activesync	lt	Peržiūrėti bendrą "Z-Push" klaidų žurnalą
-yes, always send	activesync	lt	Taip, visada siųsti
+yes, always send	preferences	lt	Taip, visada siųsti

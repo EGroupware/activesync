@@ -1186,11 +1186,11 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 	 *
 	 * @param string $body the plain body received
 	 * @param string $rtf the rtf body data
-	 * @param SyncBaseBody $airsyncbasebody =null object received from client, or null if none received
+	 * @param ?SyncBaseBody $airsyncbasebody =null object received from client, or null if none received
 	 *
 	 * @return string plaintext for eGroupware
 	 */
-	public function messagenote2note($body, $rtf, SyncBaseBody $airsyncbasebody=null)
+	public function messagenote2note($body, $rtf, ?SyncBaseBody $airsyncbasebody=null)
 	{
 		if (isset($airsyncbasebody) && is_resource($airsyncbasebody->data))
 		{

@@ -1,5 +1,6 @@
 activesync	common	tr	eSync
 disabled	activesync	tr	engellendi
+email account to sync	activesync	tr	Senkronize edilecek e-posta hesabı.
 no, do not send	preferences	tr	Hayır, göndermeyin
 only send if there is no notification in calendar	preferences	tr	Yalnızca takvimde bildirim yoksa gönderin
 sync all addressbooks as one	activesync	tr	Tüm adres defterlerini tek bir defter olarak senkronize edin

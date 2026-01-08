@@ -9,7 +9,7 @@ control the sending of calendar invitations while using this profile	activesync	
 deleting of profil %1 failed!	activesync	ru	Не получилось удалить профиль %1!
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	ru	Удаление серверной части профиля уничтожит все следы предыдущих попыток синхронизации выбранного устройства.
 disabled	activesync	ru	Запрещено
-email account to sync	activesync	ru	Учётная запись eMail для синхронизации
+email account to sync	activesync	ru	Электронная почта, которую нужно синхронизировать.
 esync will fail without a working email configuration!	activesync	ru	eSync не работает без действующей настройки eMail!
 force sorting on device to	activesync	ru	Принудительная сортировка на устройстве
 global address search always searches in all addressbooks, so you dont need to sync all addressbooks to be able to access them, if you are online.	activesync	ru	Глобальный поиск всегда производится по всем адресным книгам, поэтому в режиме on-line синхронизировать адресные книги для доступа к ним не нужно.

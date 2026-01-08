@@ -1,6 +1,6 @@
 activesync	common	pt	eSync
 can not open imap connection	activesync	pt	Não é possível abrir conexão IMAP
-email account to sync	activesync	pt	Conta de correio eletrónico a sincronizar
+email account to sync	activesync	pt	Conta de e-mail a ser sincronizada.
 no valid %1 folder configured!	activesync	pt	Nenhuma pasta válido% 1 configurado!
 no, do not send	preferences	pt	Não, não enviar
 only send if there is no notification in calendar	preferences	pt	Enviar apenas se não existir uma notificação no calendário

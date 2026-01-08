@@ -7,7 +7,7 @@ always delete account on device first!	activesync	pt-br	SEMPRE apagar conta no d
 can not open imap connection	activesync	pt-br	Não é possível abrir conexão IMAP
 deleting of profil %1 failed!	activesync	pt-br	Exclusão de profil% 1 falhou!
 disabled	activesync	pt-br	inválido
-email account to sync	activesync	pt-br	Conta-mail para sincronizar
+email account to sync	activesync	pt-br	Conta de e-mail a ser sincronizada.
 force sorting on device to	activesync	pt-br	Força triagem no dispositivo para
 maintenance	activesync	pt-br	Manutenção
 no valid %1 folder configured!	activesync	pt-br	Nenhuma pasta válido% 1 configurado!

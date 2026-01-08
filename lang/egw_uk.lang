@@ -1,4 +1,5 @@
 activesync	common	uk	eSync
+email account to sync	activesync	uk	Електронна пошта, яку потрібно синхронізувати.
 no, do not send	preferences	uk	Ні, не надсилати
 only send if there is no notification in calendar	preferences	uk	Надсилати тільки якщо немає сповіщення в календарі
 sync all addressbooks as one	activesync	uk	Синхронізувати всі адресні книги як одну

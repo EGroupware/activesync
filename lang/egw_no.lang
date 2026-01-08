@@ -1,5 +1,5 @@
 activesync	common	no	eSync
-email account to sync	activesync	no	eMail-konto som skal synkroniseres
+email account to sync	activesync	no	E-postkonto som skal synkroniseres.
 no, do not send	preferences	no	Nei, ikke send
 only send if there is no notification in calendar	preferences	no	Send bare hvis det ikke finnes noe varsel i kalenderen
 sync all addressbooks as one	activesync	no	Synkroniser alle adressebøker som én

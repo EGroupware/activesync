@@ -1,4 +1,5 @@
 activesync	common	sv	eSync
+email account to sync	activesync	sv	E-postkonto som ska synkroniseras.
 no, do not send	preferences	sv	Nej, skicka inte
 only send if there is no notification in calendar	preferences	sv	Skicka endast om det inte finns något meddelande i kalendern
 sync all addressbooks as one	activesync	sv	Synkronisera alla adressböcker som en

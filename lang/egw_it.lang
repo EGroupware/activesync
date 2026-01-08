@@ -13,7 +13,7 @@ deleting of profil %1 failed!	activesync	it	Non è stato possibile eliminare il 
 deleting serverside profile removes all traces of previous synchronisation attempts of the selected device.	activesync	it	L'eliminazione lato server del profilo, rimuove tutte le tracce di tentativi di sincronizzazione precedenti.
 device %1 deleted.	activesync	it	Dispositivo %1 eliminato.
 disabled	activesync	it	disabilitato
-email account to sync	activesync	it	Account di eMail da sincronizzare
+email account to sync	activesync	it	Account e-mail da sincronizzare.
 enable logging	activesync	it	Abilita registro
 enable logging for all your devices or a specific one.	activesync	it	Abilita il registro per tutti i tuoi dispositivi oppure per uno specifico.
 esync will fail without a working email configuration!	activesync	it	eSync non funzionerà senza una configurazione esistente corretta di eMail.

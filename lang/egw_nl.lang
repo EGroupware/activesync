@@ -1,7 +1,7 @@
 activesync	common	nl	eSync
 can not open imap connection	activesync	nl	Kan IMAP verbinding niet openen
 deleting of profil %1 failed!	activesync	nl	Verwijderen van profiel %1 mislukt!
-email account to sync	activesync	nl	Te synchroniseren eMail-account
+email account to sync	activesync	nl	E-mailaccount dat moet worden gesynchroniseerd.
 esync will fail without a working email configuration!	activesync	nl	eSync zal NIET WERKEN zonder een eMail configuratie!
 maintenance	activesync	nl	Onderhoud
 no valid %1 folder configured!	activesync	nl	Geen geldige %1 map geconfigureerd!

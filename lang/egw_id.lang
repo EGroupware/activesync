@@ -1,5 +1,5 @@
 activesync	common	id	eSync
-email account to sync	activesync	id	Akun eMail untuk disinkronkan
+email account to sync	activesync	id	Akun email yang akan disinkronkan.
 no, do not send	preferences	id	Tidak, jangan kirim
 only send if there is no notification in calendar	preferences	id	Hanya kirim jika tidak ada pemberitahuan di kalender
 sync all addressbooks as one	activesync	id	Menyinkronkan semua buku alamat sebagai satu kesatuan

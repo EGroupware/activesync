@@ -1,5 +1,5 @@
 activesync	common	da	eSync
-email account to sync	activesync	da	eMail-konto til synkronisering
+email account to sync	activesync	da	E-mail-konto, der skal synkroniseres.
 no, do not send	preferences	da	Nej, send ikke
 only send if there is no notification in calendar	preferences	da	Send kun, hvis der ikke er nogen notifikation i kalenderen
 sync all addressbooks as one	activesync	da	Synkroniser alle adressebøger som én

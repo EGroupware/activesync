@@ -1,6 +1,6 @@
 activesync	common	ja	eSync
 disabled	activesync	ja	不可
-email account to sync	activesync	ja	同期するeメールアカウント
+email account to sync	activesync	ja	同期するメールアカウント
 no, do not send	preferences	ja	いいえ、送信しません
 only send if there is no notification in calendar	preferences	ja	カレンダーに通知がない場合のみ送信
 sync all addressbooks as one	activesync	ja	すべてのアドレス帳を同期

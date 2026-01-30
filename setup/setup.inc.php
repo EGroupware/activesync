@@ -11,7 +11,7 @@
 /* Basic information about this app */
 $setup_info['activesync']['name']      = 'activesync';
 $setup_info['activesync']['title']     = 'eSync';
-$setup_info['activesync']['version']   = '23.1';
+$setup_info['activesync']['version']   = '26.1';
 $setup_info['activesync']['enable']    = 2;
 $setup_info['activesync']['app_order'] = 99;
 
@@ -40,5 +40,5 @@ $setup_info['activesync']['hooks']['verify_settings']	= 'activesync_hooks::verif
 /* Dependencies for this app to work */
 $setup_info['activesync']['depends'][] = array(
 	 'appname'  => 'api',
-	 'versions' => Array('23.1')
+	 'versions' => Array('26.1')
 );

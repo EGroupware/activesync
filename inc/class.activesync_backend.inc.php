@@ -88,7 +88,7 @@ class activesync_backend extends BackendDiff implements ISearchProvider
 
 			// check if we support loose provisioning for that device
 			$response = $this->run_on_all_plugins('LooseProvisioning', array(), $dev_id);
-			$loose_provisioning = $response ? (boolean)$response['response'] : false;
+			$loose_provisioning = $response ? (bool)$response['response'] : false;
 			define('LOOSE_PROVISIONING', $loose_provisioning);
 
 			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."() username=$username, loose_provisioning=".array2string($loose_provisioning).", autheticated=".array2string($this->authenticated));
